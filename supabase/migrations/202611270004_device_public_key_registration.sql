@@ -4,7 +4,7 @@
 alter table public.device_profiles
     add column if not exists public_key text;
 
-create or replace function public.register_device_public_key(p_public_key text)
+create or replace function public.register_device_public_key(p_device_id uuid, p_public_key text)
 returns boolean
 language plpgsql
 security definer
@@ -36,17 +36,12 @@ begin
     update public.device_profiles
        set public_key = p_public_key,
            last_seen_at = now()
-     where device_id in (
-         select d.device_id from public.device_profiles d
-         where d.user_id = auth.uid()
-         order by d.last_seen_at desc
-         limit 1
-     )
+     where device_id = p_device_id
        and user_id = auth.uid();
 
     return found;
 end;
 $device_public_key$;
 
-revoke all on function public.register_device_public_key(text) from public;
+revoke all on function public.register_device_public_key(uuid, text) from public;
 grant execute on function public.register_device_public_key(text) to authenticated;
