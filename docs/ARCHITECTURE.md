@@ -66,19 +66,19 @@ The intended flow is: copy local app code -> enter peer code -> send join reques
 ## Selected production architecture (decision)
 The selected target is a hybrid cloud-first, offline-capable design:
 
-- **Backend:** Supabase (managed PostgreSQL, Auth, Realtime, private Storage, and server-side Edge Functions/RPC). It provides relational constraints and transactional authorization for membership, invitations, and append-only synchronization events. Supabase's official Android/Kotlin quickstart and Kotlin modules are available; project provisioning and credentials are a separate deployment step.
+- **Backend:** Supabase (managed PostgreSQL, Auth, Realtime, private Storage, and server-side RPC/Edge Functions). A first SQL migration is now checked into `supabase/migrations/202611270001_secure_world_sync.sql`; it is not deployed to a live project yet.
 - **Local-first UX:** Android Room is the durable local database and outbox. UI reads from Room; user edits are committed locally first, then queued for upload. Network state never blocks reading or editing already available content.
-- **Synchronization:** use immutable, uniquely identified events rather than repeatedly overwriting one shared world JSON blob. The backend assigns authoritative ordering/timestamps. Clients deduplicate by event ID, pull missing events, and apply deterministic reducers. Conflicting user edits must be resolved by explicit domain rules; do not silently use last-write-wins for the entire world.
+- **Synchronization:** use immutable, uniquely identified events rather than repeatedly overwriting one shared world JSON blob. The migration defines an append-only event table with a server sequence and a unique (world, event) key. A transport-neutral Kotlin contract and JVM tests now validate ciphertext envelopes, page size, monotonic server cursors, and retry limits. The Room outbox and network client are still to be implemented.
 - **Media:** encrypted media files are uploaded to private object storage. Store metadata and encrypted object references in the event stream. Never expose public buckets for private memories or photos.
 - **Realtime:** Realtime is a notification that new events may exist, not the sole delivery mechanism. On reconnect or missed notifications, clients fetch events from the last acknowledged cursor.
-- **Pairing:** the nine-digit device code is only a human-friendly discovery hint. A request must use an expiring, single-use invitation/challenge, authenticated device identity, explicit owner approval, and a revocable membership grant. Do not treat possession of a nine-digit code as authorization.
-- **Transport:** use HTTPS/WSS with platform certificate validation. Do not add brittle certificate pins without a tested pin-rotation and backup-pin process. Never ship a Supabase service-role/secret key in the APK; only publishable client configuration may be embedded, and every exposed table/function/storage object must enforce least-privilege authorization.
+- **Pairing:** the nine-digit device code is only a human-friendly discovery hint. The migration now defines device-code registration, account-level lookup throttling, join requests, explicit owner approval/decline, a five-member cap, expiring one-time invitations, and owner revocation. The code is never an authenticator. Additional IP/device-level abuse protection must be added at the Edge/API boundary before public launch.
+- **Transport:** use HTTPS/WSS with platform certificate validation. Do not add brittle certificate pins without a tested pin-rotation and backup-pin process. Never ship a Supabase service-role/secret key in the APK; only publishable client configuration may be embedded, and every exposed table/function/storage object must enforce least-privilege authorization. The migration defines restrictive RLS policies and security-definer RPCs with fixed search paths.
 - **End-to-end privacy:** private content (messages, memories, journal entries, photos, drawings, capsule contents) should be encrypted on-device with a per-world data key before upload. The backend stores ciphertext and minimal routing metadata. Share the world key only after an approved authenticated pairing, and support member revocation by rotating the world key for future content. Do not claim old content is inaccessible to a removed member if that member already downloaded it.
 - **Recovery:** provide an explicit encrypted recovery/export path. A device-bound Android Keystore key alone cannot restore data on a replacement phone. Recovery must be designed before promising account/device recovery; do not silently upload plaintext keys.
 - **Scale:** cap a world at five active members. Apply server-side rate limits, payload-size limits, schema validation, audit events for membership changes, and per-world authorization on every operation.
 
 ### Important implementation boundary
-This is the chosen architecture, not a claim that cloud synchronization already works. The repository currently has local encrypted storage and pairing-security primitives, but no provisioned Supabase project, no production credentials, no Room outbox, no cloud schema deployed, and no live network pairing/synchronization. Do not show a successful connection state until a real server acknowledgement is received.
+This is the chosen architecture, not a claim that cloud synchronization already works. The repository has local encrypted snapshot storage, pairing-security primitives, a checked-in Supabase SQL migration, and a transport-neutral sync contract with JVM tests. There is no provisioned Supabase project, no production credentials, no Room outbox, no deployed cloud schema, no on-device end-to-end encryption/key exchange, and no live network pairing/synchronization. Do not show a successful connection state until a real server acknowledgement is received.
 
 ### Delivery sequence
 1. Introduce Room and migrate existing encrypted snapshots without data loss.
@@ -87,3 +87,23 @@ This is the chosen architecture, not a claim that cloud synchronization already 
 4. Add authenticated Android networking and server-authorized pairing.
 5. Add encrypted event/media synchronization, reconnect recovery, and revocation/key rotation.
 6. Add integration tests, abuse/rate-limit tests, backup/restore tests, and real multi-device tests before release.
+
+
+## Current cloud schema implementation
+The checked-in migration currently defines:
+- Worlds and active/revoked memberships, with owner membership created atomically.
+- Private world invitation hashes with expiry and single-use acceptance.
+- Device-code registration and account-level throttling for code lookups.
+- Join requests resolved from a nine-digit device discovery code, with explicit owner approve/decline RPCs.
+- Owner-only member revocation and a five-active-member cap protected by per-world row locks during admission.
+- An append-only event stream with per-world idempotency and server sequence.
+- A private encrypted-media bucket with member-scoped object policies.
+- Realtime publication of the event table as a notification channel; cursor-based fetch remains authoritative.
+
+Security boundaries and remaining work:
+- The SQL migration is source code only until applied to a newly provisioned Supabase project and reviewed against its actual Auth/Storage settings.
+- Rate limiting in SQL is per authenticated account. Add IP/device-level throttling and monitoring at the API/Edge layer to resist account farming and enumeration.
+- The app must generate high-entropy invite tokens and send only SHA-256 hashes to the database; the raw token must never be logged.
+- Event ciphertext and encrypted media formats, world-key distribution, recovery, key rotation, and forward secrecy are not implemented yet.
+- Revoking a member blocks future server access, but cannot erase content that member already downloaded. Rotate the world key for future content after revocation.
+- Never expose the Supabase service-role key to Android. Verify every RLS policy and RPC with separate owner, member, revoked-member, and unrelated-account tests before production.
