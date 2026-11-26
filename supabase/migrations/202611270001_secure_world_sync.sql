@@ -466,10 +466,18 @@ begin
         return null;
     end if;
 
+    -- Expire stale pending rows before enforcing the one-pending-request rule.
+    update public.join_requests
+    set status = 'expired'
+    where world_id = v_world_id
+      and requester_id = auth.uid()
+      and status = 'pending'
+      and expires_at <= now();
+
     insert into public.join_requests(world_id, requester_id, target_device_id)
     values (v_world_id, auth.uid(), v_target_device)
     on conflict (world_id, requester_id) where status = 'pending'
-    do nothing
+    do update set target_device_id = excluded.target_device_id
     returning id into v_request_id;
 
     return v_request_id;
@@ -602,14 +610,23 @@ grant usage, select on sequence public.world_events_server_seq_seq to authentica
 -- Realtime is a wake-up signal only; clients must still fetch by server_seq cursor.
 do $$
 begin
-    if exists (select 1 from pg_publication where pubname = 'supabase_realtime')
-       and not exists (
-           select 1 from pg_publication_tables
-           where pubname = 'supabase_realtime'
-             and schemaname = 'public'
-             and tablename = 'world_events'
-       ) then
-        execute 'alter publication supabase_realtime add table public.world_events';
+    if exists (select 1 from pg_publication where pubname = 'supabase_realtime') then
+        if not exists (
+            select 1 from pg_publication_tables
+            where pubname = 'supabase_realtime'
+              and schemaname = 'public'
+              and tablename = 'world_events'
+        ) then
+            execute 'alter publication supabase_realtime add table public.world_events';
+        end if;
+        if not exists (
+            select 1 from pg_publication_tables
+            where pubname = 'supabase_realtime'
+              and schemaname = 'public'
+              and tablename = 'join_requests'
+        ) then
+            execute 'alter publication supabase_realtime add table public.join_requests';
+        end if;
     end if;
 end;
 $$;
