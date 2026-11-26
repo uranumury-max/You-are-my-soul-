@@ -54,3 +54,10 @@ The intended flow is: copy local app code -> enter peer code -> send join reques
 - These primitives are not a network transport. They must only be used after a certificate-authenticated encrypted channel is established; never expose the pairing secret over raw TCP, local broadcast, or cleartext HTTP.
 - The current Connection screen only validates form data locally. It does not send a request, discover another phone, approve a participant, or synchronize a world.
 - Before remote pairing is released, implement and test TLS certificate identity/pinning, host authorization, persistent rate limiting, replay protection across reconnects, and LAN/NAT traversal behavior.
+
+
+## Storage and UI thread discipline
+- The initial encrypted snapshot read runs on Dispatchers.IO; the interface shows a lightweight loading state while it completes.
+- Snapshot encryption and durable SharedPreferences commits run on Dispatchers.IO and are serialized with a mutex so rapid edits cannot overwrite one another out of order.
+- If an encrypted snapshot cannot be decrypted or saved, editing is locked and world creation is disabled. Do not silently interpret unreadable encrypted data as an empty world.
+- Only the active Compose destination is built; outgoing content is retained for the short transition animation. Large media must be deferred to its own screen.
