@@ -84,6 +84,7 @@ fun SoulWorldApp() {
     }
     var world by remember { mutableStateOf<WorldSnapshot?>(null) }
     var savedCloudWorldId by remember { mutableStateOf("") }
+    var savedWorldName by remember { mutableStateOf("") }
     var worldLoaded by remember { mutableStateOf(false) }
     var storageWarning by remember { mutableStateOf("") }
     val saveMutex = remember { Mutex() }
@@ -101,6 +102,7 @@ fun SoulWorldApp() {
             }
             world = resolved
             savedCloudWorldId = resolved?.cloudWorldId.orEmpty()
+            savedWorldName = resolved?.worldName.orEmpty()
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (error: Exception) {
@@ -138,10 +140,12 @@ fun SoulWorldApp() {
         }
     }
 
-    LaunchedEffect(worldLoaded, cloudAuthenticated, world?.cloudWorldId, world?.worldName, savedCloudWorldId) {
+    LaunchedEffect(worldLoaded, cloudAuthenticated, world?.cloudWorldId, world?.worldName, savedCloudWorldId, savedWorldName) {
         if (!worldLoaded || !cloudAuthenticated) return@LaunchedEffect
         val current = world ?: return@LaunchedEffect
-        if (current.cloudWorldId.isBlank() || current.cloudWorldId != savedCloudWorldId) return@LaunchedEffect
+        if (current.cloudWorldId.isBlank() || current.cloudWorldId != savedCloudWorldId ||
+            current.worldName != savedWorldName
+        ) return@LaunchedEffect
         try {
             val session = authClient.ensureAuthenticatedSession()
             worldRepository.ensureWorld(session, current.cloudWorldId, current.worldName)
@@ -171,7 +175,10 @@ fun SoulWorldApp() {
                 saveMutex.withLock {
                     if (revision == saveRevision.get()) {
                         withContext(Dispatchers.IO) { store.save(next) }
-                        if (revision == saveRevision.get()) savedCloudWorldId = next.cloudWorldId
+                        if (revision == saveRevision.get()) {
+                            savedCloudWorldId = next.cloudWorldId
+                            savedWorldName = next.worldName
+                        }
                     }
                 }
                 true
