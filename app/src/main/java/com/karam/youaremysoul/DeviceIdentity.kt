@@ -9,25 +9,24 @@ class DeviceIdentity(context: Context) {
 
     /** Stable random installation UUID; never derived from hardware identifiers. */
     val installationId: String
-        get() {
+        get() = synchronized(IDENTITY_LOCK) {
             val saved = prefs.getString("installation_id", null)
-            if (saved != null) return saved
+            if (saved != null) return@synchronized saved
             val generated = java.util.UUID.randomUUID().toString()
             val committed = prefs.edit().putString("installation_id", generated).commit()
             check(committed) { "Unable to persist installation identity" }
-            return generated
+            generated
         }
 
     val code: String
-        get() {
+        get() = synchronized(IDENTITY_LOCK) {
             val saved = prefs.getString("code", null)
-            if (saved != null) return saved
-            return generateAndPersistCode()
+            if (saved != null) return@synchronized saved
+            generateAndPersistCode()
         }
 
     /** Replaces a colliding public discovery code while preserving installationId. */
-    @Synchronized
-    fun regenerateCode(): String = generateAndPersistCode()
+    fun regenerateCode(): String = synchronized(IDENTITY_LOCK) { generateAndPersistCode() }
 
     @Synchronized
     private fun generateAndPersistCode(): String {
@@ -36,5 +35,9 @@ class DeviceIdentity(context: Context) {
         val committed = prefs.edit().putString("code", generated).commit()
         check(committed) { "Unable to persist device code" }
         return generated
+    }
+
+    private companion object {
+        val IDENTITY_LOCK = Any()
     }
 }
