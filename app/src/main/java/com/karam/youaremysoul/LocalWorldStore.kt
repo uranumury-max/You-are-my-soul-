@@ -44,6 +44,7 @@ class LocalWorldStore(context: Context) {
         put("gardenLastWateredAt", world.gardenLastWateredAt)
         put("dailyAnswerDate", world.dailyAnswerDate)
         put("dailyAnswer", world.dailyAnswer)
+        put("relationshipStartDate", world.relationshipStartDate)
         put("memories", JSONArray().apply { world.memories.forEach(::put) })
         put("members", JSONArray().apply {
             world.members.forEach { member ->
@@ -77,7 +78,8 @@ class LocalWorldStore(context: Context) {
             gardenFlowers = json.optInt("gardenFlowers", 0),
             gardenLastWateredAt = json.optLong("gardenLastWateredAt", 0L),
             dailyAnswerDate = json.optString("dailyAnswerDate", ""),
-            dailyAnswer = json.optString("dailyAnswer", "")
+            dailyAnswer = json.optString("dailyAnswer", ""),
+            relationshipStartDate = json.optString("relationshipStartDate", "")
         )
     }
 
