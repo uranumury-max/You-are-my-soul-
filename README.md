@@ -8,8 +8,8 @@ The target design is cloud-first and offline-capable:
 - A managed Supabase backend coordinates authenticated membership and synchronization.
 - Each Android installation keeps local data so the app remains useful without a connection.
 - A durable Room database now contains sync outbox, downloaded-event, and cursor tables.
-- Three checked-in SQL migrations define world membership, owner-approved join requests, per-account/per-world rate-limited device-code discovery, append-only events, private media storage, and restrictive RLS.
-- Local snapshots use AES-256-GCM with Android Keystore protection. A separate AES-GCM content envelope and per-world key vault have been added as cryptographic foundations, but key distribution is not implemented.
+- Four checked-in SQL migrations define world membership, owner-approved join requests, per-account/per-world rate-limited device-code discovery, append-only events, private media storage, device public-key registration, and restrictive RLS.
+- Local snapshots use AES-256-GCM with Android Keystore protection. A separate AES-GCM content envelope and per-world key vault have been added as cryptographic foundations, and an RSA-OAEP device key-exchange primitive plus authenticated public-key registration are now present, but member key delivery is not implemented.
 
 ## Current implementation checkpoint
 
@@ -21,7 +21,7 @@ The target design is cloud-first and offline-capable:
 - Room sync outbox, downloaded-event cache, retry metadata, and monotonic cursor storage.
 - AES-GCM world-content envelope bound to world/event/type/key-version metadata, with tamper and nonce tests.
 - Android Keystore-wrapped per-world key vault; a local owner key is generated only after the encrypted world snapshot is durable, but member key distribution is not implemented.
-- Supabase SQL migrations 001–003 and backend security/deployment checklist.
+- Supabase SQL migrations 001–004 and backend security/deployment checklist.
 - Android anonymous Supabase Auth session creation/refresh with encrypted Keystore-backed session persistence.
 - Authenticated device registration, idempotent cloud-world provisioning, and local world-name metadata updates.
 - Authenticated join-request submission, owner inbox, approve/decline actions, and requester status refresh.
@@ -30,11 +30,11 @@ The target design is cloud-first and offline-capable:
 
 ## Not yet complete — do not treat as a working connected app
 
-- No Supabase project has been provisioned and migrations 001–003 have not been applied to a live/staging backend. Auth, device registration, cloud-world creation, and pairing clients are present in source but have not been verified against a live backend.
+- No Supabase project has been provisioned and migrations 001–004 have not been applied to a live/staging backend. Auth, device registration, cloud-world creation, and pairing clients are present in source but have not been verified against a live backend.
 - Android build configuration now accepts `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` from Gradle properties or environment variables; the GitHub Actions build reads the matching repository secrets. Missing values leave cloud connectivity unconfigured rather than fabricating a successful connection. Secret/service-role keys are rejected by the runtime config validator.
 - The encrypted world snapshot now migrates safely from SharedPreferences into Room. The durable outbox exists, but local UI edits are not yet atomically connected to outbox events.
 - Content encryption and the local key vault are not yet wired into the app's messages/memories/media.
-- No authenticated member-to-member key distribution, recovery, or key rotation; an approved join request grants database membership but does not yet deliver the world encryption key.
+- Device public keys can now be registered per installation, but no authenticated member-to-member key distribution, recovery, or key rotation exists yet; an approved join request grants database membership but does not yet deliver the world encryption key.
 - Join-request delivery and owner approval UI are implemented but remain unusable until the backend migrations are deployed and tested. Cross-device event synchronization is not yet implemented.
 - No media upload/download, shared album, shared drawing, or capsule synchronization.
 - No final physical-device, offline/reconnect, abuse, and authorization test pass.
