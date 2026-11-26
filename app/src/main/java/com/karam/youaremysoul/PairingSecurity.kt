@@ -33,7 +33,7 @@ object PairingSecurity {
     private val random = SecureRandom()
 
     fun isValidDeviceCode(code: String): Boolean =
-        code.length == WorldLimits.DEVICE_CODE_DIGITS && code.all(Char::isDigit)
+        code.length == WorldLimits.DEVICE_CODE_DIGITS && code.all { it in '0'..'9' }
 
     fun validateJoinRequest(
         fromCode: String,
