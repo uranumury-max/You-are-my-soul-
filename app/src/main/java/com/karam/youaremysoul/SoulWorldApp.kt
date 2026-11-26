@@ -48,11 +48,14 @@ fun SoulWorldApp() {
     val store = remember { LocalWorldStore(context) }
     var world by remember { mutableStateOf<WorldSnapshot?>(null) }
     var worldLoaded by remember { mutableStateOf(false) }
+    var storageWarning by remember { mutableStateOf("") }
     val saveMutex = remember { Mutex() }
     val scope = rememberCoroutineScope()
     LaunchedEffect(store) {
         try {
             world = withContext(Dispatchers.IO) { store.load() }
+        } catch (error: Exception) {
+            storageWarning = "تعذر فتح بيانات العالم بأمان. أوقفنا إنشاء عالم جديد حتى لا تُستبدل بيانات قديمة."
         } finally {
             worldLoaded = true
         }
@@ -69,9 +72,12 @@ fun SoulWorldApp() {
     fun persist(next: WorldSnapshot) {
         world = next
         scope.launch {
-            saveMutex.withLock {
-                withContext(Dispatchers.IO) { store.save(next) }
-            }
+            val saved = runCatching {
+                saveMutex.withLock {
+                    withContext(Dispatchers.IO) { store.save(next) }
+                }
+            }.isSuccess
+            storageWarning = if (saved) "" else "تعذر حفظ التغييرات على هذا الجهاز. تحقق من مساحة التخزين."
         }
     }
 
@@ -113,6 +119,9 @@ fun SoulWorldApp() {
                     },
                     color = Color.White.copy(alpha = .62f), fontSize = 12.sp
                 )
+                if (storageWarning.isNotBlank()) {
+                    Text(storageWarning, color = Gold, fontSize = 11.sp, modifier = Modifier.padding(top = 5.dp))
+                }
             }
 
             androidx.compose.animation.AnimatedContent(
@@ -132,7 +141,7 @@ fun SoulWorldApp() {
                             "الربط" -> ConnectionSection(
                                 displayName = displayName, onName = { displayName = it },
                                 enteredCode = enteredCode, onCode = { enteredCode = it },
-                                requestStatus = requestStatus, canCreate = world == null, onRequest = {
+                                requestStatus = requestStatus, canCreate = world == null && storageWarning.isBlank(), onRequest = {
                                     requestStatus = if (world == null) {
                                         "أنشئ العالم على هذا الهاتف أولاً قبل طلب الانضمام."
                                     } else {
@@ -190,7 +199,7 @@ fun SoulWorldApp() {
                                 onName = { value -> world?.let { persist(it.copy(worldName = value)) } },
                                 onRelationshipDate = { value -> world?.let { persist(it.copy(relationshipStartDate = value)) } }
                             )
-                            else -> WorldHome(world = world, onCreate = {
+                            else -> WorldHome(world = world, canCreate = storageWarning.isBlank(), onCreate = {
                                 val code = DeviceIdentity(context).code
                                 persist(WorldSnapshot("عالمنا الخاص", code, listOf(WorldMember(code, "صاحب العالم", true)), 0, emptyList()))
                                 tab = "الربط"
@@ -289,7 +298,7 @@ private fun StarField() {
 }
 
 @Composable
-private fun WorldHome(world: WorldSnapshot?, onCreate: () -> Unit) {
+private fun WorldHome(world: WorldSnapshot?, canCreate: Boolean, onCreate: () -> Unit) {
     val orbit = rememberInfiniteTransition(label = "world_orbit")
     val angle by orbit.animateFloat(
         initialValue = 0f, targetValue = (2f * Math.PI).toFloat(),
@@ -334,7 +343,9 @@ private fun WorldHome(world: WorldSnapshot?, onCreate: () -> Unit) {
                 Text(if (world == null) "بداية عالمكم" else "مركز عالمكم", color = Gold, fontWeight = FontWeight.Bold)
                 Text(if (world == null) "إنشاء العالم يثبت هذا الهاتف كمضيف محلي ويحفظ بياناته." else "المضيف: ${world.hostCode}\nالذكريات المحفوظة: ${world.memories.size}\nمرحلة الرحلة: ${calculateJourneyStage(world.relationshipStartDate) + 1}",
                     color = Color.White, modifier = Modifier.padding(top = 6.dp))
-                if (world == null) Button(onClick = onCreate, modifier = Modifier.padding(top = 8.dp)) { Text("إنشاء عالمي") }
+                if (world == null) Button(onClick = onCreate, enabled = canCreate, modifier = Modifier.padding(top = 8.dp)) {
+                    Text(if (canCreate) "إنشاء عالمي" else "حُميت البيانات من الاستبدال")
+                }
             }
         }
         Spacer(Modifier.height(10.dp))
