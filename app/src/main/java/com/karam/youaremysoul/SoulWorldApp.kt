@@ -2,6 +2,10 @@ package com.karam.youaremysoul
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.animation.togetherWith
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -33,6 +37,7 @@ fun SoulWorldApp() {
     var world by remember { mutableStateOf(store.load()) }
     var tab by remember { mutableStateOf("العالم") }
     val tabs = listOf("العالم", "الربط", "الذكريات", "رحلتنا", "الإعدادات")
+    val symbols = listOf("✧", "⌁", "♡", "◷", "⚙")
     var worldName by remember { mutableStateOf("عالمنا الخاص") }
     var memoryText by remember { mutableStateOf("") }
     var displayName by remember { mutableStateOf("") }
@@ -44,69 +49,140 @@ fun SoulWorldApp() {
         store.save(next)
     }
 
-    Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Night, Color(0xFF28172F))))) {
+    Box(
+        Modifier.fillMaxSize()
+            .background(Brush.verticalGradient(listOf(Night, Color(0xFF1B1028), Color(0xFF100B1B))))
+    ) {
         StarField()
-        Column(Modifier.fillMaxSize().padding(horizontal = 15.dp, vertical = 12.dp)) {
-            Text("عالمنا الخاص", color = Rose, fontSize = 28.sp, fontWeight = FontWeight.Bold)
-            Text("You Are My Soul  ✦", color = Gold, fontSize = 13.sp)
-            Spacer(Modifier.height(12.dp))
-            ScrollableTabRow(selectedTabIndex = tabs.indexOf(tab), containerColor = Color.Transparent, contentColor = Rose) {
-                tabs.forEach { item -> Tab(selected = tab == item, onClick = { tab = item }, text = { Text(item) }) }
-            }
-            Spacer(Modifier.height(10.dp))
-            when (tab) {
-                "الربط" -> ConnectionSection(
-                    displayName = displayName, onName = { displayName = it },
-                    enteredCode = enteredCode, onCode = { enteredCode = it },
-                    requestStatus = requestStatus, onRequest = {
-                        requestStatus = if (enteredCode.length == 9 && enteredCode != DeviceIdentity(context).code)
-                            "حُفظت تفاصيل طلبك على هذا الجهاز فقط. الإرسال والموافقة بين هاتفين يحتاجان طبقة اتصال لم تُفعّل بعد."
-                        else "تحقّق من الرمز؛ يجب أن يكون 9 أرقام وألا يكون رمز جهازك."
-                    },
-                    onCreate = {
-                        val code = DeviceIdentity(context).code
-                        val member = WorldMember(code, displayName.trim().ifBlank { "صاحب العالم" }, true)
-                        persist(WorldSnapshot(worldName.trim().ifBlank { "عالمنا الخاص" }, code, listOf(member), 0, emptyList()))
-                        requestStatus = "تم إنشاء عالم وحفظه على هذا الهاتف. هذا الجهاز هو المضيف المحلي."
+        Column(Modifier.fillMaxSize()) {
+            Column(Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 18.dp, bottom = 8.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("عالمنا الخاص", color = Rose, fontSize = 26.sp, fontWeight = FontWeight.Bold)
+                        Text("YOU ARE MY SOUL  ·  OUR LITTLE UNIVERSE", color = Gold.copy(alpha = .78f), fontSize = 9.sp, letterSpacing = 1.2.sp)
                     }
+                    Box(
+                        Modifier.size(42.dp).background(Color.White.copy(alpha = .06f), RoundedCornerShape(15.dp)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("✦", color = Gold, fontSize = 22.sp)
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    when (tab) {
+                        "العالم" -> "مساحتكم التي تكبر معكم"
+                        "الربط" -> "لكل شخص هويته الخاصة"
+                        "الذكريات" -> "تفاصيل صغيرة تستحق البقاء"
+                        "رحلتنا" -> "خطواتكم عبر الزمن"
+                        else -> "رتّبوا عالمكم كما تحبّون"
+                    },
+                    color = Color.White.copy(alpha = .62f), fontSize = 12.sp
                 )
-                "الذكريات" -> MemoriesSection(
-                    memories = world?.memories.orEmpty(), text = memoryText, onText = { memoryText = it },
-                    onAdd = {
-                        val value = memoryText.trim()
-                        if (value.isNotEmpty()) {
-                            val current = world ?: WorldSnapshot("عالمنا الخاص", DeviceIdentity(context).code,
-                                listOf(WorldMember(DeviceIdentity(context).code, "صاحب العالم", true)), 0, emptyList())
-                            persist(current.copy(memories = current.memories + value))
-                            memoryText = ""
+            }
+
+            androidx.compose.animation.AnimatedContent(
+                targetState = tab,
+                modifier = Modifier.weight(1f).fillMaxWidth(),
+                transitionSpec = {
+                    (androidx.compose.animation.fadeIn(tween(260)) +
+                        androidx.compose.animation.slideInVertically(tween(260)) { it / 18 }) togetherWith
+                        (androidx.compose.animation.fadeOut(tween(150)) +
+                            androidx.compose.animation.slideOutVertically(tween(150)) { -it / 28 })
+                },
+                label = "soul_screen_transition"
+            ) { page ->
+                Column(Modifier.fillMaxSize().padding(horizontal = 18.dp)) {
+                    Box(Modifier.weight(1f).fillMaxWidth()) {
+                        when (page) {
+                            "الربط" -> ConnectionSection(
+                                displayName = displayName, onName = { displayName = it },
+                                enteredCode = enteredCode, onCode = { enteredCode = it },
+                                requestStatus = requestStatus, onRequest = {
+                                    requestStatus = if (enteredCode.length == 9 && enteredCode != DeviceIdentity(context).code)
+                                        "تم تجهيز بيانات الرمز على هذا الجهاز فقط. الإرسال والموافقة بين هاتفين لم يُفعّلا بعد."
+                                    else "تأكد من إدخال رمز صحيح من 9 أرقام."
+                                },
+                                onCreate = {
+                                    val code = DeviceIdentity(context).code
+                                    val member = WorldMember(code, displayName.trim().ifBlank { "صاحب العالم" }, true)
+                                    persist(WorldSnapshot(worldName.trim().ifBlank { "عالمنا الخاص" }, code, listOf(member), 0, emptyList()))
+                                    requestStatus = "أُنشئ العالم وحُفظ على هذا الهاتف. هذا الجهاز هو المضيف المحلي."
+                                }
+                            )
+                            "الذكريات" -> MemoriesSection(
+                                memories = world?.memories.orEmpty(), text = memoryText, onText = { memoryText = it },
+                                onAdd = {
+                                    val value = memoryText.trim()
+                                    if (value.isNotEmpty()) {
+                                        val current = world ?: WorldSnapshot("عالمنا الخاص", DeviceIdentity(context).code,
+                                            listOf(WorldMember(DeviceIdentity(context).code, "صاحب العالم", true)), 0, emptyList())
+                                        persist(current.copy(memories = current.memories + value))
+                                        memoryText = ""
+                                    }
+                                },
+                                onDelete = { index ->
+                                    world?.let { current -> persist(current.copy(memories = current.memories.filterIndexed { i, _ -> i != index })) }
+                                }
+                            )
+                            "رحلتنا" -> JourneySection(stage = world?.journeyStage ?: 0, onUnlock = { stage ->
+                                world?.let { persist(it.copy(journeyStage = stage)) }
+                            })
+                            "الإعدادات" -> SettingsSection(world = world, onName = { value ->
+                                world?.let { persist(it.copy(worldName = value)) }
+                            })
+                            else -> WorldHome(world = world, onCreate = {
+                                val code = DeviceIdentity(context).code
+                                persist(WorldSnapshot("عالمنا الخاص", code, listOf(WorldMember(code, "صاحب العالم", true)), 0, emptyList()))
+                                tab = "الربط"
+                            })
                         }
-                    },
-                    onDelete = { index ->
-                        world?.let { current -> persist(current.copy(memories = current.memories.filterIndexed { i, _ -> i != index })) }
                     }
-                )
-                "رحلتنا" -> JourneySection(stage = world?.journeyStage ?: 0, onUnlock = { stage ->
-                    world?.let { persist(it.copy(journeyStage = stage)) }
-                })
-                "الإعدادات" -> SettingsSection(world = world, onName = { value ->
-                    world?.let { persist(it.copy(worldName = value)) }
-                })
-                else -> WorldHome(world = world, onCreate = {
-                    val code = DeviceIdentity(context).code
-                    persist(WorldSnapshot("عالمنا الخاص", code, listOf(WorldMember(code, "صاحب العالم", true)), 0, emptyList()))
-                    tab = "الربط"
-                })
+                    DeveloperCredit()
+                    Spacer(Modifier.height(5.dp))
+                }
             }
-            Spacer(Modifier.height(8.dp))
-            DeveloperCredit()
+
+            NavigationBar(
+                containerColor = Color(0xFF160F22).copy(alpha = .97f),
+                contentColor = Rose,
+                tonalElevation = 0.dp
+            ) {
+                tabs.forEachIndexed { index, item ->
+                    NavigationBarItem(
+                        selected = tab == item,
+                        onClick = { tab = item },
+                        icon = {
+                            Text(
+                                symbols[index],
+                                fontSize = if (tab == item) 21.sp else 19.sp,
+                                color = if (tab == item) Gold else Color.White.copy(alpha = .58f)
+                            )
+                        },
+                        label = { Text(item, fontSize = 10.sp, maxLines = 1) },
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = Gold,
+                            selectedTextColor = Gold,
+                            indicatorColor = Rose.copy(alpha = .13f),
+                            unselectedIconColor = Color.White.copy(alpha = .55f),
+                            unselectedTextColor = Color.White.copy(alpha = .62f)
+                        )
+                    )
+                }
+            }
         }
     }
 }
 
 @Composable
 private fun DeveloperCredit() {
-    Text(WorldLimits.DEVELOPER_CREDIT, color = Gold.copy(alpha = .78f), fontSize = 10.sp,
-        modifier = Modifier.fillMaxWidth().padding(top = 6.dp), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+    Text(
+        WorldLimits.DEVELOPER_CREDIT,
+        color = Gold.copy(alpha = .76f),
+        fontSize = 10.sp,
+        modifier = Modifier.fillMaxWidth().padding(top = 7.dp),
+        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+    )
 }
 
 @Composable
