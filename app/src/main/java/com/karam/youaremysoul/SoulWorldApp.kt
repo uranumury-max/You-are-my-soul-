@@ -106,9 +106,12 @@ fun SoulWorldApp() {
                                 displayName = displayName, onName = { displayName = it },
                                 enteredCode = enteredCode, onCode = { enteredCode = it },
                                 requestStatus = requestStatus, onRequest = {
-                                    requestStatus = if (enteredCode.length == 9 && enteredCode != DeviceIdentity(context).code)
-                                        "تم تجهيز بيانات الرمز على هذا الجهاز فقط. الإرسال والموافقة بين هاتفين لم يُفعّلا بعد."
-                                    else "تأكد من إدخال رمز صحيح من 9 أرقام."
+                                    requestStatus = PairingSecurity.validateJoinRequest(
+                                        fromCode = DeviceIdentity(context).code,
+                                        hostCode = enteredCode,
+                                        displayName = displayName.trim().ifBlank { "مشارك" },
+                                        currentMemberCount = world?.members?.size ?: 0
+                                    )?.let { it } ?: "الرمز والبيانات صالحة مبدئياً فقط. لم يُرسل طلب؛ الاتصال المشفّر وموافقة المضيف لم يُفعّلا بعد."
                                 },
                                 onCreate = {
                                     val code = DeviceIdentity(context).code
@@ -329,7 +332,8 @@ private fun ConnectionSection(
         }
         OutlinedTextField(value = displayName, onValueChange = { onName(it.take(24)) }, label = { Text("اسمك داخل العالم") }, singleLine = true, modifier = Modifier.fillMaxWidth())
         OutlinedTextField(value = enteredCode, onValueChange = { onCode(it.filter(Char::isDigit).take(9)) }, label = { Text("رمز المضيف أو المشارك") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), singleLine = true, modifier = Modifier.fillMaxWidth())
-        Button(onClick = onRequest, enabled = enteredCode.length == 9 && enteredCode != code) { Text("تجهيز طلب ربط") }
+        Text("تنبيه أمان: رمز الـ9 أرقام للتعرّف فقط، وليس كلمة مرور. لا يعني وجود الجهازين على شبكة Wi‑Fi واحدة أن الاتصال آمن.", color = Gold.copy(alpha = .9f), fontSize = 11.sp)
+        Button(onClick = onRequest, enabled = enteredCode.length == 9 && enteredCode != code) { Text("فحص بيانات الربط") }
         if (requestStatus.isNotBlank()) Text(requestStatus, color = Gold, fontSize = 12.sp)
         Divider(color = Rose.copy(alpha = .25f))
         Text("العالم يدعم تصميمياً حتى ${WorldLimits.MAX_MEMBERS} مشاركين. حالياً إنشاء العالم وحفظه محليان؛ الطلب الشبكي وقبول المضيف يتطلبان خدمة اتصال فعلية.", color = Color.LightGray, fontSize = 12.sp)
