@@ -1,6 +1,5 @@
 package com.karam.youaremysoul
 
-import java.security.SecureRandom
 import java.util.Base64
 import java.util.UUID
 import javax.crypto.Cipher
@@ -18,7 +17,6 @@ internal object WorldContentCipher {
     private const val TAG_BITS = 128
     private const val TAG_BYTES = TAG_BITS / 8
     private const val MAX_PLAINTEXT_BYTES = 700_000
-    private val random = SecureRandom()
 
     fun encrypt(
         worldId: UUID,
@@ -82,7 +80,6 @@ internal object WorldContentCipher {
         eventType: SyncEventType,
         keyVersion: Int
     ): ByteArray =
-        "com.karam.youaremysoul|world-content|v1|$worldId|$eventId|" +
-            eventType.wireValue + "|$keyVersion"
-            .toByteArray(Charsets.UTF_8)
+        ("com.karam.youaremysoul|world-content|v1|$worldId|$eventId|" +
+            eventType.wireValue + "|$keyVersion").toByteArray(Charsets.UTF_8)
 }
