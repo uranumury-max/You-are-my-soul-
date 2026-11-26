@@ -44,4 +44,4 @@ end;
 $device_public_key$;
 
 revoke all on function public.register_device_public_key(uuid, text) from public;
-grant execute on function public.register_device_public_key(text) to authenticated;
+grant execute on function public.register_device_public_key(uuid, text) to authenticated;
