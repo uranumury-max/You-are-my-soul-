@@ -21,9 +21,7 @@ class SupabaseDeviceRegistrar(context: Context) {
         require(accessToken.isNotBlank()) { "Authenticated access token required" }
         for (attempt in 0 until MAX_REGISTRATION_ATTEMPTS) {
             if (registerOnce(accessToken)) return@withContext Unit
-            if (attempt < MAX_REGISTRATION_ATTEMPTS - 1) {
-                identity.regenerateCode()
-            }
+            identity.regenerateCode()
         }
         throw SupabaseAuthException("device_code_collision")
     }
