@@ -115,6 +115,7 @@ fun SoulWorldApp() {
         if (networkRevision > 0) scope.launch { bootstrapCloud() }
     }
     var world by remember { mutableStateOf<WorldSnapshot?>(null) }
+    var lastPersistedWorld by remember { mutableStateOf<WorldSnapshot?>(null) }
     var savedCloudWorldId by remember { mutableStateOf("") }
     var savedWorldName by remember { mutableStateOf("") }
     var worldKeyReady by remember { mutableStateOf(false) }
@@ -133,6 +134,7 @@ fun SoulWorldApp() {
                 loaded
             }
             world = resolved
+            lastPersistedWorld = resolved
             savedCloudWorldId = resolved?.cloudWorldId.orEmpty()
             savedWorldName = resolved?.worldName.orEmpty()
         } catch (cancelled: CancellationException) {
@@ -222,7 +224,6 @@ fun SoulWorldApp() {
 
     fun persist(next: WorldSnapshot) {
         if (storageWarning.isNotBlank()) return
-        val previous = world
         world = next
         val revision = saveRevision.incrementAndGet()
         scope.launch {
@@ -234,23 +235,25 @@ fun SoulWorldApp() {
                             if (revision == saveRevision.get()) {
                                 savedCloudWorldId = next.cloudWorldId
                                 savedWorldName = next.worldName
+                                lastPersistedWorld = next
                             }
                         }
                     }
                     if (revision == saveRevision.get() &&
                         cloudAuthenticated && worldKeyReady &&
-                        previous != null && previous.cloudWorldId == next.cloudWorldId &&
+                        lastPersistedWorld != null && lastPersistedWorld?.cloudWorldId == next.cloudWorldId &&
                         next.cloudWorldId.isNotBlank()
                     ) {
                         try {
                             val session = authClient.ensureAuthenticatedSession()
-                            mutationSync.enqueueChanges(previous, next, session)
+                            mutationSync.enqueueChanges(requireNotNull(lastPersistedWorld), next, session)
                             val worldId = java.util.UUID.fromString(next.cloudWorldId)
                             val (_, applied) = syncCoordinator.syncAndApply(
                                 session, worldId, worldKeyVault
                             )
                             if (revision == saveRevision.get() && applied != null) {
                                 world = applied
+                                lastPersistedWorld = applied
                                 savedCloudWorldId = applied.cloudWorldId
                                 savedWorldName = applied.worldName
                                 cloudStatus = "تم حفظ التعديلات ومزامنتها مع العالم المشترك."
@@ -289,6 +292,7 @@ fun SoulWorldApp() {
                     )
                     if (applied != null && world?.cloudWorldId == cloudId) {
                         world = applied
+                        lastPersistedWorld = applied
                         savedCloudWorldId = applied.cloudWorldId
                         savedWorldName = applied.worldName
                         cloudStatus = "العالم متزامن بين الأجهزة."
@@ -413,6 +417,7 @@ fun SoulWorldApp() {
                                                             worldKeyVault = worldKeyVault
                                                         )
                                                         world = restored
+                                                        lastPersistedWorld = restored
                                                         savedCloudWorldId = restored.cloudWorldId
                                                         savedWorldName = restored.worldName
                                                         "تم استلام العالم المشفر واستعادته محلياً بأمان."
