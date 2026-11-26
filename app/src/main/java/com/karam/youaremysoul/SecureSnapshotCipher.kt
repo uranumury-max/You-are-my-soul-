@@ -20,23 +20,38 @@ internal class SecureSnapshotCipher {
 
     @Synchronized
     fun encrypt(plainText: String): String {
+        val plainBytes = plainText.toByteArray(Charsets.UTF_8)
+        require(plainBytes.size <= MAX_PLAINTEXT_BYTES) { "World snapshot exceeds the safe size limit" }
+
         val cipher = Cipher.getInstance(transformation)
         cipher.init(Cipher.ENCRYPT_MODE, getOrCreateKey())
-        val encrypted = cipher.doFinal(plainText.toByteArray(Charsets.UTF_8))
+        cipher.updateAAD(V2_ASSOCIATED_DATA)
+        val encrypted = cipher.doFinal(plainBytes)
         val payload = cipher.iv + encrypted
-        return PREFIX + Base64.encodeToString(payload, Base64.NO_WRAP)
+        return PREFIX_V2 + Base64.encodeToString(payload, Base64.NO_WRAP)
     }
 
     @Synchronized
     fun decrypt(encoded: String): String {
-        require(encoded.startsWith(PREFIX)) { "Unsupported encrypted snapshot format" }
-        val payload = Base64.decode(encoded.removePrefix(PREFIX), Base64.NO_WRAP)
-        require(payload.size > IV_LENGTH_BYTES + TAG_LENGTH_BITS / 8) { "Invalid encrypted snapshot" }
+        val version = when {
+            encoded.startsWith(PREFIX_V2) -> 2
+            encoded.startsWith(PREFIX_V1) -> 1
+            else -> throw IllegalArgumentException("Unsupported encrypted snapshot format")
+        }
+        require(encoded.length <= MAX_ENCODED_LENGTH) { "Encrypted snapshot exceeds the safe size limit" }
+
+        val prefix = if (version == 2) PREFIX_V2 else PREFIX_V1
+        val payload = Base64.decode(encoded.removePrefix(prefix), Base64.NO_WRAP)
+        require(payload.size in MIN_PAYLOAD_BYTES..MAX_PAYLOAD_BYTES) { "Invalid encrypted snapshot" }
+
         val iv = payload.copyOfRange(0, IV_LENGTH_BYTES)
         val encrypted = payload.copyOfRange(IV_LENGTH_BYTES, payload.size)
         val cipher = Cipher.getInstance(transformation)
         cipher.init(Cipher.DECRYPT_MODE, getOrCreateKey(), GCMParameterSpec(tagLengthBits, iv))
-        return String(cipher.doFinal(encrypted), Charsets.UTF_8)
+        if (version == 2) cipher.updateAAD(V2_ASSOCIATED_DATA)
+        val plainBytes = cipher.doFinal(encrypted)
+        require(plainBytes.size <= MAX_PLAINTEXT_BYTES) { "Decrypted snapshot exceeds the safe size limit" }
+        return String(plainBytes, Charsets.UTF_8)
     }
 
     private fun getOrCreateKey(): SecretKey {
@@ -59,8 +74,15 @@ internal class SecureSnapshotCipher {
     }
 
     private companion object {
-        const val PREFIX = "enc:v1:"
+        const val PREFIX_V1 = "enc:v1:"
+        const val PREFIX_V2 = "enc:v2:"
         const val IV_LENGTH_BYTES = 12
+        const val TAG_LENGTH_BYTES = 16
+        const val MIN_PAYLOAD_BYTES = IV_LENGTH_BYTES + TAG_LENGTH_BYTES
+        const val MAX_PLAINTEXT_BYTES = 2 * 1024 * 1024
+        const val MAX_PAYLOAD_BYTES = MAX_PLAINTEXT_BYTES + MIN_PAYLOAD_BYTES
+        const val MAX_ENCODED_LENGTH = 3_000_000
         const val ANDROID_KEY_STORE = "AndroidKeyStore"
+        val V2_ASSOCIATED_DATA = "com.karam.youaremysoul/world-snapshot/v2".toByteArray(Charsets.UTF_8)
     }
 }
