@@ -16,8 +16,24 @@ data class SyncPassResult(
  * separate conflict-resolution step and is intentionally not implied here.
  */
 class WorldSyncCoordinator(context: Context) {
+    private val appContext = context.applicationContext
     private val localStore = RoomSyncStore(context.applicationContext)
     private val transport = SupabaseEventTransport()
+
+
+    suspend fun syncAndApply(
+        session: AuthenticatedSupabaseUser,
+        worldId: UUID,
+        worldKeyVault: WorldKeyVault
+    ): Pair<SyncPassResult, WorldSnapshot?> {
+        val result = syncOnce(session, worldId)
+        val reducer = WorldEventReducer(
+            syncStore = RoomSyncStore(appContext),
+            snapshotStore = LocalWorldStore(appContext),
+            keyVault = worldKeyVault
+        )
+        return result to reducer.rebuild(worldId)
+    }
 
     suspend fun syncOnce(
         session: AuthenticatedSupabaseUser,
