@@ -24,7 +24,7 @@ The intended flow is: copy local app code -> enter peer code -> send join reques
 - The world snapshot is encrypted with AES-256-GCM before it is written to app preferences. New writes use a versioned v2 envelope with authenticated associated data and a 2 MiB plaintext size ceiling; the reader remains backward-compatible with v1 ciphertext.
 - The encryption key is generated and retained by Android Keystore; it is not stored beside the encrypted snapshot.
 - Legacy plaintext and v1 encrypted snapshots are migrated only after successful decoding and a durable v2 write. A failed decode or migration write now propagates an error and locks editing instead of pretending the world is empty.
-- Existing plaintext snapshots are migrated on first successful read. The old value is removed only after the encrypted write is queued.
+- Existing plaintext snapshots are migrated on first successful read. The old value is removed in the same durable commit that writes the encrypted v2 snapshot.
 - Android automatic backup is disabled for this app so the encrypted snapshot is not restored without its device-bound Keystore key.
 - Cleartext HTTP traffic is disabled in the application manifest.
 - This protects stored app data against casual extraction of preference files. It does not protect a compromised or already-unlocked device, and it does not replace authentication, authorization, or transport encryption for future device-to-device communication.
