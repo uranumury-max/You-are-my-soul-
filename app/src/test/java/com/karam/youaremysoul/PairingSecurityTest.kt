@@ -18,6 +18,14 @@ class PairingSecurityTest {
     }
 
     @Test
+    fun requesterInputValidationDoesNotDependOnLocalWorldCapacity() {
+        assertNull(PairingSecurity.validateJoinRequestInput("123456789", "987654321", "Guest"))
+        assertNotNull(PairingSecurity.validateJoinRequestInput("123", "987654321", "Guest"))
+        assertNotNull(PairingSecurity.validateJoinRequestInput("123456789", "123456789", "Guest"))
+        assertNotNull(PairingSecurity.validateJoinRequestInput("123456789", "987654321", "Bad\nName"))
+    }
+
+    @Test
     fun challengeProofIsValidOnlyOnce() {
         var now = 1_000_000L
         val verifier = PairingChallengeVerifier { now }
