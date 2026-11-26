@@ -132,7 +132,7 @@ fun SoulWorldApp() {
                             "الربط" -> ConnectionSection(
                                 displayName = displayName, onName = { displayName = it },
                                 enteredCode = enteredCode, onCode = { enteredCode = it },
-                                requestStatus = requestStatus, onRequest = {
+                                requestStatus = requestStatus, canCreate = world == null, onRequest = {
                                     requestStatus = if (world == null) {
                                         "أنشئ العالم على هذا الهاتف أولاً قبل طلب الانضمام."
                                     } else {
@@ -345,7 +345,7 @@ private fun WorldHome(world: WorldSnapshot?, onCreate: () -> Unit) {
 @Composable
 private fun ConnectionSection(
     displayName: String, onName: (String) -> Unit, enteredCode: String, onCode: (String) -> Unit,
-    requestStatus: String, onRequest: () -> Unit, onCreate: () -> Unit
+    requestStatus: String, canCreate: Boolean, onRequest: () -> Unit, onCreate: () -> Unit
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val code = remember { DeviceIdentity(context).code }
@@ -369,7 +369,9 @@ private fun ConnectionSection(
         if (requestStatus.isNotBlank()) Text(requestStatus, color = Gold, fontSize = 12.sp)
         Divider(color = Rose.copy(alpha = .25f))
         Text("العالم يدعم تصميمياً حتى ${WorldLimits.MAX_MEMBERS} مشاركين. حالياً إنشاء العالم وحفظه محليان؛ الطلب الشبكي وقبول المضيف يتطلبان خدمة اتصال فعلية.", color = Color.LightGray, fontSize = 12.sp)
-        Button(onClick = onCreate) { Text("إنشاء عالم على هذا الهاتف") }
+        Button(onClick = onCreate, enabled = canCreate) {
+            Text(if (canCreate) "إنشاء عالم على هذا الهاتف" else "العالم موجود بالفعل")
+        }
     }
 }
 
