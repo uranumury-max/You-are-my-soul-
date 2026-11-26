@@ -584,3 +584,19 @@ grant execute on function public.register_device_code(uuid, text) to authenticat
 grant execute on function public.request_join_by_device_code(text) to authenticated;
 grant execute on function public.decide_join_request(uuid, boolean) to authenticated;
 grant execute on function public.revoke_world_member(uuid, uuid) to authenticated;
+
+
+-- Realtime is a wake-up signal only; clients must still fetch by server_seq cursor.
+do $$
+begin
+    if exists (select 1 from pg_publication where pubname = 'supabase_realtime')
+       and not exists (
+           select 1 from pg_publication_tables
+           where pubname = 'supabase_realtime'
+             and schemaname = 'public'
+             and tablename = 'world_events'
+       ) then
+        execute 'alter publication supabase_realtime add table public.world_events';
+    end if;
+end;
+$$;
