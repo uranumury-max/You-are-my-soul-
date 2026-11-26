@@ -236,7 +236,6 @@ fun SoulWorldApp() {
                             if (revision == saveRevision.get()) {
                                 savedCloudWorldId = next.cloudWorldId
                                 savedWorldName = next.worldName
-                                lastPersistedWorld = next
                             }
                         }
                     }
@@ -250,6 +249,7 @@ fun SoulWorldApp() {
                             withContext(Dispatchers.IO) {
                                 mutationSync.enqueueChanges(requireNotNull(previousPersisted), next, session)
                             }
+                            lastPersistedWorld = next
                             val worldId = java.util.UUID.fromString(next.cloudWorldId)
                             val (_, applied) = syncCoordinator.syncAndApply(
                                 session, worldId, worldKeyVault
@@ -290,6 +290,17 @@ fun SoulWorldApp() {
             try {
                 syncMutex.withLock {
                     val session = authClient.ensureAuthenticatedSession()
+                    val baseline = lastPersistedWorld
+                    val latest = world
+                    if (baseline != null && latest != null &&
+                        baseline.cloudWorldId == cloudId && latest.cloudWorldId == cloudId &&
+                        baseline != latest
+                    ) {
+                        withContext(Dispatchers.IO) {
+                            mutationSync.enqueueChanges(baseline, latest, session)
+                        }
+                        lastPersistedWorld = latest
+                    }
                     val (_, applied) = syncCoordinator.syncAndApply(
                         session, java.util.UUID.fromString(cloudId), worldKeyVault
                     )
