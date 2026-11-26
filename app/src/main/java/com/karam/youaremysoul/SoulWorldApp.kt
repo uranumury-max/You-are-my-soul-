@@ -336,12 +336,15 @@ fun SoulWorldApp() {
                                                         "تمت الموافقة، لكن مفتاح التشفير لم يصل بعد. حاول تحديث الحالة لاحقاً."
                                                     } else {
                                                         withContext(Dispatchers.IO) {
-                                                            worldKeyVault.importDeviceEnvelope(
-                                                                java.util.UUID.fromString(status.worldId),
-                                                                envelope.keyVersion,
-                                                                envelope.envelope,
-                                                                deviceKeyVault
-                                                            )
+                                                            val cloudId = java.util.UUID.fromString(status.worldId)
+                                                            if (!worldKeyVault.hasWorldKey(cloudId, envelope.keyVersion)) {
+                                                                worldKeyVault.importDeviceEnvelope(
+                                                                    cloudId,
+                                                                    envelope.keyVersion,
+                                                                    envelope.envelope,
+                                                                    deviceKeyVault
+                                                                )
+                                                            }
                                                         }
                                                         "تم تأمين مفتاح العالم على هذا الجهاز؛ جارٍ تجهيز استعادة المحتوى المشترك."
                                                     }
