@@ -13,5 +13,7 @@ data class WorldSnapshot(
     val dailyAnswer: String = "",
     val relationshipStartDate: String = "",
     /** Stable cloud world UUID; blank until assigned for legacy local worlds. */
-    val cloudWorldId: String = ""
+    val cloudWorldId: String = "",
+    /** True only when this installation owns the local world. */
+    val localIsOwner: Boolean = true
 )
