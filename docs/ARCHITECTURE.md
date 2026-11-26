@@ -21,10 +21,10 @@ The intended flow is: copy local app code -> enter peer code -> send join reques
 
 
 ## Local data protection
-- The world snapshot is encrypted with AES-256-GCM before it is written to app preferences. New writes use a versioned v2 envelope with authenticated associated data and a 2 MiB plaintext size ceiling; the reader remains backward-compatible with v1 ciphertext.
+- The world snapshot is encrypted with AES-256-GCM before it is written to the Room `local_world_snapshot` table. New writes use a versioned v2 envelope with authenticated associated data and a 2 MiB plaintext size ceiling; the reader remains backward-compatible with v1 ciphertext.
 - The encryption key is generated and retained by Android Keystore; it is not stored beside the encrypted snapshot.
-- Legacy plaintext and v1 encrypted snapshots are migrated only after successful decoding and a durable v2 write. A failed decode or migration write now propagates an error and locks editing instead of pretending the world is empty.
-- Existing plaintext snapshots are migrated on first successful read. The old value is removed in the same durable commit that writes the encrypted v2 snapshot.
+- Legacy plaintext and v1/v2 encrypted SharedPreferences snapshots are migrated into Room only after successful decoding and a durable encrypted Room write. A failed decode or migration write propagates an error and locks editing instead of pretending the world is empty.
+- Legacy SharedPreferences values are removed only after the encrypted Room snapshot has been saved successfully; this migration is recoverable if the Room write fails.
 - Android automatic backup is disabled for this app so the encrypted snapshot is not restored without its device-bound Keystore key.
 - Cleartext HTTP traffic is disabled in the application manifest.
 - This protects stored app data against casual extraction of preference files. It does not protect a compromised or already-unlocked device, and it does not replace authentication, authorization, or transport encryption for future device-to-device communication.
@@ -116,4 +116,4 @@ Authentication reference: Supabase anonymous sign-ins avoid collecting email/pho
 
 ## Server-side event write boundary (migration 002)
 
-The follow-up migration `202611270002_append_world_event_rpc.sql` removes direct client INSERT permission on `world_events`. Authenticated clients must call `append_world_event`, which derives the actor from `auth.uid()`, checks active world membership, validates event type, ciphertext byte size and client timestamp, enforces a per-account event-write quota, and makes committed event IDs idempotent. Reusing an event ID with different content is rejected. The migration is source-controlled only and has not been deployed to a Supabase project.
+The follow-up migration `202611270002_append_world_event_rpc.sql` removes direct client INSERT permission on `world_events`. Authenticated clients must call `append_world_event`, which derives the actor from `auth.uid()`, checks active world membership, validates event type, ciphertext byte size and client timestamp, enforces a per-account event-write quota, and makes committed event IDs idempotent. Reusing an event ID with different content is rejected. The migration is source-controlled only and has not been deployed to a Supabase project. Concurrent submissions of the same event ID are serialized by a transaction-scoped advisory lock before idempotency and quota checks, so duplicate retries do not consume another event slot.
