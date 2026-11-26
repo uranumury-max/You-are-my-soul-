@@ -12,6 +12,8 @@ import androidx.room.Query
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.Transaction
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Entity(
     tableName = "sync_outbox",
@@ -51,6 +53,22 @@ data class SyncCursorEntity(
     val serverSequence: Long,
     val updatedAtEpochMs: Long
 )
+
+@Entity(tableName = "local_world_snapshot")
+data class LocalWorldSnapshotEntity(
+    @PrimaryKey val id: Int = 1,
+    val encryptedPayload: String,
+    val updatedAtEpochMs: Long
+)
+
+@Dao
+interface LocalWorldSnapshotDao {
+    @Query("SELECT * FROM local_world_snapshot WHERE id = 1 LIMIT 1")
+    fun load(): LocalWorldSnapshotEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    fun save(snapshot: LocalWorldSnapshotEntity)
+}
 
 @Dao
 interface SyncDao {
@@ -162,12 +180,13 @@ interface SyncDao {
 }
 
 @Database(
-    entities = [SyncOutboxEntity::class, SyncedEventEntity::class, SyncCursorEntity::class],
-    version = 1,
+    entities = [SyncOutboxEntity::class, SyncedEventEntity::class, SyncCursorEntity::class, LocalWorldSnapshotEntity::class],
+    version = 2,
     exportSchema = false
 )
 abstract class SyncDatabase : RoomDatabase() {
     abstract fun syncDao(): SyncDao
+    abstract fun worldSnapshotDao(): LocalWorldSnapshotDao
 
     companion object {
         @Volatile
@@ -179,8 +198,20 @@ abstract class SyncDatabase : RoomDatabase() {
                     context.applicationContext,
                     SyncDatabase::class.java,
                     "you_are_my_soul_sync.db"
-                ).build().also { instance = it }
+                ).addMigrations(MIGRATION_1_2).build().also { instance = it }
             }
+
+        private val MIGRATION_1_2 = object : Migration(1, 2) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `local_world_snapshot` (" +
+                        "`id` INTEGER NOT NULL, " +
+                        "`encryptedPayload` TEXT NOT NULL, " +
+                        "`updatedAtEpochMs` INTEGER NOT NULL, " +
+                        "PRIMARY KEY(`id`))"
+                )
+            }
+        }
     }
 }
 
