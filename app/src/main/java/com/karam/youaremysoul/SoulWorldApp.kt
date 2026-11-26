@@ -52,6 +52,8 @@ fun SoulWorldApp() {
     val deviceRegistrar = remember { SupabaseDeviceRegistrar(context) }
     val worldRepository = remember { SupabaseWorldRepository() }
     val pairingRepository = remember { SupabasePairingRepository() }
+    val worldKeyExchangeRepository = remember { SupabaseWorldKeyExchangeRepository(context) }
+    val deviceKeyVault = remember { DeviceKeyVault() }
     val worldKeyVault = remember { WorldKeyVault(context) }
     val scope = rememberCoroutineScope()
     val cloudBootstrapMutex = remember { Mutex() }
@@ -363,8 +365,22 @@ fun SoulWorldApp() {
                                                 if (current != null) {
                                                     pendingJoinRequests = pairingRepository.pendingRequests(session, current.cloudWorldId)
                                                     pendingRequestsLoadFailed = false
+                                                    if (approve) {
+                                                        check(worldKeyReady && worldKeyVault.hasWorldKey(
+                                                            java.util.UUID.fromString(current.cloudWorldId), 1
+                                                        )) { "World key is not ready for secure member delivery" }
+                                                        val deliveredDevices = worldKeyExchangeRepository.distributeOwnerWorldKey(
+                                                            session = session,
+                                                            worldId = current.cloudWorldId,
+                                                            keyVersion = 1,
+                                                            worldKeyVault = worldKeyVault,
+                                                            deviceKeyVault = deviceKeyVault
+                                                        )
+                                                        requestStatus = "تمت الموافقة وإرسال مفاتيح التشفير إلى $deliveredDevices جهازاً مسجلاً."
+                                                    } else {
+                                                        requestStatus = "تم رفض طلب الانضمام."
+                                                    }
                                                 }
-                                                requestStatus = if (approve) "تمت الموافقة على طلب الانضمام." else "تم رفض طلب الانضمام."
                                             } else {
                                                 requestStatus = "انتهت صلاحية الطلب أو لم يعد متاحاً."
                                             }
