@@ -44,3 +44,13 @@ The intended flow is: copy local app code -> enter peer code -> send join reques
 - Validate message size, rate-limit requests, and reject malformed or replayed messages.
 - Never expose arbitrary file access or a general-purpose shell/API to other participants.
 - Keep secrets out of logs and error messages; do not trust a peer merely because it is on the same Wi-Fi network.
+
+
+## Pairing protocol foundation
+- Validate the nine-digit identifiers and the five-member capacity before accepting a join request.
+- A device identifier is public discovery data, not an authenticator.
+- The protocol primitives use a random 256-bit pairing secret, a fresh 256-bit nonce, a two-minute challenge lifetime, HMAC-SHA256 proofs, constant-time signature comparison, and single-use challenge consumption.
+- Invalid proofs consume their challenge to prevent repeated guesses against one nonce. Basic per-device attempt throttling is included.
+- These primitives are not a network transport. They must only be used after a certificate-authenticated encrypted channel is established; never expose the pairing secret over raw TCP, local broadcast, or cleartext HTTP.
+- The current Connection screen only validates form data locally. It does not send a request, discover another phone, approve a participant, or synchronize a world.
+- Before remote pairing is released, implement and test TLS certificate identity/pinning, host authorization, persistent rate limiting, replay protection across reconnects, and LAN/NAT traversal behavior.
