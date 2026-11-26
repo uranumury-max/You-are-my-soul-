@@ -70,6 +70,7 @@ fun SoulWorldApp() {
     var requestStatus by remember { mutableStateOf("") }
 
     fun persist(next: WorldSnapshot) {
+        if (storageWarning.isNotBlank()) return
         world = next
         scope.launch {
             val saved = runCatching {
