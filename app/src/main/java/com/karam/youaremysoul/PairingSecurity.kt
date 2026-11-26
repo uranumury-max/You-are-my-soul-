@@ -1,6 +1,6 @@
 package com.karam.youaremysoul
 
-import android.util.Base64
+import java.util.Base64
 import java.security.MessageDigest
 import java.security.SecureRandom
 import java.util.concurrent.ConcurrentHashMap
@@ -89,7 +89,7 @@ object PairingSecurity {
             .toByteArray(Charsets.UTF_8)
 
     private fun decodeSecret(secret: String): ByteArray {
-        val decoded = Base64.decode(secret, Base64.URL_SAFE or Base64.NO_WRAP or Base64.NO_PADDING)
+        val decoded = Base64.getUrlDecoder().decode(secret)
         require(decoded.size == SECRET_BYTES) { "Invalid pairing secret" }
         return decoded
     }
@@ -97,7 +97,7 @@ object PairingSecurity {
     private fun randomBytes(size: Int): ByteArray = ByteArray(size).also(random::nextBytes)
 
     private fun ByteArray.toUrlSafeBase64(): String =
-        Base64.encodeToString(this, Base64.URL_SAFE or Base64.NO_WRAP or Base64.NO_PADDING)
+        Base64.getUrlEncoder().withoutPadding().encodeToString(this)
 }
 
 /**
