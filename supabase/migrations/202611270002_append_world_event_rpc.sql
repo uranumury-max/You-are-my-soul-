@@ -63,8 +63,8 @@ begin
         raise exception 'active world membership required' using errcode = '42501';
     end if;
 
-    -- Limit one authenticated account to 120 new events per rolling minute.
-    -- Idempotent retries do not consume additional quota.
+    -- Limit one authenticated account to 120 new events per minute window.
+    -- Retries of an already committed event do not consume additional quota.
     select e.server_seq into v_server_seq
     from public.world_events e
     where e.world_id = p_world_id and e.event_id = p_event_id;
