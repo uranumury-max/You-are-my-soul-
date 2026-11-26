@@ -96,6 +96,7 @@ set search_path = ''
 as $publish_key_envelope$
 declare
     v_world_owner uuid;
+    v_ciphertext bytea;
 begin
     if auth.uid() is null then
         raise exception 'authentication required' using errcode = '28000';
@@ -105,6 +106,18 @@ begin
        or char_length(p_envelope) not between 350 and 1024
        or p_envelope !~ '^wke:rsa-oaep-sha256:v1:[A-Za-z0-9+/]+={0,2}$' then
         raise exception 'invalid key envelope' using errcode = '22023';
+    end if;
+
+    begin
+        v_ciphertext := decode(
+            substring(p_envelope from length('wke:rsa-oaep-sha256:v1:') + 1),
+            'base64'
+        );
+    exception when others then
+        raise exception 'invalid key envelope payload' using errcode = '22023';
+    end;
+    if octet_length(v_ciphertext) <> 256 then
+        raise exception 'invalid RSA-2048 key envelope size' using errcode = '22023';
     end if;
 
     select w.owner_id into v_world_owner
