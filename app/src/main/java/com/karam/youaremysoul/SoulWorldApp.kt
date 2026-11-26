@@ -43,8 +43,8 @@ fun SoulWorldApp() {
     val store = remember { LocalWorldStore(context) }
     var world by remember { mutableStateOf(store.load()) }
     var tab by remember { mutableStateOf("العالم") }
-    val tabs = listOf("العالم", "الربط", "الذكريات", "حديقتنا", "رحلتنا", "الإعدادات")
-    val symbols = listOf("✧", "⌁", "♡", "❀", "◷", "⚙")
+    val tabs = listOf("العالم", "الربط", "الذكريات", "حديقتنا", "سؤال اليوم", "رحلتنا", "الإعدادات")
+    val symbols = listOf("✧", "⌁", "♡", "❀", "?", "◷", "⚙")
     var worldName by remember { mutableStateOf("عالمنا الخاص") }
     var memoryText by remember { mutableStateOf("") }
     var displayName by remember { mutableStateOf("") }
@@ -82,6 +82,7 @@ fun SoulWorldApp() {
                         "الربط" -> "لكل شخص هويته الخاصة"
                         "الذكريات" -> "تفاصيل صغيرة تستحق البقاء"
                         "حديقتنا" -> "كل لمسة تترك أثراً ينمو"
+                        "سؤال اليوم" -> "سؤال صغير يفتح حديثاً جميلاً"
                         "رحلتنا" -> "خطواتكم عبر الزمن"
                         else -> "رتّبوا عالمكم كما تحبّون"
                     },
@@ -141,6 +142,16 @@ fun SoulWorldApp() {
                                         listOf(WorldMember(DeviceIdentity(context).code, "صاحب العالم", true))
                                     )
                                     persist(current.copy(gardenFlowers = current.gardenFlowers + 1, gardenLastWateredAt = System.currentTimeMillis()))
+                                }
+                            )
+                            "سؤال اليوم" -> DailyQuestionSection(
+                                answer = world?.dailyAnswer.orEmpty(),
+                                onAnswer = { value ->
+                                    val current = world ?: WorldSnapshot(
+                                        "عالمنا الخاص", DeviceIdentity(context).code,
+                                        listOf(WorldMember(DeviceIdentity(context).code, "صاحب العالم", true))
+                                    )
+                                    persist(current.copy(dailyAnswerDate = java.time.LocalDate.now().toString(), dailyAnswer = value))
                                 }
                             )
                             "رحلتنا" -> JourneySection(stage = world?.journeyStage ?: 0, onUnlock = { stage ->
@@ -390,6 +401,53 @@ private fun GardenSection(flowers: Int, onPlant: () -> Unit) {
         }
         Text(
             "التقدم محفوظ محلياً حالياً. ستصبح الحديقة مشتركة بين الأجهزة بعد تنفيذ الاتصال والمزامنة.",
+            color = Color.LightGray, fontSize = 11.sp
+        )
+    }
+}
+
+@Composable
+private fun DailyQuestionSection(answer: String, onAnswer: (String) -> Unit) {
+    val questions = listOf(
+        "ما التفصيل الصغير الذي جعل يومك ألطف؟",
+        "لو نقدر نعيد لحظة واحدة من هذا الأسبوع، أي لحظة تختار؟",
+        "ما الشيء الذي تتمنى أن نتعلمه معاً؟",
+        "ما مكان تتمنى أن نزوره يوماً؟",
+        "ما صفة في تعاوننا تحب أن نحافظ عليها؟",
+        "ما فكرة بسيطة ممكن نحولها إلى ذكرى؟",
+        "ما الشيء الذي يجعلك تشعر بأن صوتك مسموع؟"
+    )
+    val today = java.time.LocalDate.now()
+    val question = questions[(today.toEpochDay() % questions.size).toInt()]
+    var draft by remember(today, answer) { mutableStateOf(answer) }
+    Column(
+        Modifier.fillMaxSize().verticalScroll(androidx.compose.foundation.rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        Text("سؤال اليوم", color = Gold, fontSize = 23.sp, fontWeight = FontWeight.Bold)
+        Text(today.toString(), color = Rose.copy(alpha = .75f), fontSize = 11.sp)
+        Card(colors = CardDefaults.cardColors(containerColor = CardTone), shape = RoundedCornerShape(22.dp)) {
+            Column(Modifier.fillMaxWidth().padding(18.dp)) {
+                Text("✧  مساحة للحوار", color = Rose, fontSize = 12.sp)
+                Spacer(Modifier.height(12.dp))
+                Text(question, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+                Spacer(Modifier.height(14.dp))
+                OutlinedTextField(
+                    value = draft,
+                    onValueChange = { draft = it.take(700) },
+                    modifier = Modifier.fillMaxWidth(),
+                    minLines = 4,
+                    label = { Text("اكتب إجابتك") }
+                )
+                Button(
+                    onClick = { onAnswer(draft.trim()) },
+                    enabled = draft.isNotBlank(),
+                    modifier = Modifier.align(Alignment.End).padding(top = 10.dp)
+                ) { Text("حفظ إجابتي") }
+            }
+        }
+        Text(
+            "السؤال يتغير بحسب اليوم. إجابتك محفوظة محلياً على هذا الجهاز؛ لا تظهر للمشاركين الآخرين قبل تفعيل المزامنة.",
             color = Color.LightGray, fontSize = 11.sp
         )
     }
