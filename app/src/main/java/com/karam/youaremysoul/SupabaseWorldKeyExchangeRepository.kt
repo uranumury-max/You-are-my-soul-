@@ -78,6 +78,32 @@ class SupabaseWorldKeyExchangeRepository(context: Context) {
         ).trim().equals("true", ignoreCase = true)
     }
 
+
+    /** Wraps the current world key separately for every active member device. */
+    suspend fun distributeOwnerWorldKey(
+        session: AuthenticatedSupabaseUser,
+        worldId: String,
+        keyVersion: Int,
+        worldKeyVault: WorldKeyVault,
+        deviceKeyVault: DeviceKeyVault
+    ): Int = withContext(Dispatchers.IO) {
+        val id = UUID.fromString(worldId)
+        require(keyVersion > 0 && worldKeyVault.hasWorldKey(id, keyVersion))
+        val devices = activeMemberDevices(session, worldId)
+        require(devices.isNotEmpty()) { "No registered member devices are available" }
+        var published = 0
+        for (device in devices) {
+            val envelope = worldKeyVault.createDeviceEnvelope(
+                id, keyVersion, device.publicKeyBase64, deviceKeyVault
+            )
+            check(publishEnvelope(session, worldId, device, keyVersion, envelope)) {
+                "World key envelope publication was not confirmed"
+            }
+            published += 1
+        }
+        published
+    }
+
     suspend fun fetchOwnEnvelope(
         session: AuthenticatedSupabaseUser,
         worldId: String,
