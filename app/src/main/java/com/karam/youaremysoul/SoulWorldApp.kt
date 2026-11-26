@@ -328,7 +328,24 @@ fun SoulWorldApp() {
                                             val status = pairingRepository.requestStatus(session, ownJoinRequestId)
                                             requestStatus = when (status?.status) {
                                                 "pending" -> "طلبك ما زال بانتظار موافقة صاحب العالم."
-                                                "approved" -> "تمت الموافقة على العضوية؛ تجهيز نقل العالم ومفاتيح التشفير ما زال قيد التنفيذ."
+                                                "approved" -> {
+                                                    val envelope = worldKeyExchangeRepository.fetchOwnEnvelope(
+                                                        session, status.worldId, 1
+                                                    )
+                                                    if (envelope == null) {
+                                                        "تمت الموافقة، لكن مفتاح التشفير لم يصل بعد. حاول تحديث الحالة لاحقاً."
+                                                    } else {
+                                                        withContext(Dispatchers.IO) {
+                                                            worldKeyVault.importDeviceEnvelope(
+                                                                java.util.UUID.fromString(status.worldId),
+                                                                envelope.keyVersion,
+                                                                envelope.envelope,
+                                                                deviceKeyVault
+                                                            )
+                                                        }
+                                                        "تم تأمين مفتاح العالم على هذا الجهاز؛ جارٍ تجهيز استعادة المحتوى المشترك."
+                                                    }
+                                                }
                                                 "declined" -> "لم تتم الموافقة على طلب الانضمام."
                                                 "expired" -> "انتهت صلاحية طلب الانضمام؛ يمكنك إرسال طلب جديد."
                                                 else -> "لم نتمكن من العثور على حالة الطلب."
@@ -385,7 +402,7 @@ fun SoulWorldApp() {
                                                 requestStatus = "انتهت صلاحية الطلب أو لم يعد متاحاً."
                                             }
                                         } catch (_: Exception) {
-                                            requestStatus = "تعذر تنفيذ القرار؛ لم نغيّر حالة العضوية محلياً."
+                                            requestStatus = "تعذر إكمال العملية أو تسليم مفاتيح التشفير؛ تحقّق من الاتصال ثم حدّث الحالة."
                                         }
                                     }
                                 },
