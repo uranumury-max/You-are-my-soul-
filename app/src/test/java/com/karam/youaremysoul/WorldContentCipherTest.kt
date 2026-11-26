@@ -25,6 +25,17 @@ class WorldContentCipherTest {
     }
 
     @Test
+    fun generatesDifferentNoncesForRepeatedEncryption() {
+        val first = WorldContentCipher.encrypt(
+            worldId, eventId, SyncEventType.MEMORY_CREATE, 1, key, byteArrayOf(1, 2, 3)
+        )
+        val second = WorldContentCipher.encrypt(
+            worldId, eventId, SyncEventType.MEMORY_CREATE, 1, key, byteArrayOf(1, 2, 3)
+        )
+        assertTrue(first != second)
+    }
+
+    @Test
     fun rejectsWrongWorldEventTypeVersionAndKey() {
         val envelope = WorldContentCipher.encrypt(
             worldId, eventId, SyncEventType.MESSAGE_CREATE, 2, key, byteArrayOf(1, 2, 3, 4)
