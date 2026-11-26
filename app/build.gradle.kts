@@ -1,3 +1,10 @@
+plugins {
+    id("com.android.application")
+    id("org.jetbrains.kotlin.android")
+    id("org.jetbrains.kotlin.plugin.compose")
+    id("org.jetbrains.kotlin.kapt")
+}
+
 val configuredSupabaseUrl = providers.gradleProperty("SUPABASE_URL")
     .orElse(providers.environmentVariable("SUPABASE_URL"))
     .getOrElse("")
@@ -7,13 +14,6 @@ val configuredSupabasePublishableKey = providers.gradleProperty("SUPABASE_PUBLIS
 
 fun asBuildConfigString(value: String): String =
     "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
-
-plugins {
-    id("com.android.application")
-    id("org.jetbrains.kotlin.android")
-    id("org.jetbrains.kotlin.plugin.compose")
-    id("org.jetbrains.kotlin.kapt")
-}
 android {
     namespace = "com.karam.youaremysoul"
     compileSdk = 35
