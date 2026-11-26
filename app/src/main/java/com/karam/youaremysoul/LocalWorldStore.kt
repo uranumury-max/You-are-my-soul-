@@ -17,25 +17,35 @@ class LocalWorldStore(context: Context) {
         // save() is called on Dispatchers.IO, so commit guarantees the encrypted checkpoint is durable.
         check(
             prefs.edit()
-                .putString(ENCRYPTED_SNAPSHOT_KEY, encrypted)
+                .putString(ENCRYPTED_SNAPSHOT_KEY_V2, encrypted)
+                .remove(ENCRYPTED_SNAPSHOT_KEY_V1)
                 .remove(LEGACY_SNAPSHOT_KEY)
                 .commit()
         ) { "Unable to persist encrypted world snapshot" }
     }
 
     fun load(): WorldSnapshot? {
-        val encrypted = prefs.getString(ENCRYPTED_SNAPSHOT_KEY, null)
-        if (encrypted != null) {
-            return decode(cipher.decrypt(encrypted))
+        val encryptedV2 = prefs.getString(ENCRYPTED_SNAPSHOT_KEY_V2, null)
+        if (encryptedV2 != null) {
+            return decode(cipher.decrypt(encryptedV2))
         }
 
-        // One-time migration from the previous plaintext format.
-        val legacy = prefs.getString(LEGACY_SNAPSHOT_KEY, null) ?: return null
-        val migrated = runCatching { decode(legacy) }.getOrNull() ?: return null
-        return runCatching {
+        // Upgrade authenticated v1 ciphertext to v2 without exposing plaintext
+        // or deleting the old value until the new durable write succeeds.
+        val encryptedV1 = prefs.getString(ENCRYPTED_SNAPSHOT_KEY_V1, null)
+        if (encryptedV1 != null) {
+            val migrated = decode(cipher.decrypt(encryptedV1))
             save(migrated)
-            migrated
-        }.getOrNull()
+            return migrated
+        }
+
+        // One-time migration from the previous plaintext format. A decode or
+        // durable-write failure must propagate and lock editing; never treat it
+        // as an empty world that could later overwrite recoverable user data.
+        val legacy = prefs.getString(LEGACY_SNAPSHOT_KEY, null) ?: return null
+        val migrated = decode(legacy)
+        save(migrated)
+        return migrated
     }
 
     private fun encode(world: WorldSnapshot): String = JSONObject().apply {
@@ -86,7 +96,8 @@ class LocalWorldStore(context: Context) {
     }
 
     private companion object {
-        const val ENCRYPTED_SNAPSHOT_KEY = "snapshot_encrypted_v1"
+        const val ENCRYPTED_SNAPSHOT_KEY_V2 = "snapshot_encrypted_v2"
+        const val ENCRYPTED_SNAPSHOT_KEY_V1 = "snapshot_encrypted_v1"
         const val LEGACY_SNAPSHOT_KEY = "snapshot"
     }
 }
