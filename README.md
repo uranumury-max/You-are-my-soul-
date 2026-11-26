@@ -20,7 +20,7 @@ The target design is cloud-first and offline-capable:
 - Transport-neutral encrypted sync-event model and cursor validation tests.
 - Room sync outbox, downloaded-event cache, retry metadata, and monotonic cursor storage.
 - AES-GCM world-content envelope bound to world/event/type/key-version metadata, with tamper and nonce tests.
-- Android Keystore-wrapped per-world key vault.
+- Android Keystore-wrapped per-world key vault; a local owner key is generated only after the encrypted world snapshot is durable, but member key distribution is not implemented.
 - Supabase SQL migrations 001–003 and backend security/deployment checklist.
 - Android anonymous Supabase Auth session creation/refresh with encrypted Keystore-backed session persistence.
 - Authenticated device registration, idempotent cloud-world provisioning, and local world-name metadata updates.
