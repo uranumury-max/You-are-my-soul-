@@ -43,8 +43,8 @@ fun SoulWorldApp() {
     val store = remember { LocalWorldStore(context) }
     var world by remember { mutableStateOf(store.load()) }
     var tab by remember { mutableStateOf("العالم") }
-    val tabs = listOf("العالم", "الربط", "الذكريات", "رحلتنا", "الإعدادات")
-    val symbols = listOf("✧", "⌁", "♡", "◷", "⚙")
+    val tabs = listOf("العالم", "الربط", "الذكريات", "حديقتنا", "رحلتنا", "الإعدادات")
+    val symbols = listOf("✧", "⌁", "♡", "❀", "◷", "⚙")
     var worldName by remember { mutableStateOf("عالمنا الخاص") }
     var memoryText by remember { mutableStateOf("") }
     var displayName by remember { mutableStateOf("") }
@@ -81,6 +81,7 @@ fun SoulWorldApp() {
                         "العالم" -> "مساحتكم التي تكبر معكم"
                         "الربط" -> "لكل شخص هويته الخاصة"
                         "الذكريات" -> "تفاصيل صغيرة تستحق البقاء"
+                        "حديقتنا" -> "كل لمسة تترك أثراً ينمو"
                         "رحلتنا" -> "خطواتكم عبر الزمن"
                         else -> "رتّبوا عالمكم كما تحبّون"
                     },
@@ -130,6 +131,16 @@ fun SoulWorldApp() {
                                 },
                                 onDelete = { index ->
                                     world?.let { current -> persist(current.copy(memories = current.memories.filterIndexed { i, _ -> i != index })) }
+                                }
+                            )
+                            "حديقتنا" -> GardenSection(
+                                flowers = world?.gardenFlowers ?: 0,
+                                onPlant = {
+                                    val current = world ?: WorldSnapshot(
+                                        "عالمنا الخاص", DeviceIdentity(context).code,
+                                        listOf(WorldMember(DeviceIdentity(context).code, "صاحب العالم", true))
+                                    )
+                                    persist(current.copy(gardenFlowers = current.gardenFlowers + 1, gardenLastWateredAt = System.currentTimeMillis()))
                                 }
                             )
                             "رحلتنا" -> JourneySection(stage = world?.journeyStage ?: 0, onUnlock = { stage ->
@@ -313,6 +324,74 @@ private fun MemoriesSection(memories: List<String>, text: String, onText: (Strin
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun GardenSection(flowers: Int, onPlant: () -> Unit) {
+    val sway = rememberInfiniteTransition(label = "garden_sway")
+    val breeze by sway.animateFloat(
+        initialValue = -3f, targetValue = 3f,
+        animationSpec = infiniteRepeatable(tween(2200), repeatMode = RepeatMode.Reverse),
+        label = "flower_breeze"
+    )
+    Column(
+        Modifier.fillMaxSize().verticalScroll(androidx.compose.foundation.rememberScrollState()),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Text("حديقتنا الصغيرة", color = Gold, fontSize = 23.sp, fontWeight = FontWeight.Bold)
+        Text("ازرعوا زهرة في كل مرة تتركون فيها أثراً جميلاً.", color = Rose, fontSize = 12.sp)
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = CardTone),
+            shape = RoundedCornerShape(24.dp)
+        ) {
+            Column(Modifier.fillMaxWidth().padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Canvas(Modifier.fillMaxWidth().height(230.dp)) {
+                    val ground = size.height * .82f
+                    drawLine(Color(0xFF8A6C70).copy(alpha = .8f), Offset(0f, ground), Offset(size.width, ground), 2f)
+                    val count = flowers.coerceAtMost(28)
+                    repeat(count) { index ->
+                        val x = size.width * ((index % 7) + 1) / 8f
+                        val row = index / 7
+                        val baseY = ground - row * 42f
+                        val height = 35f + (index % 3) * 7f
+                        val top = Offset(x + breeze, baseY - height)
+                        drawLine(Color(0xFF76B98A), Offset(x, baseY), top, 3f)
+                        drawCircle(
+                            when (index % 4) {
+                                0 -> Rose
+                                1 -> Gold
+                                2 -> Color(0xFFC6A6FF)
+                                else -> Color(0xFFFFB58E)
+                            },
+                            radius = 5.5f + (index % 2),
+                            center = top
+                        )
+                        drawCircle(Color(0xFFFFF1C7), radius = 2f, center = top)
+                        drawCircle(Color(0xFF76B98A), radius = 5f, center = Offset(x - 5f, baseY - height * .45f))
+                        drawCircle(Color(0xFF76B98A), radius = 5f, center = Offset(x + 5f, baseY - height * .65f))
+                    }
+                    if (flowers == 0) {
+                        drawCircle(Gold.copy(alpha = .55f), radius = 4f, center = Offset(size.width / 2f, ground - 8f))
+                    }
+                }
+                Text("$flowers زهرة في حديقتكم", color = Gold, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+                Text(
+                    if (flowers == 0) "ابدأوا أول غرسة، وستبقى محفوظة على هذا الهاتف."
+                    else "كل زهرة تمثل لحظة أضفتموها إلى عالمكم.",
+                    color = Color.White.copy(alpha = .72f), fontSize = 12.sp
+                )
+                Button(onClick = onPlant, modifier = Modifier.padding(top = 10.dp)) {
+                    Text("ازرع زهرة جديدة  ✿")
+                }
+            }
+        }
+        Text(
+            "التقدم محفوظ محلياً حالياً. ستصبح الحديقة مشتركة بين الأجهزة بعد تنفيذ الاتصال والمزامنة.",
+            color = Color.LightGray, fontSize = 11.sp
+        )
     }
 }
 
