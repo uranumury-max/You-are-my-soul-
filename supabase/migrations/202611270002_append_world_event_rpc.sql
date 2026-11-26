@@ -63,6 +63,13 @@ begin
         raise exception 'active world membership required' using errcode = '42501';
     end if;
 
+    -- Serialize retries of the same event ID. Without this transaction-scoped
+    -- lock, two simultaneous first attempts could both pass the idempotency
+    -- lookup and the losing insert could consume rate-limit quota.
+    perform pg_advisory_xact_lock(
+        hashtextextended(p_world_id::text || ':' || p_event_id::text, 0)
+    );
+
     -- Limit one authenticated account to 120 new events per minute window.
     -- Retries of an already committed event do not consume additional quota.
     select e.server_seq into v_server_seq
