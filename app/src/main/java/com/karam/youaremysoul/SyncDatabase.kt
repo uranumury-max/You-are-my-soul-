@@ -219,16 +219,15 @@ class RoomSyncStore(context: Context) {
             nowEpochMs = nowEpochMs,
             maxAttempts = SyncProtocolRules.MAX_PENDING_ATTEMPTS,
             limit = limit
-        ).mapNotNull { row ->
-            val type = SyncEventType.fromWire(row.eventType) ?: return@mapNotNull null
+        ).map { row ->
+            val type = requireNotNull(SyncEventType.fromWire(row.eventType)) {
+                "Unknown persisted sync event type"
+            }
             PendingSyncEvent(
                 event = WorldSyncEvent(
-                    eventId = runCatching { java.util.UUID.fromString(row.eventId) }.getOrNull()
-                        ?: return@mapNotNull null,
-                    worldId = runCatching { java.util.UUID.fromString(row.worldId) }.getOrNull()
-                        ?: return@mapNotNull null,
-                    actorUserId = runCatching { java.util.UUID.fromString(row.actorUserId) }.getOrNull()
-                        ?: return@mapNotNull null,
+                    eventId = java.util.UUID.fromString(row.eventId),
+                    worldId = java.util.UUID.fromString(row.worldId),
+                    actorUserId = java.util.UUID.fromString(row.actorUserId),
                     type = type,
                     ciphertextBase64 = row.ciphertextBase64,
                     clientCreatedAtEpochMs = row.clientCreatedAtEpochMs
@@ -268,6 +267,9 @@ class RoomSyncStore(context: Context) {
     ) {
         require(SyncProtocolRules.validatePage(page, requestedAfter) == null) {
             "Rejected invalid synchronization page"
+        }
+        require(cursor(worldId) == requestedAfter) {
+            "Local synchronization cursor changed; discard this stale page"
         }
         require(page.events.all { it.event.worldId == worldId }) {
             "Synchronization page contains an event from another world"
