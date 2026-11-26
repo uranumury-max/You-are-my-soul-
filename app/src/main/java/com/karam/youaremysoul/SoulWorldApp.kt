@@ -291,11 +291,10 @@ fun SoulWorldApp() {
                                 onRequest = {
                                     val fromCode = DeviceIdentity(context).code
                                     val name = displayName.trim().ifBlank { "مشارك" }
-                                    val validation = PairingSecurity.validateJoinRequest(
+                                    val validation = PairingSecurity.validateJoinRequestInput(
                                         fromCode = fromCode,
                                         hostCode = enteredCode,
-                                        displayName = name,
-                                        currentMemberCount = 1
+                                        displayName = name
                                     )
                                     if (validation != null) {
                                         requestStatus = validation
