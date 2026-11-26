@@ -16,11 +16,15 @@ import org.json.JSONObject
 class SupabaseDeviceRegistrar(context: Context) {
     private val config = SupabaseRuntimeConfig.fromBuildConfig()
     private val identity = DeviceIdentity(context.applicationContext)
+    private val deviceKeys = DeviceKeyVault()
 
     suspend fun register(accessToken: String) = withContext(Dispatchers.IO) {
         require(accessToken.isNotBlank()) { "Authenticated access token required" }
         repeat(MAX_REGISTRATION_ATTEMPTS) {
-            if (registerOnce(accessToken)) return@withContext Unit
+            if (registerOnce(accessToken)) {
+                registerPublicKey(accessToken)
+                return@withContext Unit
+            }
             identity.regenerateCode()
         }
         throw SupabaseAuthException("device_code_collision")
