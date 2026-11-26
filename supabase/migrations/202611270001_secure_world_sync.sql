@@ -389,6 +389,16 @@ begin
         raise exception 'invalid device identity' using errcode = '22023';
     end if;
 
+    -- A code collision is recoverable: the client will generate another
+    -- random code and retry. Never transfer an existing code to another device.
+    if exists (
+        select 1 from public.device_profiles d
+        where d.device_code = p_device_code
+          and d.device_id <> p_device_id
+    ) then
+        return false;
+    end if;
+
     insert into public.device_profiles(device_id, user_id, device_code, last_seen_at)
     values (p_device_id, auth.uid(), p_device_code, now())
     on conflict (device_id) do update
@@ -396,9 +406,16 @@ begin
             last_seen_at = now()
         where public.device_profiles.user_id = auth.uid();
 
-    return found;
+    if not found then
+        raise exception 'installation identity belongs to another account' using errcode = '42501';
+    end if;
+    return true;
+exception
+    when unique_violation then
+        -- Handles two installations racing to claim the same code.
+        return false;
 end;
-$$;
+$;
 
 create or replace function public.request_join_by_device_code(p_device_code text)
 returns uuid
