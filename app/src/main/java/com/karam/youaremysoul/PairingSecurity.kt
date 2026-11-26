@@ -45,7 +45,7 @@ object PairingSecurity {
             return "رمز الجهاز يجب أن يتكون من 9 أرقام."
         }
         if (fromCode == hostCode) return "لا يمكن ربط الجهاز بنفسه."
-        if (displayName.isBlank() || displayName.length > 24) {
+        if (displayName.isBlank() || displayName.length > 24 || displayName.any(Char::isISOControl)) {
             return "اسم المشارك مطلوب وبحد أقصى 24 حرفاً."
         }
         if (currentMemberCount !in 1 until WorldLimits.MAX_MEMBERS) {
@@ -107,8 +107,10 @@ object PairingSecurity {
 class PairingChallengeVerifier(private val clock: () -> Long = System::currentTimeMillis) {
     private val pending = ConcurrentHashMap<String, PairingChallenge>()
 
+    @Synchronized
     fun issue(requestId: String, lifetimeMs: Long = 120_000L): PairingChallenge {
         purgeExpired()
+        check(pending.size < MAX_PENDING_CHALLENGES) { "Too many pending pairing challenges" }
         val challenge = PairingSecurity.newChallenge(requestId, clock(), lifetimeMs)
         check(pending.putIfAbsent(requestId, challenge) == null) { "Duplicate pairing request" }
         return challenge
@@ -124,6 +126,10 @@ class PairingChallengeVerifier(private val clock: () -> Long = System::currentTi
     fun purgeExpired() {
         val now = clock()
         pending.entries.removeIf { now > it.value.expiresAtEpochMs }
+    }
+
+    private companion object {
+        const val MAX_PENDING_CHALLENGES = 128
     }
 }
 
@@ -144,10 +150,21 @@ class PairingAttemptLimiter(
     fun allow(deviceCode: String): Boolean {
         if (!PairingSecurity.isValidDeviceCode(deviceCode)) return false
         val now = clock()
+        if (deviceCode !in attempts && attempts.size >= MAX_TRACKED_DEVICES) {
+            attempts.entries.removeIf { entry ->
+                entry.value.removeAll { now - it >= windowMs || it > now }
+                entry.value.isEmpty()
+            }
+            if (attempts.size >= MAX_TRACKED_DEVICES) return false
+        }
         val recent = attempts.getOrPut(deviceCode) { mutableListOf() }
         recent.removeAll { now - it >= windowMs || it > now }
         if (recent.size >= maxAttempts) return false
         recent.add(now)
         return true
+    }
+
+    private companion object {
+        const val MAX_TRACKED_DEVICES = 512
     }
 }
