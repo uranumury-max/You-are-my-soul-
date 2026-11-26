@@ -83,6 +83,7 @@ fun SoulWorldApp() {
         }
     }
     var world by remember { mutableStateOf<WorldSnapshot?>(null) }
+    var savedCloudWorldId by remember { mutableStateOf("") }
     var worldLoaded by remember { mutableStateOf(false) }
     var storageWarning by remember { mutableStateOf("") }
     val saveMutex = remember { Mutex() }
@@ -91,13 +92,15 @@ fun SoulWorldApp() {
     LaunchedEffect(store) {
         try {
             val loaded = withContext(Dispatchers.IO) { store.load() }
-            world = if (loaded != null && loaded.cloudWorldId.isBlank()) {
+            val resolved = if (loaded != null && loaded.cloudWorldId.isBlank()) {
                 loaded.copy(cloudWorldId = java.util.UUID.randomUUID().toString()).also { migrated ->
                     withContext(Dispatchers.IO) { store.save(migrated) }
                 }
             } else {
                 loaded
             }
+            world = resolved
+            savedCloudWorldId = resolved?.cloudWorldId.orEmpty()
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (error: Exception) {
@@ -134,10 +137,10 @@ fun SoulWorldApp() {
         }
     }
 
-    LaunchedEffect(worldLoaded, cloudAuthenticated, world?.cloudWorldId) {
+    LaunchedEffect(worldLoaded, cloudAuthenticated, world?.cloudWorldId, savedCloudWorldId) {
         if (!worldLoaded || !cloudAuthenticated) return@LaunchedEffect
         val current = world ?: return@LaunchedEffect
-        if (current.cloudWorldId.isBlank()) return@LaunchedEffect
+        if (current.cloudWorldId.isBlank() || current.cloudWorldId != savedCloudWorldId) return@LaunchedEffect
         try {
             val session = authClient.ensureAuthenticatedSession()
             worldRepository.ensureWorld(session, current.cloudWorldId, current.worldName)
@@ -167,6 +170,7 @@ fun SoulWorldApp() {
                 saveMutex.withLock {
                     if (revision == saveRevision.get()) {
                         withContext(Dispatchers.IO) { store.save(next) }
+                        if (revision == saveRevision.get()) savedCloudWorldId = next.cloudWorldId
                     }
                 }
                 true
