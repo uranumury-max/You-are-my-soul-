@@ -600,7 +600,7 @@ from anon, authenticated;
 grant select, insert, update on public.worlds to authenticated;
 grant select on public.world_members to authenticated;
 grant select on public.world_invites to authenticated;
-grant select, insert on public.world_events to authenticated;
+grant select on public.world_events to authenticated;
 grant select on public.device_profiles to authenticated;
 grant select on public.join_requests to authenticated;
 
@@ -630,3 +630,75 @@ begin
     end if;
 end;
 $$;
+
+
+-- Idempotent event append: the authenticated actor is always taken from auth.uid(),
+-- never trusted from a client-supplied actor field.
+drop policy if exists events_insert_member on public.world_events;
+revoke insert on public.world_events from anon, authenticated;
+
+create or replace function public.append_world_event(
+    p_world_id uuid,
+    p_event_id uuid,
+    p_event_type text,
+    p_ciphertext text,
+    p_client_created_at timestamptz
+)
+returns bigint
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+    v_sequence bigint;
+    v_existing public.world_events%rowtype;
+begin
+    if auth.uid() is null then
+        raise exception 'authentication required' using errcode = '28000';
+    end if;
+    if not public.is_active_world_member(p_world_id) then
+        raise exception 'active world membership required' using errcode = '42501';
+    end if;
+    if p_event_id is null
+       or p_event_type not in (
+           'world_update', 'memory_create', 'memory_delete',
+           'message_create', 'garden_update', 'daily_answer',
+           'drawing_update', 'capsule_update', 'media_add', 'settings_update'
+       )
+       or p_ciphertext is null
+       or octet_length(convert_to(p_ciphertext, 'UTF8')) not between 32 and 1048576
+       or p_client_created_at is null then
+        raise exception 'invalid event envelope' using errcode = '22023';
+    end if;
+
+    insert into public.world_events(
+        world_id, event_id, actor_id, event_type, ciphertext, client_created_at
+    )
+    values (
+        p_world_id, p_event_id, auth.uid(), p_event_type, p_ciphertext, p_client_created_at
+    )
+    on conflict (world_id, event_id) do nothing
+    returning server_seq into v_sequence;
+
+    if v_sequence is not null then
+        return v_sequence;
+    end if;
+
+    select * into v_existing
+    from public.world_events e
+    where e.world_id = p_world_id and e.event_id = p_event_id;
+
+    if not found
+       or v_existing.actor_id <> auth.uid()
+       or v_existing.event_type <> p_event_type
+       or v_existing.ciphertext <> p_ciphertext
+       or v_existing.client_created_at <> p_client_created_at then
+        raise exception 'event id collision or payload mismatch' using errcode = '23505';
+    end if;
+
+    return v_existing.server_seq;
+end;
+$$;
+
+revoke all on function public.append_world_event(uuid, uuid, text, text, timestamptz) from public;
+grant execute on function public.append_world_event(uuid, uuid, text, text, timestamptz) to authenticated;
