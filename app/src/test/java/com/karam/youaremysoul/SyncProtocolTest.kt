@@ -12,7 +12,7 @@ class SyncProtocolTest {
         worldId = UUID.fromString("22222222-2222-4222-8222-222222222222"),
         actorUserId = UUID.fromString("33333333-3333-4333-8333-333333333333"),
         type = SyncEventType.MEMORY_CREATE,
-        ciphertextBase64 = "wce:v1:1:" + Base64.getEncoder().encodeToString(ByteArray(payloadSize) { 7 }),
+        ciphertextBase64 = "wce:v1:1:" + Base64.getEncoder().withoutPadding().encodeToString(ByteArray(payloadSize) { 7 }),
         clientCreatedAtEpochMs = 1_700_000_000_000L
     )
 
