@@ -11,7 +11,7 @@ internal class WorldMutationSync(
     private val outbox: RoomSyncStore,
     private val keyVault: WorldKeyVault
 ) {
-    fun enqueueChanges(
+    suspend fun enqueueChanges(
         previous: WorldSnapshot,
         next: WorldSnapshot,
         session: AuthenticatedSupabaseUser
@@ -66,13 +66,12 @@ internal class WorldMutationSync(
             val event = WorldSyncEvent(
                 eventId = eventId,
                 worldId = worldId,
-                actorUserId = session.userId,
+                actorUserId = UUID.fromString(session.userId),
                 type = type,
                 ciphertextBase64 = encrypted,
                 clientCreatedAtEpochMs = System.currentTimeMillis()
             )
-            // RoomSyncStore is suspend; this method is called from the caller's coroutine.
-            kotlinx.coroutines.runBlocking { outbox.enqueue(event) }
+            outbox.enqueue(event)
         }
         return changes.size
     }
