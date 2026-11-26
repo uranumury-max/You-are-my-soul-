@@ -162,14 +162,15 @@ fun SoulWorldApp() {
                                 displayName = displayName, onName = { displayName = it },
                                 enteredCode = enteredCode, onCode = { enteredCode = it },
                                 requestStatus = requestStatus, canCreate = world == null && storageWarning.isBlank(), onRequest = {
-                                    requestStatus = if (world == null) {
+                                    val currentWorld = world
+                                    requestStatus = if (currentWorld == null) {
                                         "أنشئ العالم على هذا الهاتف أولاً قبل طلب الانضمام."
                                     } else {
                                         PairingSecurity.validateJoinRequest(
                                             fromCode = DeviceIdentity(context).code,
                                             hostCode = enteredCode,
                                             displayName = displayName.trim().ifBlank { "مشارك" },
-                                            currentMemberCount = world.members.size
+                                            currentMemberCount = currentWorld.members.size
                                         ) ?: "الرمز والبيانات صالحة مبدئياً فقط. لم يُرسل طلب؛ الاتصال المشفّر وموافقة المضيف لم يُفعّلا بعد."
                                     }
                                 },
