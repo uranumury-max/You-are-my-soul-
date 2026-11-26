@@ -19,7 +19,7 @@ class SupabaseDeviceRegistrar(context: Context) {
 
     suspend fun register(accessToken: String) = withContext(Dispatchers.IO) {
         require(accessToken.isNotBlank()) { "Authenticated access token required" }
-        for (attempt in 0 until MAX_REGISTRATION_ATTEMPTS) {
+        repeat(MAX_REGISTRATION_ATTEMPTS) {
             if (registerOnce(accessToken)) return@withContext Unit
             identity.regenerateCode()
         }
