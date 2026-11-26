@@ -933,7 +933,7 @@ private fun GardenSection(flowers: Int, onPlant: () -> Unit) {
             }
         }
         Text(
-            "التقدم محفوظ محلياً حالياً. ستصبح الحديقة مشتركة بين الأجهزة بعد تنفيذ الاتصال والمزامنة.",
+            "تُحفظ تغييرات الحديقة محلياً وتنتقل إلى بقية الأجهزة عند توفر الاتصال.",
             color = Color.LightGray, fontSize = 11.sp
         )
     }
@@ -980,7 +980,7 @@ private fun DailyQuestionSection(answer: String, onAnswer: (String) -> Unit) {
             }
         }
         Text(
-            "السؤال يتغير بحسب اليوم. إجابتك محفوظة محلياً على هذا الجهاز؛ لا تظهر للمشاركين الآخرين قبل تفعيل المزامنة.",
+            "يتغير السؤال بحسب اليوم، وتُزامَن الإجابة المشفّرة مع بقية أجهزة العالم عند توفر الاتصال.",
             color = Color.LightGray, fontSize = 11.sp
         )
     }
@@ -1053,7 +1053,7 @@ private fun SettingsSection(
             enabled = world != null && startDate.isNotBlank()
         ) { Text("حفظ تاريخ البداية") }
         if (dateMessage.isNotBlank()) Text(dateMessage, color = Rose, fontSize = 12.sp)
-        Text("البيانات المحلية مشفّرة على هذا الجهاز. المزامنة بين الأجهزة ستُفعّل بعد بناء الاتصال الآمن.", color = Color.LightGray, fontSize = 12.sp)
+        Text("تُحفظ بيانات العالم مشفّرة على هذا الجهاز، وتُزامَن التغييرات مع الأجهزة المعتمدة عند توفر الاتصال.", color = Color.LightGray, fontSize = 12.sp)
     }
 }
 
