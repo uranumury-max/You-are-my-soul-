@@ -53,6 +53,7 @@ fun SoulWorldApp() {
     val worldRepository = remember { SupabaseWorldRepository() }
     val pairingRepository = remember { SupabasePairingRepository() }
     var pendingJoinRequests by remember { mutableStateOf(emptyList<PendingWorldJoinRequest>()) }
+    var pendingRequestsLoadFailed by remember { mutableStateOf(false) }
     var cloudStatus by remember { mutableStateOf("") }
     var cloudAuthenticated by remember { mutableStateOf(false) }
     LaunchedEffect(authClient, deviceRegistrar) {
@@ -122,11 +123,14 @@ fun SoulWorldApp() {
             try {
                 val session = authClient.ensureAuthenticatedSession()
                 pendingJoinRequests = pairingRepository.pendingRequests(session, current.cloudWorldId)
+                pendingRequestsLoadFailed = false
             } catch (_: Exception) {
                 pendingJoinRequests = emptyList()
+                pendingRequestsLoadFailed = true
             }
         } else {
             pendingJoinRequests = emptyList()
+            pendingRequestsLoadFailed = false
         }
     }
 
@@ -254,6 +258,7 @@ fun SoulWorldApp() {
                                 requestStatus = requestStatus,
                                 canCreate = world == null && storageWarning.isBlank(),
                                 pendingRequests = pendingJoinRequests,
+                                requestsLoadFailed = pendingRequestsLoadFailed,
                                 isOwner = world?.members?.any { it.isHost } == true,
                                 canManageRequests = cloudAuthenticated && world?.cloudWorldId?.isNotBlank() == true,
                                 onRefreshRequests = {
@@ -263,7 +268,9 @@ fun SoulWorldApp() {
                                             try {
                                                 val session = authClient.ensureAuthenticatedSession()
                                                 pendingJoinRequests = pairingRepository.pendingRequests(session, current.cloudWorldId)
+                                                pendingRequestsLoadFailed = false
                                             } catch (_: Exception) {
+                                                pendingRequestsLoadFailed = true
                                                 requestStatus = "تعذر تحديث طلبات الانضمام حالياً."
                                             }
                                         }
@@ -278,6 +285,7 @@ fun SoulWorldApp() {
                                                 val current = world
                                                 if (current != null) {
                                                     pendingJoinRequests = pairingRepository.pendingRequests(session, current.cloudWorldId)
+                                                    pendingRequestsLoadFailed = false
                                                 }
                                                 requestStatus = if (approve) "تمت الموافقة على طلب الانضمام." else "تم رفض طلب الانضمام."
                                             } else {
@@ -529,6 +537,7 @@ private fun ConnectionSection(
     requestStatus: String,
     canCreate: Boolean,
     pendingRequests: List<PendingWorldJoinRequest>,
+    requestsLoadFailed: Boolean,
     isOwner: Boolean,
     canManageRequests: Boolean,
     onRefreshRequests: () -> Unit,
@@ -567,6 +576,8 @@ private fun ConnectionSection(
             }
             if (!canManageRequests) {
                 Text("تظهر الطلبات بعد تفعيل الاتصال السحابي.", color = Color.LightGray, fontSize = 11.sp)
+            } else if (requestsLoadFailed) {
+                Text("تعذر تحميل الطلبات؛ اضغط تحديث للمحاولة مجدداً.", color = Rose, fontSize = 12.sp)
             } else if (pendingRequests.isEmpty()) {
                 Text("لا توجد طلبات معلّقة حالياً.", color = Color.LightGray, fontSize = 12.sp)
             } else {
