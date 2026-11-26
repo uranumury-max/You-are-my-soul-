@@ -48,6 +48,28 @@ private val CardTone = Color(0xCC28172F)
 fun SoulWorldApp() {
     val context = androidx.compose.ui.platform.LocalContext.current
     val store = remember { LocalWorldStore(context) }
+    val authClient = remember { SupabaseAuthClient(context) }
+    var cloudStatus by remember { mutableStateOf("") }
+    LaunchedEffect(authClient) {
+        if (!SupabaseRuntimeConfig.fromBuildConfig().isConfigured) {
+            cloudStatus = "المزامنة السحابية بانتظار إعداد الخدمة."
+        } else {
+            cloudStatus = "جارٍ تأمين هوية الاتصال..."
+            try {
+                authClient.ensureAuthenticatedSession()
+                cloudStatus = "هوية الاتصال الآمنة جاهزة."
+            } catch (error: SupabaseAuthException) {
+                cloudStatus = when (error.safeCode) {
+                    "auth_rate_limited" -> "الخدمة مزدحمة مؤقتاً؛ سنحاول لاحقاً."
+                    "auth_network_unavailable", "auth_service_unavailable" -> "تعذر الاتصال مؤقتاً؛ بياناتكم المحلية آمنة."
+                    "service_role_key_forbidden" -> "إعداد المفتاح غير آمن؛ أوقفنا الاتصال."
+                    else -> "تعذر تأمين الاتصال (${error.safeCode})."
+                }
+            } catch (_: Exception) {
+                cloudStatus = "تعذر استعادة جلسة الاتصال؛ لم ننشئ هوية بديلة."
+            }
+        }
+    }
     var world by remember { mutableStateOf<WorldSnapshot?>(null) }
     var worldLoaded by remember { mutableStateOf(false) }
     var storageWarning by remember { mutableStateOf("") }
@@ -140,6 +162,9 @@ fun SoulWorldApp() {
                 )
                 if (storageWarning.isNotBlank()) {
                     Text(storageWarning, color = Gold, fontSize = 11.sp, modifier = Modifier.padding(top = 5.dp))
+                }
+                if (cloudStatus.isNotBlank()) {
+                    Text(cloudStatus, color = Color.White.copy(alpha = .52f), fontSize = 10.sp, modifier = Modifier.padding(top = 4.dp))
                 }
             }
 
