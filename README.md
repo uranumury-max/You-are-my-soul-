@@ -40,3 +40,6 @@ The nine-digit code is not a password. A device must authenticate, receive a fre
 ## Build
 
 Open the repository in Android Studio and allow Gradle to sync, or use the GitHub Actions workflow under Actions → Android APK. This repository currently does not include a Gradle wrapper script, so ./gradlew is not available yet.
+
+
+- Server event writes are designed to go through a membership-checked, idempotent, rate-limited Supabase RPC; its SQL migration is not yet deployed.
