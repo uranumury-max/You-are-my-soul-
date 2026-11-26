@@ -13,6 +13,8 @@ class PairingSecurityTest {
         assertNotNull(PairingSecurity.validateJoinRequest("123", "987654321", "Karam", 1))
         assertNotNull(PairingSecurity.validateJoinRequest("123456789", "123456789", "Karam", 1))
         assertNotNull(PairingSecurity.validateJoinRequest("123456789", "987654321", "Karam", 5))
+        assertNotNull(PairingSecurity.validateJoinRequest("123456789", "987654321", "Bad\\nName", 1))
+        assertFalse(PairingSecurity.isValidDeviceCode("١٢٣٤٥٦٧٨٩"))
     }
 
     @Test
@@ -47,6 +49,17 @@ class PairingSecurityTest {
 
         assertFalse(verifier.verify(challenge, proof, PairingSecurity.newPairingSecret()))
         assertFalse(verifier.verify(challenge, proof, PairingSecurity.newPairingSecret()))
+    }
+
+
+    @Test
+    fun pendingChallengeQueueHasHardLimit() {
+        val verifier = PairingChallengeVerifier { 100_000L }
+        repeat(128) { index ->
+            verifier.issue("request-id-${index.toString().padStart(4, '0')}")
+        }
+        val rejected = runCatching { verifier.issue("request-id-over-limit") }.isFailure
+        assertTrue(rejected)
     }
 
     @Test
