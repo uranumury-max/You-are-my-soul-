@@ -53,7 +53,7 @@ The intended flow is: copy local app code -> enter peer code -> send join reques
 - The protocol primitives use a random 256-bit pairing secret, a fresh 256-bit nonce, a two-minute challenge lifetime, HMAC-SHA256 proofs, constant-time signature comparison, and single-use challenge consumption.
 - Invalid proofs consume their challenge to prevent repeated guesses against one nonce. Basic per-device attempt throttling is included.
 - These primitives are not a network transport. They must only be used after a certificate-authenticated encrypted channel is established; never expose the pairing secret over raw TCP, local broadcast, or cleartext HTTP.
-- The current Connection screen only validates form data locally. It does not send a request, discover another phone, approve a participant, or synchronize a world.
+- The Connection screen now sends authenticated device-code join requests and lets the local world owner approve or decline them through protected RPCs. This has not been verified against a live project. Approval creates membership only; it does not yet distribute world encryption keys or synchronize content.
 - Before remote pairing is released, implement and test TLS certificate identity/pinning, host authorization, persistent rate limiting, replay protection across reconnects, and LAN/NAT traversal behavior.
 
 
@@ -86,7 +86,7 @@ This is the chosen architecture, not a claim that cloud synchronization already 
 1. Move the encrypted snapshot into Room with a recoverable migration (implementation is present; validation remains).
 2. Wire every local edit to a transactionally persisted outbox event and deterministic conflict rules.
 3. Apply the checked-in Supabase migrations to staging and pass the owner/member/revocation authorization matrix.
-4. Complete authenticated Android networking and server-authorized pairing (anonymous Auth session restore and device registration are implemented; join/approval flows remain).
+4. Complete authenticated Android networking and server-authorized pairing (anonymous Auth session restore, device registration, join requests, owner inbox, and approve/decline UI are implemented; live deployment and end-to-end verification remain).
 5. Add end-to-end encrypted event/media synchronization, reconnect recovery, and revocation/key rotation.
 6. Add integration tests, abuse/rate-limit tests, backup/restore tests, and real multi-device tests before release.
 
@@ -96,14 +96,14 @@ The checked-in migration currently defines:
 - Worlds and active/revoked memberships, with owner membership created atomically.
 - Private world invitation hashes with expiry and single-use acceptance.
 - Device-code registration and account-level throttling for code lookups.
-- Join requests resolved from a nine-digit device discovery code, with explicit owner approve/decline RPCs.
+- Join requests resolved from a nine-digit device discovery code, with validated participant display names and explicit owner approve/decline RPCs (migration 003).
 - Owner-only member revocation and a five-active-member cap protected by per-world row locks during admission.
 - An append-only event stream with per-world idempotency and server sequence.
 - A private encrypted-media bucket with member-scoped object policies.
 - Realtime publication of the event table as a notification channel; cursor-based fetch remains authoritative.
 
 Security boundaries and remaining work:
-- The SQL migration is source code only until applied to a newly provisioned Supabase project and reviewed against its actual Auth/Storage settings.
+- The SQL migrations 001–003 are source code only until applied to a newly provisioned Supabase project and reviewed against its actual Auth/Storage settings.
 - Rate limiting in SQL is per authenticated account. Add IP/device-level throttling and monitoring at the API/Edge layer to resist account farming and enumeration.
 - The app must generate high-entropy invite tokens and send only SHA-256 hashes to the database; the raw token must never be logged.
 - The event ciphertext envelope and local world-key vault primitives are implemented and unit-tested, but are not wired into the content model or uploads. Member key distribution, recovery, key rotation, and forward secrecy are not implemented yet.
@@ -123,4 +123,4 @@ The follow-up migration `202611270002_append_world_event_rpc.sql` removes direct
 - Build-time configuration accepts only an HTTPS Supabase project root and a publishable key (`sb_publishable_`) or legacy anon JWT; service-role/secret keys are rejected.
 - GitHub Actions receives `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` from repository secrets. These are intentionally not committed to source control.
 - On configured startup, the app restores or creates an anonymous Supabase Auth session, persists it with a dedicated Keystore-backed cipher, then registers the installation through the protected RPC. Each local world now carries a stable cloud UUID; the app idempotently creates and verifies its owner row in `public.worlds`, whose database trigger creates the owner membership. The app does not claim this succeeded when the project is not configured or the server rejects the request.
-- Live Auth, RLS, RPC, migration, refresh-rotation, and device-reinstall/recovery behavior remain unverified until a Supabase project is provisioned and end-to-end tests run.
+- Live Auth, RLS, RPC, migration, refresh-rotation, owner/member/revoked-member authorization, and device-reinstall/recovery behavior remain unverified until a Supabase project is provisioned and end-to-end tests run. Join approval does not yet establish member encryption keys or deliver the existing world snapshot.
