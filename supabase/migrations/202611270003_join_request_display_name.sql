@@ -4,6 +4,16 @@ alter table public.join_requests
     add column if not exists display_name text not null default 'مشارك'
     check (char_length(display_name) between 1 and 24);
 
+-- Bound aggregate request volume per world so many disposable accounts cannot
+-- overwhelm a small owner's approval inbox.
+create table if not exists public.world_join_request_rate_limits (
+    world_id uuid primary key references public.worlds(id) on delete cascade,
+    window_started_at timestamptz not null,
+    attempts integer not null default 0 check (attempts >= 0)
+);
+alter table public.world_join_request_rate_limits enable row level security;
+revoke all on public.world_join_request_rate_limits from anon, authenticated;
+
 -- Replace the original one-argument RPC with a validated display-name variant.
 drop function if exists public.request_join_by_device_code(text);
 
@@ -23,6 +33,7 @@ declare
     v_world_id uuid;
     v_request_id uuid;
     v_active_count integer;
+    v_world_attempts integer;
     v_display_name text;
 begin
     if auth.uid() is null then
@@ -83,6 +94,30 @@ begin
     end if;
 
     perform 1 from public.worlds w where w.id = v_world_id for update;
+    if not found then
+        return null;
+    end if;
+
+    -- Twenty requests per ten-minute window per target world, in addition
+    -- to the per-account lookup limit above.
+    insert into public.world_join_request_rate_limits(world_id, window_started_at, attempts)
+    values (v_world_id, now(), 1)
+    on conflict (world_id) do update
+    set window_started_at = case
+            when public.world_join_request_rate_limits.window_started_at < now() - interval '10 minutes'
+            then now()
+            else public.world_join_request_rate_limits.window_started_at
+        end,
+        attempts = case
+            when public.world_join_request_rate_limits.window_started_at < now() - interval '10 minutes'
+            then 1
+            else public.world_join_request_rate_limits.attempts + 1
+        end
+    returning attempts into v_world_attempts;
+
+    if v_world_attempts > 20 then
+        return null;
+    end if;
 
     select count(*) into v_active_count
     from public.world_members m
