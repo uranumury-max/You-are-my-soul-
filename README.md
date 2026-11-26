@@ -25,6 +25,7 @@ The target design is cloud-first and offline-capable:
 - Android anonymous Supabase Auth session creation/refresh with encrypted Keystore-backed session persistence.
 - Authenticated device registration, idempotent cloud-world provisioning, and local world-name metadata updates.
 - Authenticated join-request submission, owner inbox, approve/decline actions, and requester status refresh.
+- Authenticated append/fetch transport for versioned AES-GCM event envelopes, plus a bounded Room outbox/download coordinator.
 - GitHub Actions workflow runs unit tests before building the debug APK.
 
 ## Not yet complete — do not treat as a working connected app
