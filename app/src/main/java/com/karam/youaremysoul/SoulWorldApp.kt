@@ -53,6 +53,7 @@ fun SoulWorldApp() {
     val worldRepository = remember { SupabaseWorldRepository() }
     val pairingRepository = remember { SupabasePairingRepository() }
     val worldKeyExchangeRepository = remember { SupabaseWorldKeyExchangeRepository(context) }
+    val snapshotBootstrapper = remember { WorldSnapshotBootstrapper(context) }
     val deviceKeyVault = remember { DeviceKeyVault() }
     val worldKeyVault = remember { WorldKeyVault(context) }
     val scope = rememberCoroutineScope()
@@ -350,7 +351,15 @@ fun SoulWorldApp() {
                                                                 )
                                                             }
                                                         }
-                                                        "تم تأمين مفتاح العالم على هذا الجهاز؛ جارٍ تجهيز استعادة المحتوى المشترك."
+                                                        val restored = snapshotBootstrapper.restoreMemberSnapshot(
+                                                            session = session,
+                                                            worldId = status.worldId,
+                                                            worldKeyVault = worldKeyVault
+                                                        )
+                                                        world = restored
+                                                        savedCloudWorldId = restored.cloudWorldId
+                                                        savedWorldName = restored.worldName
+                                                        "تم استلام العالم المشفر واستعادته محلياً بأمان."
                                                     }
                                                 }
                                                 "declined" -> "لم تتم الموافقة على طلب الانضمام."
@@ -400,7 +409,12 @@ fun SoulWorldApp() {
                                                             worldKeyVault = worldKeyVault,
                                                             deviceKeyVault = deviceKeyVault
                                                         )
-                                                        requestStatus = "تمت الموافقة وإرسال مفاتيح التشفير إلى $deliveredDevices جهازاً مسجلاً."
+                                                        snapshotBootstrapper.publishOwnerSnapshot(
+                                                            session = session,
+                                                            world = current,
+                                                            worldKeyVault = worldKeyVault
+                                                        )
+                                                        requestStatus = "تمت الموافقة وتأمين مفاتيح التشفير وإرسال نسخة العالم المشفرة إلى الأجهزة المسجلة ($deliveredDevices)."
                                                     } else {
                                                         requestStatus = "تم رفض طلب الانضمام."
                                                     }
