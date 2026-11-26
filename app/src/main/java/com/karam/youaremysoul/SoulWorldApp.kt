@@ -229,6 +229,7 @@ fun SoulWorldApp() {
         scope.launch {
             val result = try {
                 syncMutex.withLock {
+                    val previousPersisted = lastPersistedWorld
                     saveMutex.withLock {
                         if (revision == saveRevision.get()) {
                             withContext(Dispatchers.IO) { store.save(next) }
@@ -241,13 +242,13 @@ fun SoulWorldApp() {
                     }
                     if (revision == saveRevision.get() &&
                         cloudAuthenticated && worldKeyReady &&
-                        lastPersistedWorld != null && lastPersistedWorld?.cloudWorldId == next.cloudWorldId &&
+                        previousPersisted != null && previousPersisted.cloudWorldId == next.cloudWorldId &&
                         next.cloudWorldId.isNotBlank()
                     ) {
                         try {
                             val session = authClient.ensureAuthenticatedSession()
                             withContext(Dispatchers.IO) {
-                                mutationSync.enqueueChanges(requireNotNull(lastPersistedWorld), next, session)
+                                mutationSync.enqueueChanges(requireNotNull(previousPersisted), next, session)
                             }
                             val worldId = java.util.UUID.fromString(next.cloudWorldId)
                             val (_, applied) = syncCoordinator.syncAndApply(
