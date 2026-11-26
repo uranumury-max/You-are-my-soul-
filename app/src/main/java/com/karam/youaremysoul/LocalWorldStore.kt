@@ -15,6 +15,8 @@ class LocalWorldStore(context: Context) {
             put("journeyStage", world.journeyStage)
             put("gardenFlowers", world.gardenFlowers)
             put("gardenLastWateredAt", world.gardenLastWateredAt)
+            put("dailyAnswerDate", world.dailyAnswerDate)
+            put("dailyAnswer", world.dailyAnswer)
             put("memories", JSONArray().apply { world.memories.forEach(::put) })
             put("members", JSONArray().apply {
                 world.members.forEach { member ->
@@ -40,7 +42,9 @@ class LocalWorldStore(context: Context) {
             journeyStage = json.optInt("journeyStage"),
             memories = (0 until memoriesJson.length()).map { memoriesJson.optString(it) },
             gardenFlowers = json.optInt("gardenFlowers", 0),
-            gardenLastWateredAt = json.optLong("gardenLastWateredAt", 0L)
+            gardenLastWateredAt = json.optLong("gardenLastWateredAt", 0L),
+            dailyAnswerDate = json.optString("dailyAnswerDate", ""),
+            dailyAnswer = json.optString("dailyAnswer", "")
         )
     }.getOrNull()
 }
