@@ -59,7 +59,17 @@ class SupabaseWorldRepository {
         if (rows.length() != 1) {
             throw SupabaseAuthException("cloud_world_not_visible_after_create")
         }
-        verifyOwnerRow(rows.getJSONObject(0), canonicalId, session.userId)
+        val existingRow = rows.getJSONObject(0)
+        verifyOwnerRow(existingRow, canonicalId, session.userId)
+        if (existingRow.optString("display_name") != safeName) {
+            request(
+                path = "/rest/v1/worlds?id=eq.$canonicalId",
+                method = "PATCH",
+                accessToken = session.accessToken,
+                body = JSONObject().put("display_name", safeName),
+                prefer = "return=minimal"
+            )
+        }
         Unit
     }
 
