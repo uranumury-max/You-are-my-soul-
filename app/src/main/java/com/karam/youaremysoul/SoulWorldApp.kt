@@ -50,17 +50,22 @@ fun SoulWorldApp() {
     val store = remember { LocalWorldStore(context) }
     val authClient = remember { SupabaseAuthClient(context) }
     val deviceRegistrar = remember { SupabaseDeviceRegistrar(context) }
+    val worldRepository = remember { SupabaseWorldRepository() }
     var cloudStatus by remember { mutableStateOf("") }
+    var cloudAuthenticated by remember { mutableStateOf(false) }
     LaunchedEffect(authClient, deviceRegistrar) {
         if (!SupabaseRuntimeConfig.fromBuildConfig().isConfigured) {
+            cloudAuthenticated = false
             cloudStatus = "المزامنة السحابية بانتظار إعداد الخدمة."
         } else {
             cloudStatus = "جارٍ تأمين هوية الاتصال..."
             try {
                 val session = authClient.ensureAuthenticatedSession()
                 deviceRegistrar.register(session.accessToken)
+                cloudAuthenticated = true
                 cloudStatus = "هوية الاتصال والجهاز مسجلتان بأمان."
             } catch (error: SupabaseAuthException) {
+                cloudAuthenticated = false
                 cloudStatus = when (error.safeCode) {
                     "auth_rate_limited", "device_registration_rate_limited" -> "الخدمة مزدحمة مؤقتاً؛ لم يكتمل تسجيل الاتصال."
                     "auth_network_unavailable", "auth_service_unavailable", "device_registration_network_unavailable", "device_registration_unavailable" -> "تعذر الاتصال مؤقتاً؛ بياناتكم المحلية آمنة."
@@ -69,6 +74,7 @@ fun SoulWorldApp() {
                     else -> "تعذر تأمين الاتصال (${error.safeCode})."
                 }
             } catch (_: Exception) {
+                cloudAuthenticated = false
                 cloudStatus = "تعذر استعادة جلسة الاتصال؛ لم ننشئ هوية بديلة."
             }
         }
@@ -98,6 +104,27 @@ fun SoulWorldApp() {
     var displayName by remember { mutableStateOf("") }
     var enteredCode by remember { mutableStateOf("") }
     var requestStatus by remember { mutableStateOf("") }
+
+    LaunchedEffect(worldLoaded, cloudAuthenticated, world?.cloudWorldId) {
+        if (!worldLoaded || !cloudAuthenticated) return@LaunchedEffect
+        val current = world ?: return@LaunchedEffect
+        if (current.cloudWorldId.isBlank()) return@LaunchedEffect
+        try {
+            val session = authClient.ensureAuthenticatedSession()
+            worldRepository.ensureWorld(session, current.cloudWorldId, current.worldName)
+            cloudStatus = "العالم محفوظ محلياً ومُسجّل سحابياً."
+        } catch (error: SupabaseAuthException) {
+            cloudStatus = when (error.safeCode) {
+                "cloud_world_network_unavailable", "cloud_world_service_unavailable" ->
+                    "تعذر الوصول إلى العالم السحابي مؤقتاً؛ النسخة المحلية محفوظة."
+                "cloud_world_authorization_failed", "cloud_world_owner_mismatch" ->
+                    "تعذر التحقق من ملكية العالم؛ أوقفنا المزامنة لحماية البيانات."
+                else -> "لم يكتمل تسجيل العالم السحابي (${error.safeCode})."
+            }
+        } catch (_: Exception) {
+            cloudStatus = "تعذر تجهيز العالم السحابي؛ النسخة المحلية لم تتغير."
+        }
+    }
 
     fun persist(next: WorldSnapshot) {
         if (storageWarning.isNotBlank()) return
@@ -215,7 +242,7 @@ fun SoulWorldApp() {
                                 onCreate = {
                                     val code = DeviceIdentity(context).code
                                     val member = WorldMember(code, displayName.trim().ifBlank { "صاحب العالم" }, true)
-                                    persist(WorldSnapshot(worldName.trim().ifBlank { "عالمنا الخاص" }, code, listOf(member), 0, emptyList()))
+                                    persist(WorldSnapshot(worldName.trim().ifBlank { "عالمنا الخاص" }, code, listOf(member), 0, emptyList(), cloudWorldId = java.util.UUID.randomUUID().toString()))
                                     requestStatus = "أُنشئ العالم وحُفظ على هذا الهاتف. المزامنة السحابية لم تُفعّل بعد."
                                 }
                             )
@@ -225,7 +252,7 @@ fun SoulWorldApp() {
                                     val value = memoryText.trim()
                                     if (value.isNotEmpty()) {
                                         val current = world ?: WorldSnapshot("عالمنا الخاص", DeviceIdentity(context).code,
-                                            listOf(WorldMember(DeviceIdentity(context).code, "صاحب العالم", true)), 0, emptyList())
+                                            listOf(WorldMember(DeviceIdentity(context).code, "صاحب العالم", true)), 0, emptyList(), cloudWorldId = java.util.UUID.randomUUID().toString())
                                         persist(current.copy(memories = current.memories + value))
                                         memoryText = ""
                                     }
@@ -239,7 +266,8 @@ fun SoulWorldApp() {
                                 onPlant = {
                                     val current = world ?: WorldSnapshot(
                                         "عالمنا الخاص", DeviceIdentity(context).code,
-                                        listOf(WorldMember(DeviceIdentity(context).code, "صاحب العالم", true))
+                                        listOf(WorldMember(DeviceIdentity(context).code, "صاحب العالم", true)),
+                                        cloudWorldId = java.util.UUID.randomUUID().toString()
                                     )
                                     persist(current.copy(gardenFlowers = current.gardenFlowers + 1, gardenLastWateredAt = System.currentTimeMillis()))
                                 },
@@ -260,7 +288,7 @@ fun SoulWorldApp() {
                             )
                             else -> WorldHome(world = world, canCreate = storageWarning.isBlank(), onCreate = {
                                 val code = DeviceIdentity(context).code
-                                persist(WorldSnapshot("عالمنا الخاص", code, listOf(WorldMember(code, "صاحب العالم", true)), 0, emptyList()))
+                                persist(WorldSnapshot("عالمنا الخاص", code, listOf(WorldMember(code, "صاحب العالم", true)), 0, emptyList(), cloudWorldId = java.util.UUID.randomUUID().toString()))
                                 tab = "الربط"
                             })
                         }
