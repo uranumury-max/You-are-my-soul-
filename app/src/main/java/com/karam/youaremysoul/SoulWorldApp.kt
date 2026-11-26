@@ -178,7 +178,7 @@ fun SoulWorldApp() {
                                     val code = DeviceIdentity(context).code
                                     val member = WorldMember(code, displayName.trim().ifBlank { "صاحب العالم" }, true)
                                     persist(WorldSnapshot(worldName.trim().ifBlank { "عالمنا الخاص" }, code, listOf(member), 0, emptyList()))
-                                    requestStatus = "أُنشئ العالم وحُفظ على هذا الهاتف. هذا الجهاز هو المضيف المحلي."
+                                    requestStatus = "أُنشئ العالم وحُفظ على هذا الهاتف. المزامنة السحابية لم تُفعّل بعد."
                                 }
                             )
                             "الذكريات" -> MemoriesSection(
@@ -363,7 +363,7 @@ private fun WorldHome(world: WorldSnapshot?, canCreate: Boolean, onCreate: () ->
         Card(colors = CardDefaults.cardColors(containerColor = CardTone), shape = RoundedCornerShape(20.dp)) {
             Column(Modifier.padding(16.dp)) {
                 Text(if (world == null) "بداية عالمكم" else "مركز عالمكم", color = Gold, fontWeight = FontWeight.Bold)
-                Text(if (world == null) "إنشاء العالم يثبت هذا الهاتف كمضيف محلي ويحفظ بياناته." else "المضيف: ${world.hostCode}\nالذكريات المحفوظة: ${world.memories.size}\nمرحلة الرحلة: ${calculateJourneyStage(world.relationshipStartDate) + 1}",
+                Text(if (world == null) "إنشاء العالم يحفظ نسخة محلية مشفّرة. المزامنة السحابية لم تُفعّل بعد." else "رمز المنشئ: ${world.hostCode}\nالذكريات المحفوظة: ${world.memories.size}\nمرحلة الرحلة: ${calculateJourneyStage(world.relationshipStartDate) + 1}",
                     color = Color.White, modifier = Modifier.padding(top = 6.dp))
                 if (world == null) Button(onClick = onCreate, enabled = canCreate, modifier = Modifier.padding(top = 8.dp)) {
                     Text(if (canCreate) "إنشاء عالمي" else "حُميت البيانات من الاستبدال")
@@ -396,12 +396,12 @@ private fun ConnectionSection(
             }
         }
         OutlinedTextField(value = displayName, onValueChange = { onName(it.take(24)) }, label = { Text("اسمك داخل العالم") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-        OutlinedTextField(value = enteredCode, onValueChange = { onCode(it.filter { ch -> ch in '0'..'9' }.take(9)) }, label = { Text("رمز المضيف أو المشارك") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), singleLine = true, modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(value = enteredCode, onValueChange = { onCode(it.filter { ch -> ch in '0'..'9' }.take(9)) }, label = { Text("رمز صاحب العالم أو المشارك") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), singleLine = true, modifier = Modifier.fillMaxWidth())
         Text("تنبيه أمان: رمز الـ9 أرقام للتعرّف فقط، وليس كلمة مرور. لا يعني وجود الجهازين على شبكة Wi‑Fi واحدة أن الاتصال آمن.", color = Gold.copy(alpha = .9f), fontSize = 11.sp)
         Button(onClick = onRequest, enabled = enteredCode.length == 9 && enteredCode != code) { Text("فحص بيانات الربط") }
         if (requestStatus.isNotBlank()) Text(requestStatus, color = Gold, fontSize = 12.sp)
         Divider(color = Rose.copy(alpha = .25f))
-        Text("العالم يدعم تصميمياً حتى ${WorldLimits.MAX_MEMBERS} مشاركين. حالياً إنشاء العالم وحفظه محليان؛ الطلب الشبكي وقبول المضيف يتطلبان خدمة اتصال فعلية.", color = Color.LightGray, fontSize = 12.sp)
+        Text("العالم يدعم تصميمياً حتى ${WorldLimits.MAX_MEMBERS} مشاركين. حالياً إنشاء العالم وحفظه محليان؛ الطلب الانضمام وموافقة مالك العالم يتطلبان خدمة اتصال فعلية.", color = Color.LightGray, fontSize = 12.sp)
         Button(onClick = onCreate, enabled = canCreate) {
             Text(if (canCreate) "إنشاء عالم على هذا الهاتف" else "العالم موجود بالفعل")
         }
