@@ -112,3 +112,8 @@ Security boundaries and remaining work:
 
 
 Authentication reference: Supabase anonymous sign-ins avoid collecting email/phone by default, but the identity cannot be recovered after sign-out or clearing app data. Enable abuse protection before production. See the official [anonymous sign-in documentation](https://supabase.com/docs/guides/auth/auth-anonymous).
+
+
+## Server-side event write boundary (migration 002)
+
+The follow-up migration `202611270002_append_world_event_rpc.sql` removes direct client INSERT permission on `world_events`. Authenticated clients must call `append_world_event`, which derives the actor from `auth.uid()`, checks active world membership, validates event type, ciphertext byte size and client timestamp, enforces a per-account event-write quota, and makes committed event IDs idempotent. Reusing an event ID with different content is rejected. The migration is source-controlled only and has not been deployed to a Supabase project.
