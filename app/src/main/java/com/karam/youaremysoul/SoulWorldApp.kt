@@ -52,6 +52,7 @@ fun SoulWorldApp() {
     val deviceRegistrar = remember { SupabaseDeviceRegistrar(context) }
     val worldRepository = remember { SupabaseWorldRepository() }
     val pairingRepository = remember { SupabasePairingRepository() }
+    val worldKeyVault = remember { WorldKeyVault(context) }
     val scope = rememberCoroutineScope()
     val cloudBootstrapMutex = remember { Mutex() }
     var pendingJoinRequests by remember { mutableStateOf(emptyList<PendingWorldJoinRequest>()) }
@@ -110,6 +111,7 @@ fun SoulWorldApp() {
     var world by remember { mutableStateOf<WorldSnapshot?>(null) }
     var savedCloudWorldId by remember { mutableStateOf("") }
     var savedWorldName by remember { mutableStateOf("") }
+    var worldKeyReady by remember { mutableStateOf(false) }
     var worldLoaded by remember { mutableStateOf(false) }
     var storageWarning by remember { mutableStateOf("") }
     val saveMutex = remember { Mutex() }
@@ -161,6 +163,27 @@ fun SoulWorldApp() {
         } else {
             pendingJoinRequests = emptyList()
             pendingRequestsLoadFailed = false
+        }
+    }
+
+    LaunchedEffect(worldLoaded, world?.cloudWorldId, world?.members, savedCloudWorldId, savedWorldName) {
+        val current = world
+        if (!worldLoaded || current == null || current.cloudWorldId.isBlank() ||
+            current.cloudWorldId != savedCloudWorldId || current.worldName != savedWorldName ||
+            current.members.none { it.isHost }
+        ) {
+            worldKeyReady = false
+            return@LaunchedEffect
+        }
+        try {
+            withContext(Dispatchers.IO) {
+                val id = java.util.UUID.fromString(current.cloudWorldId)
+                if (!worldKeyVault.hasWorldKey(id, 1)) worldKeyVault.createWorldKey(id, 1)
+            }
+            worldKeyReady = true
+        } catch (_: Exception) {
+            worldKeyReady = false
+            cloudStatus = "تعذر تجهيز مفتاح تشفير العالم؛ أوقفنا أي إرسال للمحتوى."
         }
     }
 
