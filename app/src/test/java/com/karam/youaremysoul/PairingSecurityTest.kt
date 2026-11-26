@@ -22,7 +22,7 @@ class PairingSecurityTest {
         var now = 1_000_000L
         val verifier = PairingChallengeVerifier { now }
         val secret = PairingSecurity.newPairingSecret()
-        val challenge = verifier.issue("request-id-123456")
+        val challenge = verifier.issue("request-id-123456", "123456789", "987654321")
         val proof = PairingSecurity.createProof(challenge, secret)
 
         assertTrue(verifier.verify(challenge, proof, secret))
@@ -34,7 +34,7 @@ class PairingSecurityTest {
         var now = 10_000L
         val verifier = PairingChallengeVerifier { now }
         val secret = PairingSecurity.newPairingSecret()
-        val challenge = verifier.issue("request-id-expired", 10_000L)
+        val challenge = verifier.issue("request-id-expired", "123456789", "987654321", 10_000L)
         val proof = PairingSecurity.createProof(challenge, secret)
 
         now += 10_001L
@@ -44,7 +44,7 @@ class PairingSecurityTest {
     @Test
     fun wrongSecretIsRejectedAndChallengeConsumed() {
         val verifier = PairingChallengeVerifier { 50_000L }
-        val challenge = verifier.issue("request-id-wrong-secret")
+        val challenge = verifier.issue("request-id-wrong-secret", "123456789", "987654321")
         val proof = PairingSecurity.createProof(challenge, PairingSecurity.newPairingSecret())
 
         assertFalse(verifier.verify(challenge, proof, PairingSecurity.newPairingSecret()))
@@ -56,9 +56,9 @@ class PairingSecurityTest {
     fun pendingChallengeQueueHasHardLimit() {
         val verifier = PairingChallengeVerifier { 100_000L }
         repeat(128) { index ->
-            verifier.issue("request-id-test-${index.toString().padStart(4, '0')}")
+            verifier.issue("request-id-test-${index.toString().padStart(4, '0')}", "123456789", "987654321")
         }
-        val rejected = runCatching { verifier.issue("request-id-over-limit") }.isFailure
+        val rejected = runCatching { verifier.issue("request-id-over-limit", "123456789", "987654321") }.isFailure
         assertTrue(rejected)
     }
 
