@@ -135,7 +135,7 @@ fun SoulWorldApp() {
     var requestStatus by remember { mutableStateOf("") }
     var ownJoinRequestId by remember { mutableStateOf("") }
 
-    LaunchedEffect(tab, world?.cloudWorldId, cloudAuthenticated) {
+    LaunchedEffect(tab, world?.cloudWorldId, cloudAuthenticated, networkRevision) {
         val current = world
         if (tab == "الربط" && cloudAuthenticated && current != null &&
             current.cloudWorldId.isNotBlank() && current.members.any { it.isHost }
