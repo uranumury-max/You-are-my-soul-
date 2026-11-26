@@ -8,5 +8,7 @@ data class WorldSnapshot(
     val journeyStage: Int = 0,
     val memories: List<String> = emptyList(),
     val gardenFlowers: Int = 0,
-    val gardenLastWateredAt: Long = 0L
+    val gardenLastWateredAt: Long = 0L,
+    val dailyAnswerDate: String = "",
+    val dailyAnswer: String = ""
 )
