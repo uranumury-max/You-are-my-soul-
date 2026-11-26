@@ -11,41 +11,67 @@ import org.json.JSONObject
 class LocalWorldStore(context: Context) {
     private val prefs = context.getSharedPreferences("world_checkpoint", Context.MODE_PRIVATE)
     private val cipher = SecureSnapshotCipher()
+    private val snapshotDao = SyncDatabase.get(context).worldSnapshotDao()
 
     fun save(world: WorldSnapshot) {
         val encrypted = cipher.encrypt(encode(world))
-        // save() is called on Dispatchers.IO, so commit guarantees the encrypted checkpoint is durable.
-        check(
-            prefs.edit()
-                .putString(ENCRYPTED_SNAPSHOT_KEY_V2, encrypted)
-                .remove(ENCRYPTED_SNAPSHOT_KEY_V1)
-                .remove(LEGACY_SNAPSHOT_KEY)
-                .commit()
-        ) { "Unable to persist encrypted world snapshot" }
+        // Room is the durable source of truth. Legacy preferences are removed
+        // only after the encrypted database write has committed.
+        snapshotDao.save(
+            LocalWorldSnapshotEntity(
+                encryptedPayload = encrypted,
+                updatedAtEpochMs = System.currentTimeMillis()
+            )
+        )
+        removeLegacyPreferences()
     }
 
     fun load(): WorldSnapshot? {
-        val encryptedV2 = prefs.getString(ENCRYPTED_SNAPSHOT_KEY_V2, null)
-        if (encryptedV2 != null) {
-            return decode(cipher.decrypt(encryptedV2))
+        // Once present, Room is authoritative. A decrypt failure propagates;
+        // stale preferences must never overwrite a newer unreadable checkpoint.
+        snapshotDao.load()?.let { stored ->
+            return decode(cipher.decrypt(stored.encryptedPayload))
         }
 
-        // Upgrade authenticated v1 ciphertext to v2 without exposing plaintext
-        // or deleting the old value until the new durable write succeeds.
-        val encryptedV1 = prefs.getString(ENCRYPTED_SNAPSHOT_KEY_V1, null)
-        if (encryptedV1 != null) {
-            val migrated = decode(cipher.decrypt(encryptedV1))
-            save(migrated)
+        val encryptedV2 = prefs.getString(ENCRYPTED_SNAPSHOT_KEY_V2, null)
+        if (encryptedV2 != null) {
+            val migrated = decode(cipher.decrypt(encryptedV2))
+            persistMigrated(encryptedV2)
             return migrated
         }
 
-        // One-time migration from the previous plaintext format. A decode or
-        // durable-write failure must propagate and lock editing; never treat it
-        // as an empty world that could later overwrite recoverable user data.
+        val encryptedV1 = prefs.getString(ENCRYPTED_SNAPSHOT_KEY_V1, null)
+        if (encryptedV1 != null) {
+            val migrated = decode(cipher.decrypt(encryptedV1))
+            persistMigrated(cipher.encrypt(encode(migrated)))
+            return migrated
+        }
+
+        // Legacy plaintext is removed only after successful decoding,
+        // encryption, and durable Room persistence.
         val legacy = prefs.getString(LEGACY_SNAPSHOT_KEY, null) ?: return null
         val migrated = decode(legacy)
-        save(migrated)
+        persistMigrated(cipher.encrypt(encode(migrated)))
         return migrated
+    }
+
+    private fun persistMigrated(encryptedPayload: String) {
+        snapshotDao.save(
+            LocalWorldSnapshotEntity(
+                encryptedPayload = encryptedPayload,
+                updatedAtEpochMs = System.currentTimeMillis()
+            )
+        )
+        removeLegacyPreferences()
+    }
+
+    private fun removeLegacyPreferences() {
+        // Best-effort cleanup: Room already contains the durable encrypted copy.
+        prefs.edit()
+            .remove(ENCRYPTED_SNAPSHOT_KEY_V2)
+            .remove(ENCRYPTED_SNAPSHOT_KEY_V1)
+            .remove(LEGACY_SNAPSHOT_KEY)
+            .commit()
     }
 
     private fun encode(world: WorldSnapshot): String = JSONObject().apply {
