@@ -20,6 +20,8 @@ create index if not exists world_key_envelopes_recipient_idx
     on public.world_member_key_envelopes(user_id, device_id, world_id);
 
 alter table public.world_member_key_envelopes enable row level security;
+grant select on table public.world_member_key_envelopes to authenticated;
+revoke insert, update, delete on table public.world_member_key_envelopes from anon, authenticated;
 
 drop policy if exists world_key_envelopes_read_own_device
     on public.world_member_key_envelopes;
