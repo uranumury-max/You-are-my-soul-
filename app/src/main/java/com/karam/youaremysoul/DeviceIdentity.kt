@@ -22,13 +22,19 @@ class DeviceIdentity(context: Context) {
         get() {
             val saved = prefs.getString("code", null)
             if (saved != null) return saved
-            val random = SecureRandom()
-            var generated: String
-            do {
-                generated = (100_000_000 + random.nextInt(900_000_000)).toString()
-            } while (generated == "000000000")
-            val committed = prefs.edit().putString("code", generated).commit()
-            check(committed) { "Unable to persist device code" }
-            return generated
+            return generateAndPersistCode()
         }
+
+    /** Replaces a colliding public discovery code while preserving installationId. */
+    @Synchronized
+    fun regenerateCode(): String = generateAndPersistCode()
+
+    @Synchronized
+    private fun generateAndPersistCode(): String {
+        val random = SecureRandom()
+        val generated = (100_000_000 + random.nextInt(900_000_000)).toString()
+        val committed = prefs.edit().putString("code", generated).commit()
+        check(committed) { "Unable to persist device code" }
+        return generated
+    }
 }
