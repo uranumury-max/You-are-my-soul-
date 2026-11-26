@@ -150,7 +150,7 @@ fun SoulWorldApp() {
     var requestStatus by remember { mutableStateOf("") }
     var ownJoinRequestId by remember { mutableStateOf("") }
 
-    LaunchedEffect(tab, world?.cloudWorldId, cloudAuthenticated, networkRevision) {
+    LaunchedEffect(tab, world?.cloudWorldId, world?.localIsOwner, cloudAuthenticated, networkRevision) {
         val current = world
         if (tab == "الربط" && cloudAuthenticated && current != null &&
             current.cloudWorldId.isNotBlank() && current.localIsOwner
@@ -169,7 +169,7 @@ fun SoulWorldApp() {
         }
     }
 
-    LaunchedEffect(worldLoaded, world?.cloudWorldId, world?.members, savedCloudWorldId, savedWorldName) {
+    LaunchedEffect(worldLoaded, world?.cloudWorldId, world?.members, world?.localIsOwner, savedCloudWorldId, savedWorldName) {
         val current = world
         if (!worldLoaded || current == null || current.cloudWorldId.isBlank() ||
             current.cloudWorldId != savedCloudWorldId || current.worldName != savedWorldName
@@ -194,7 +194,7 @@ fun SoulWorldApp() {
         }
     }
 
-    LaunchedEffect(worldLoaded, cloudAuthenticated, worldKeyReady, world?.cloudWorldId, world?.worldName, savedCloudWorldId, savedWorldName, networkRevision) {
+    LaunchedEffect(worldLoaded, cloudAuthenticated, worldKeyReady, world?.cloudWorldId, world?.worldName, world?.localIsOwner, savedCloudWorldId, savedWorldName, networkRevision) {
         if (!worldLoaded || !cloudAuthenticated || !worldKeyReady) return@LaunchedEffect
         val current = world ?: return@LaunchedEffect
         if (current.cloudWorldId.isBlank() || current.cloudWorldId != savedCloudWorldId ||
