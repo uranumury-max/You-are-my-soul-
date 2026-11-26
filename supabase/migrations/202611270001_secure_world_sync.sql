@@ -244,6 +244,15 @@ begin
         raise exception 'invitation is invalid or expired' using errcode = '22023';
     end if;
 
+    -- The owner already has the owner membership created with the world.
+    -- Never let an invite downgrade the owner role through an upsert.
+    if exists (
+        select 1 from public.worlds w
+        where w.id = v_invite.world_id and w.owner_id = auth.uid()
+    ) then
+        raise exception 'world owner cannot accept a member invitation' using errcode = '42501';
+    end if;
+
     -- Lock the world row so concurrent accepts cannot exceed the five-member cap.
     perform 1 from public.worlds w
     where w.id = v_invite.world_id
