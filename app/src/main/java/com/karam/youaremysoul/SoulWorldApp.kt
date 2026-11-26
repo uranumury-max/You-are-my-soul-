@@ -56,7 +56,21 @@ fun SoulWorldApp() {
     var pendingRequestsLoadFailed by remember { mutableStateOf(false) }
     var cloudStatus by remember { mutableStateOf("") }
     var cloudAuthenticated by remember { mutableStateOf(false) }
-    LaunchedEffect(authClient, deviceRegistrar) {
+    var networkRevision by remember { mutableStateOf(0) }
+    DisposableEffect(context) {
+        val connectivity = context.getSystemService(android.content.Context.CONNECTIVITY_SERVICE)
+            as android.net.ConnectivityManager
+        val callback = object : android.net.ConnectivityManager.NetworkCallback() {
+            override fun onAvailable(network: android.net.Network) {
+                networkRevision += 1
+            }
+        }
+        connectivity.registerDefaultNetworkCallback(callback)
+        onDispose {
+            runCatching { connectivity.unregisterNetworkCallback(callback) }
+        }
+    }
+    LaunchedEffect(authClient, deviceRegistrar, networkRevision) {
         if (!SupabaseRuntimeConfig.fromBuildConfig().isConfigured) {
             cloudAuthenticated = false
             cloudStatus = "المزامنة السحابية بانتظار إعداد الخدمة."
@@ -140,7 +154,7 @@ fun SoulWorldApp() {
         }
     }
 
-    LaunchedEffect(worldLoaded, cloudAuthenticated, world?.cloudWorldId, world?.worldName, savedCloudWorldId, savedWorldName) {
+    LaunchedEffect(worldLoaded, cloudAuthenticated, world?.cloudWorldId, world?.worldName, savedCloudWorldId, savedWorldName, networkRevision) {
         if (!worldLoaded || !cloudAuthenticated) return@LaunchedEffect
         val current = world ?: return@LaunchedEffect
         if (current.cloudWorldId.isBlank() || current.cloudWorldId != savedCloudWorldId ||
