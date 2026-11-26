@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.sp
 import kotlin.random.Random
 import kotlin.math.cos
 import kotlin.math.sin
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -54,6 +55,8 @@ fun SoulWorldApp() {
     LaunchedEffect(store) {
         try {
             world = withContext(Dispatchers.IO) { store.load() }
+        } catch (cancelled: CancellationException) {
+            throw cancelled
         } catch (error: Exception) {
             storageWarning = "تعذر فتح بيانات العالم بأمان. أوقفنا إنشاء عالم جديد حتى لا تُستبدل بيانات قديمة."
         } finally {
@@ -73,11 +76,16 @@ fun SoulWorldApp() {
         if (storageWarning.isNotBlank()) return
         world = next
         scope.launch {
-            val saved = runCatching {
+            val saved = try {
                 saveMutex.withLock {
                     withContext(Dispatchers.IO) { store.save(next) }
                 }
-            }.isSuccess
+                true
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                false
+            }
             storageWarning = if (saved) "" else "تعذر حفظ التغييرات على هذا الجهاز. تحقق من مساحة التخزين."
         }
     }
