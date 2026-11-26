@@ -6,7 +6,7 @@ import java.util.UUID
 /**
  * Transport-neutral synchronization contract.
  *
- * User content must be encrypted before it is placed in ciphertextBase64.
+ * User content must be encrypted into the versioned WorldContentCipher envelope before it is placed in ciphertextBase64.
  * This model deliberately contains no plaintext body or device-code credential.
  */
 enum class SyncEventType(val wireValue: String) {
@@ -72,13 +72,26 @@ object SyncProtocolRules {
     fun validate(event: WorldSyncEvent): String? {
         if (event.clientCreatedAtEpochMs <= 0L) return "invalid_client_timestamp"
         if (event.ciphertextBase64.isBlank()) return "missing_ciphertext"
-        // The server limits the UTF-8 Base64 column to one MiB; Base64 is ASCII,
-        // so its character count is also its encoded byte count.
+        // WorldContentCipher stores a versioned envelope:
+        // wce:v1:<key-version>:<base64(nonce || AES-GCM ciphertext+tag)>.
+        // The server stores this complete ASCII envelope as opaque ciphertext.
         if (event.ciphertextBase64.length > MAX_CIPHERTEXT_BYTES) {
             return "ciphertext_size_out_of_range"
         }
+        val envelopePrefix = "wce:v1:"
+        if (!event.ciphertextBase64.startsWith(envelopePrefix)) {
+            return "invalid_ciphertext_encoding"
+        }
+        val remainder = event.ciphertextBase64.removePrefix(envelopePrefix)
+        val separator = remainder.indexOf(':')
+        if (separator <= 0 || remainder.indexOf(':', separator + 1) >= 0) {
+            return "invalid_ciphertext_encoding"
+        }
+        val keyVersion = remainder.substring(0, separator).toIntOrNull()
+        if (keyVersion == null || keyVersion <= 0) return "invalid_ciphertext_encoding"
+        val encodedPayload = remainder.substring(separator + 1)
         val decoded = try {
-            Base64.getDecoder().decode(event.ciphertextBase64)
+            Base64.getDecoder().decode(encodedPayload)
         } catch (_: IllegalArgumentException) {
             return "invalid_ciphertext_encoding"
         }
