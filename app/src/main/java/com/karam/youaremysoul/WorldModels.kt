@@ -10,5 +10,6 @@ data class WorldSnapshot(
     val gardenFlowers: Int = 0,
     val gardenLastWateredAt: Long = 0L,
     val dailyAnswerDate: String = "",
-    val dailyAnswer: String = ""
+    val dailyAnswer: String = "",
+    val relationshipStartDate: String = ""
 )
