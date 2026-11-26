@@ -138,7 +138,7 @@ fun SoulWorldApp() {
         }
     }
 
-    LaunchedEffect(worldLoaded, cloudAuthenticated, world?.cloudWorldId, savedCloudWorldId) {
+    LaunchedEffect(worldLoaded, cloudAuthenticated, world?.cloudWorldId, world?.worldName, savedCloudWorldId) {
         if (!worldLoaded || !cloudAuthenticated) return@LaunchedEffect
         val current = world ?: return@LaunchedEffect
         if (current.cloudWorldId.isBlank() || current.cloudWorldId != savedCloudWorldId) return@LaunchedEffect
