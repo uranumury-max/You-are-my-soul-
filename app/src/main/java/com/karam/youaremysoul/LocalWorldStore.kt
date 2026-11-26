@@ -13,6 +13,19 @@ class LocalWorldStore(context: Context) {
     private val cipher = SecureSnapshotCipher()
     private val snapshotDao = SyncDatabase.get(context).worldSnapshotDao()
 
+    fun encodeForSync(world: WorldSnapshot): ByteArray =
+        encode(world).toByteArray(Charsets.UTF_8)
+
+    fun restoreFromSyncPayload(payload: ByteArray, cloudWorldId: String): WorldSnapshot {
+        require(payload.isNotEmpty() && payload.size <= 700_000)
+        val restored = decode(payload.toString(Charsets.UTF_8)).copy(
+            cloudWorldId = java.util.UUID.fromString(cloudWorldId).toString(),
+            localIsOwner = false
+        )
+        save(restored)
+        return restored
+    }
+
     fun save(world: WorldSnapshot) {
         val encrypted = cipher.encrypt(encode(world))
         // Room is the durable source of truth. Legacy preferences are removed
@@ -84,6 +97,7 @@ class LocalWorldStore(context: Context) {
         put("dailyAnswer", world.dailyAnswer)
         put("relationshipStartDate", world.relationshipStartDate)
         put("cloudWorldId", world.cloudWorldId)
+        put("localIsOwner", world.localIsOwner)
         put("memories", JSONArray().apply { world.memories.forEach(::put) })
         put("members", JSONArray().apply {
             world.members.forEach { member ->
@@ -119,7 +133,8 @@ class LocalWorldStore(context: Context) {
             dailyAnswerDate = json.optString("dailyAnswerDate", ""),
             dailyAnswer = json.optString("dailyAnswer", ""),
             relationshipStartDate = json.optString("relationshipStartDate", ""),
-            cloudWorldId = json.optString("cloudWorldId", "")
+            cloudWorldId = json.optString("cloudWorldId", ""),
+            localIsOwner = json.optBoolean("localIsOwner", true)
         )
     }
 
