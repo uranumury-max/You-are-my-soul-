@@ -185,11 +185,20 @@ begin
     if p_ttl_seconds < 60 or p_ttl_seconds > 3600 then
         raise exception 'invalid invite lifetime' using errcode = '22023';
     end if;
-    if not exists (
-        select 1 from public.worlds w
-        where w.id = p_world_id and w.owner_id = auth.uid()
+    -- Serialize capacity checks per world to prevent concurrent invites
+    -- from admitting more than five active members.
+    perform 1 from public.worlds w
+    where w.id = p_world_id and w.owner_id = auth.uid()
+    for update;
+
+    if not found or not exists (
+        select 1 from public.world_members m
+        where m.world_id = p_world_id
+          and m.user_id = auth.uid()
+          and m.member_role = 'owner'
+          and m.revoked_at is null
     ) then
-        raise exception 'only the world owner may approve invitations' using errcode = '42501';
+        raise exception 'only an active world owner may approve invitations' using errcode = '42501';
     end if;
 
     select count(*) into v_active_count
@@ -236,6 +245,11 @@ begin
        or v_invite.expires_at <= now() then
         raise exception 'invitation is invalid or expired' using errcode = '22023';
     end if;
+
+    -- Lock the world row so concurrent accepts cannot exceed the five-member cap.
+    perform 1 from public.worlds w
+    where w.id = v_invite.world_id
+    for update;
 
     select count(*) into v_active_count
     from public.world_members m
