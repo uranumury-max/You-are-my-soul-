@@ -489,6 +489,7 @@ fun SoulWorldApp() {
                                                             worldKeyVault = worldKeyVault,
                                                             deviceKeyVault = deviceKeyVault
                                                         )
+                                                        lastPersistedWorld = current
                                                         requestStatus = "تمت الموافقة وتأمين مفاتيح التشفير وإرسال نسخة العالم المشفرة إلى الأجهزة المسجلة ($deliveredDevices)."
                                                     } else {
                                                         requestStatus = "تم رفض طلب الانضمام."
