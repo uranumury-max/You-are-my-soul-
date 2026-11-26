@@ -28,7 +28,6 @@ class DeviceIdentity(context: Context) {
     /** Replaces a colliding public discovery code while preserving installationId. */
     fun regenerateCode(): String = synchronized(IDENTITY_LOCK) { generateAndPersistCode() }
 
-    @Synchronized
     private fun generateAndPersistCode(): String {
         val random = SecureRandom()
         val generated = (100_000_000 + random.nextInt(900_000_000)).toString()
