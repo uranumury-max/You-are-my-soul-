@@ -59,7 +59,7 @@ The intended flow is: copy local app code -> enter peer code -> send join reques
 
 ## Storage and UI thread discipline
 - The initial encrypted snapshot read runs on Dispatchers.IO; the interface shows a lightweight loading state while it completes.
-- Snapshot encryption and durable SharedPreferences commits run on Dispatchers.IO and are serialized with a mutex so rapid edits cannot overwrite one another out of order.
+- Snapshot encryption and durable Room commits run on Dispatchers.IO and are serialized with a mutex so rapid edits cannot overwrite one another out of order.
 - If an encrypted snapshot cannot be decrypted or saved, editing is locked and world creation is disabled. Do not silently interpret unreadable encrypted data as an empty world.
 - Only the active Compose destination is built; outgoing content is retained for the short transition animation. Large media must be deferred to its own screen.
 
@@ -83,10 +83,10 @@ The selected target is a hybrid cloud-first, offline-capable design:
 This is the chosen architecture, not a claim that cloud synchronization already works. The repository has local encrypted snapshot storage, pairing-security primitives, a checked-in Supabase SQL migration, and a transport-neutral sync contract with JVM tests. There is no provisioned Supabase project, no production credentials, no UI-integrated Room outbox, no deployed cloud schema, no integrated end-to-end encryption/key exchange, and no live network pairing/synchronization. The encrypted local snapshot has been moved into Room with a versioned database migration. Do not show a successful connection state until a real server acknowledgement is received.
 
 ### Delivery sequence
-1. Migrate the existing encrypted snapshot into Room with a tested, recoverable migration.
+1. Move the encrypted snapshot into Room with a recoverable migration (implementation is present; validation remains).
 2. Wire every local edit to a transactionally persisted outbox event and deterministic conflict rules.
-3. Apply the checked-in Supabase migration to staging and pass the owner/member/revocation authorization matrix.
-4. Add authenticated Android networking and server-authorized pairing.
+3. Apply the checked-in Supabase migrations to staging and pass the owner/member/revocation authorization matrix.
+4. Complete authenticated Android networking and server-authorized pairing (anonymous Auth session restore and device registration are implemented; join/approval flows remain).
 5. Add end-to-end encrypted event/media synchronization, reconnect recovery, and revocation/key rotation.
 6. Add integration tests, abuse/rate-limit tests, backup/restore tests, and real multi-device tests before release.
 
