@@ -52,7 +52,7 @@ data class SupabaseRuntimeConfig(
             } catch (_: IllegalArgumentException) {
                 return false
             }
-            return Regex("\\\"role\\\"\\\\s*:\\\\s*\\\"service_role\\\"", RegexOption.IGNORE_CASE)
+            return Regex("\"role\"\\s*:\\s*\"service_role\"", RegexOption.IGNORE_CASE)
                 .containsMatchIn(payload)
         }
     }
