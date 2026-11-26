@@ -88,6 +88,7 @@ fun SoulWorldApp() {
                     "auth_network_unavailable", "auth_service_unavailable", "device_registration_network_unavailable", "device_registration_unavailable" -> "تعذر الاتصال مؤقتاً؛ بياناتكم المحلية آمنة."
                     "service_role_key_forbidden" -> "إعداد المفتاح غير آمن؛ أوقفنا الاتصال."
                     "device_registration_rejected", "device_registration_not_confirmed" -> "تعذر تسجيل هوية هذا الجهاز؛ لن نبدأ الربط قبل تأكيدها."
+                    "device_code_collision" -> "تعذر حجز رمز فريد بعد عدة محاولات؛ تم توليد رمز جديد للمحاولة التالية."
                     else -> "تعذر تأمين الاتصال (${error.safeCode})."
                 }
             } catch (_: Exception) {
@@ -593,7 +594,7 @@ private fun ConnectionSection(
     onCreate: () -> Unit
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
-    val code = remember { DeviceIdentity(context).code }
+    val code = DeviceIdentity(context).code
     Column(Modifier.fillMaxWidth().verticalScroll(androidx.compose.foundation.rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text("هوية هذا الموبايل", color = Gold, fontSize = 20.sp, fontWeight = FontWeight.Bold)
         Card(colors = CardDefaults.cardColors(containerColor = CardTone)) {
