@@ -150,7 +150,7 @@ class SupabaseWorldKeyExchangeRepository(context: Context) {
                 setRequestProperty("Prefer", "return=representation")
             }
         }
-        try {
+        return try {
             if (body != null) {
                 connection.outputStream.use {
                     it.write(body.toString().toByteArray(StandardCharsets.UTF_8))
