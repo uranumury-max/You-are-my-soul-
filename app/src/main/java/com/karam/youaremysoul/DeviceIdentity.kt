@@ -27,7 +27,8 @@ class DeviceIdentity(context: Context) {
             do {
                 generated = (100_000_000 + random.nextInt(900_000_000)).toString()
             } while (generated == "000000000")
-            prefs.edit().putString("code", generated).apply()
+            val committed = prefs.edit().putString("code", generated).commit()
+            check(committed) { "Unable to persist device code" }
             return generated
         }
 }
