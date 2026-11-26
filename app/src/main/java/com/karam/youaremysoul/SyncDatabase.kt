@@ -155,6 +155,9 @@ interface SyncDao {
         limit: Int
     ): List<SyncedEventEntity>
 
+    @Query("SELECT * FROM sync_events WHERE worldId = :worldId ORDER BY serverSequence ASC LIMIT :limit")
+    suspend fun loadAllRemoteEvents(worldId: String, limit: Int): List<SyncedEventEntity>
+
     @Transaction
     suspend fun applyRemotePage(
         worldId: String,
@@ -299,6 +302,29 @@ class RoomSyncStore(context: Context) {
 
     suspend fun cursor(worldId: java.util.UUID): SyncCursor =
         SyncCursor(dao.getCursor(worldId.toString())?.serverSequence ?: 0L)
+
+    suspend fun allRemoteEvents(
+        worldId: java.util.UUID,
+        limit: Int = 10_000
+    ): List<SequencedWorldEvent> {
+        require(limit in 1..10_000)
+        return dao.loadAllRemoteEvents(worldId.toString(), limit).map { row ->
+            val type = requireNotNull(SyncEventType.fromWire(row.eventType)) {
+                "Unknown persisted remote event type"
+            }
+            SequencedWorldEvent(
+                serverSequence = row.serverSequence,
+                event = WorldSyncEvent(
+                    eventId = java.util.UUID.fromString(row.eventId),
+                    worldId = java.util.UUID.fromString(row.worldId),
+                    actorUserId = java.util.UUID.fromString(row.actorUserId),
+                    type = type,
+                    ciphertextBase64 = row.ciphertextBase64,
+                    clientCreatedAtEpochMs = row.clientCreatedAtEpochMs
+                )
+            )
+        }
+    }
 
     suspend fun applyRemotePage(
         worldId: java.util.UUID,
