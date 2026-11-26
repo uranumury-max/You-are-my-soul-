@@ -14,11 +14,13 @@ class LocalWorldStore(context: Context) {
 
     fun save(world: WorldSnapshot) {
         val encrypted = cipher.encrypt(encode(world))
-        // SharedPreferences.apply() writes to disk asynchronously and avoids blocking the UI thread.
-        prefs.edit()
-            .putString(ENCRYPTED_SNAPSHOT_KEY, encrypted)
-            .remove(LEGACY_SNAPSHOT_KEY)
-            .apply()
+        // save() is called on Dispatchers.IO, so commit guarantees the encrypted checkpoint is durable.
+        check(
+            prefs.edit()
+                .putString(ENCRYPTED_SNAPSHOT_KEY, encrypted)
+                .remove(LEGACY_SNAPSHOT_KEY)
+                .commit()
+        ) { "Unable to persist encrypted world snapshot" }
     }
 
     fun load(): WorldSnapshot? {
