@@ -49,20 +49,23 @@ fun SoulWorldApp() {
     val context = androidx.compose.ui.platform.LocalContext.current
     val store = remember { LocalWorldStore(context) }
     val authClient = remember { SupabaseAuthClient(context) }
+    val deviceRegistrar = remember { SupabaseDeviceRegistrar(context) }
     var cloudStatus by remember { mutableStateOf("") }
-    LaunchedEffect(authClient) {
+    LaunchedEffect(authClient, deviceRegistrar) {
         if (!SupabaseRuntimeConfig.fromBuildConfig().isConfigured) {
             cloudStatus = "المزامنة السحابية بانتظار إعداد الخدمة."
         } else {
             cloudStatus = "جارٍ تأمين هوية الاتصال..."
             try {
-                authClient.ensureAuthenticatedSession()
-                cloudStatus = "هوية الاتصال الآمنة جاهزة."
+                val session = authClient.ensureAuthenticatedSession()
+                deviceRegistrar.register(session.accessToken)
+                cloudStatus = "هوية الاتصال والجهاز مسجلتان بأمان."
             } catch (error: SupabaseAuthException) {
                 cloudStatus = when (error.safeCode) {
-                    "auth_rate_limited" -> "الخدمة مزدحمة مؤقتاً؛ سنحاول لاحقاً."
-                    "auth_network_unavailable", "auth_service_unavailable" -> "تعذر الاتصال مؤقتاً؛ بياناتكم المحلية آمنة."
+                    "auth_rate_limited", "device_registration_rate_limited" -> "الخدمة مزدحمة مؤقتاً؛ سنحاول لاحقاً."
+                    "auth_network_unavailable", "auth_service_unavailable", "device_registration_network_unavailable", "device_registration_unavailable" -> "تعذر الاتصال مؤقتاً؛ بياناتكم المحلية آمنة."
                     "service_role_key_forbidden" -> "إعداد المفتاح غير آمن؛ أوقفنا الاتصال."
+                    "device_registration_rejected", "device_registration_not_confirmed" -> "تعذر تسجيل هوية هذا الجهاز؛ لن نبدأ الربط قبل تأكيدها."
                     else -> "تعذر تأمين الاتصال (${error.safeCode})."
                 }
             } catch (_: Exception) {
