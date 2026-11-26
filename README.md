@@ -28,7 +28,7 @@ The target design is cloud-first and offline-capable:
 
 - No Supabase project has been provisioned and the SQL migration has not been applied to a live/staging backend.
 - No Supabase Auth/network client is wired into Android.
-- Room outbox is not yet connected transactionally to every UI edit; the existing world snapshot remains in encrypted SharedPreferences.
+- The encrypted world snapshot now migrates safely from SharedPreferences into Room. The durable outbox exists, but local UI edits are not yet atomically connected to outbox events.
 - Content encryption and the local key vault are not yet wired into the app's messages/memories/media.
 - No authenticated member-to-member key distribution, recovery, or key rotation.
 - No real join-request delivery, owner approval UI, or cross-device event synchronization.
