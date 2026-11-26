@@ -152,7 +152,7 @@ fun SoulWorldApp() {
     LaunchedEffect(tab, world?.cloudWorldId, cloudAuthenticated, networkRevision) {
         val current = world
         if (tab == "الربط" && cloudAuthenticated && current != null &&
-            current.cloudWorldId.isNotBlank() && current.members.any { it.isHost }
+            current.cloudWorldId.isNotBlank() && current.localIsOwner
         ) {
             try {
                 val session = authClient.ensureAuthenticatedSession()
@@ -171,18 +171,22 @@ fun SoulWorldApp() {
     LaunchedEffect(worldLoaded, world?.cloudWorldId, world?.members, savedCloudWorldId, savedWorldName) {
         val current = world
         if (!worldLoaded || current == null || current.cloudWorldId.isBlank() ||
-            current.cloudWorldId != savedCloudWorldId || current.worldName != savedWorldName ||
-            current.members.none { it.isHost }
+            current.cloudWorldId != savedCloudWorldId || current.worldName != savedWorldName
         ) {
             worldKeyReady = false
             return@LaunchedEffect
         }
         try {
-            withContext(Dispatchers.IO) {
+            worldKeyReady = withContext(Dispatchers.IO) {
                 val id = java.util.UUID.fromString(current.cloudWorldId)
-                if (!worldKeyVault.hasWorldKey(id, 1)) worldKeyVault.createWorldKey(id, 1)
+                if (current.localIsOwner && !worldKeyVault.hasWorldKey(id, 1)) {
+                    worldKeyVault.createWorldKey(id, 1)
+                }
+                worldKeyVault.hasWorldKey(id, 1)
             }
-            worldKeyReady = true
+            if (!worldKeyReady && !current.localIsOwner) {
+                cloudStatus = "ينتظر هذا الجهاز استلام مفتاح تشفير العالم من صاحبه."
+            }
         } catch (_: Exception) {
             worldKeyReady = false
             cloudStatus = "تعذر تجهيز مفتاح تشفير العالم؛ أوقفنا أي إرسال للمحتوى."
@@ -358,7 +362,7 @@ fun SoulWorldApp() {
                                         }
                                     }
                                 },
-                                isOwner = world?.members?.any { it.isHost } == true,
+                                isOwner = world?.localIsOwner == true,
                                 canManageRequests = cloudAuthenticated && world?.cloudWorldId?.isNotBlank() == true,
                                 onRefreshRequests = {
                                     scope.launch {
