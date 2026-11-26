@@ -53,13 +53,13 @@ class WorldSyncCoordinator(context: Context) {
         var downloaded = 0
         var cursor = localStore.cursor(worldId)
         var moreAvailable = false
-        repeat(MAX_DOWNLOAD_PAGES_PER_PASS) {
+        for (pageIndex in 0 until MAX_DOWNLOAD_PAGES_PER_PASS) {
             val page = transport.fetchPage(session, worldId, cursor)
             localStore.applyRemotePage(worldId, page, cursor)
             downloaded += page.events.size
             cursor = page.nextCursor
             moreAvailable = page.hasMore
-            if (!page.hasMore) return@repeat
+            if (!page.hasMore) break
         }
 
         return SyncPassResult(
