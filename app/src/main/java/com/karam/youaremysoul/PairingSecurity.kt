@@ -37,11 +37,10 @@ object PairingSecurity {
     fun isValidDeviceCode(code: String): Boolean =
         code.length == WorldLimits.DEVICE_CODE_DIGITS && code.all { it in '0'..'9' }
 
-    fun validateJoinRequest(
+    fun validateJoinRequestInput(
         fromCode: String,
         hostCode: String,
-        displayName: String,
-        currentMemberCount: Int
+        displayName: String
     ): String? {
         if (!isValidDeviceCode(fromCode) || !isValidDeviceCode(hostCode)) {
             return "رمز الجهاز يجب أن يتكون من 9 أرقام."
@@ -50,6 +49,16 @@ object PairingSecurity {
         if (displayName.isBlank() || displayName.length > 24 || displayName.any(Char::isISOControl)) {
             return "اسم المشارك مطلوب وبحد أقصى 24 حرفاً."
         }
+        return null
+    }
+
+    fun validateJoinRequest(
+        fromCode: String,
+        hostCode: String,
+        displayName: String,
+        currentMemberCount: Int
+    ): String? {
+        validateJoinRequestInput(fromCode, hostCode, displayName)?.let { return it }
         if (currentMemberCount !in 1 until WorldLimits.MAX_MEMBERS) {
             return "العالم ممتلئ أو لم يتم إنشاؤه بشكل صحيح."
         }
