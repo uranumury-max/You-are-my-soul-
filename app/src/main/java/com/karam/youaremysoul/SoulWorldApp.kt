@@ -255,6 +255,7 @@ fun SoulWorldApp() {
                                 canCreate = world == null && storageWarning.isBlank(),
                                 pendingRequests = pendingJoinRequests,
                                 isOwner = world?.members?.any { it.isHost } == true,
+                                canManageRequests = cloudAuthenticated && world?.cloudWorldId?.isNotBlank() == true,
                                 onRefreshRequests = {
                                     scope.launch {
                                         val current = world
@@ -522,8 +523,19 @@ private fun WorldHome(world: WorldSnapshot?, canCreate: Boolean, onCreate: () ->
 
 @Composable
 private fun ConnectionSection(
-    displayName: String, onName: (String) -> Unit, enteredCode: String, onCode: (String) -> Unit,
-    requestStatus: String, canCreate: Boolean, onRequest: () -> Unit, onCreate: () -> Unit
+    displayName: String,
+    onName: (String) -> Unit,
+    enteredCode: String,
+    onCode: (String) -> Unit,
+    requestStatus: String,
+    canCreate: Boolean,
+    pendingRequests: List<PendingWorldJoinRequest>,
+    isOwner: Boolean,
+    canManageRequests: Boolean,
+    onRefreshRequests: () -> Unit,
+    onDecideRequest: (String, Boolean) -> Unit,
+    onRequest: () -> Unit,
+    onCreate: () -> Unit
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val code = remember { DeviceIdentity(context).code }
@@ -541,12 +553,43 @@ private fun ConnectionSection(
             }
         }
         OutlinedTextField(value = displayName, onValueChange = { onName(it.take(24)) }, label = { Text("اسمك داخل العالم") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-        OutlinedTextField(value = enteredCode, onValueChange = { onCode(it.filter { ch -> ch in '0'..'9' }.take(9)) }, label = { Text("رمز صاحب العالم أو المشارك") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), singleLine = true, modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(value = enteredCode, onValueChange = { onCode(it.filter { ch -> ch in '0'..'9' }.take(9)) }, label = { Text("رمز صاحب العالم") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), singleLine = true, modifier = Modifier.fillMaxWidth())
         Text("تنبيه أمان: رمز الـ9 أرقام للتعرّف فقط، وليس كلمة مرور. لا يعني وجود الجهازين على شبكة Wi‑Fi واحدة أن الاتصال آمن.", color = Gold.copy(alpha = .9f), fontSize = 11.sp)
-        Button(onClick = onRequest, enabled = enteredCode.length == 9 && enteredCode != code) { Text("فحص بيانات الربط") }
+        Button(onClick = onRequest, enabled = enteredCode.length == 9 && enteredCode != code) { Text("إرسال طلب الانضمام") }
         if (requestStatus.isNotBlank()) Text(requestStatus, color = Gold, fontSize = 12.sp)
         Divider(color = Rose.copy(alpha = .25f))
-        Text("العالم يدعم تصميمياً حتى ${WorldLimits.MAX_MEMBERS} مشاركين. حالياً إنشاء العالم وحفظه محليان؛ الطلب الانضمام وموافقة مالك العالم يتطلبان خدمة اتصال فعلية.", color = Color.LightGray, fontSize = 12.sp)
+        if (isOwner) {
+            Divider(color = Rose.copy(alpha = .25f))
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text("طلبات الانضمام", color = Gold, fontSize = 17.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                TextButton(onClick = onRefreshRequests, enabled = canManageRequests) {
+                    Text("تحديث", color = if (canManageRequests) Rose else Color.Gray)
+                }
+            }
+            if (!canManageRequests) {
+                Text("تظهر الطلبات بعد تفعيل الاتصال السحابي.", color = Color.LightGray, fontSize = 11.sp)
+            } else if (pendingRequests.isEmpty()) {
+                Text("لا توجد طلبات معلّقة حالياً.", color = Color.LightGray, fontSize = 12.sp)
+            } else {
+                pendingRequests.forEach { request ->
+                    Card(colors = CardDefaults.cardColors(containerColor = CardTone)) {
+                        Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text(request.displayName, color = Color.White, fontWeight = FontWeight.SemiBold)
+                            Text("طلب انضمام بانتظار قرارك", color = Rose, fontSize = 11.sp)
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Button(onClick = { onDecideRequest(request.requestId, true) }) {
+                                    Text("موافقة")
+                                }
+                                OutlinedButton(onClick = { onDecideRequest(request.requestId, false) }) {
+                                    Text("رفض")
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        Text("العالم يدعم حتى ${WorldLimits.MAX_MEMBERS} مشاركين. طلب الانضمام يحتاج موافقة صاحب العالم، ولا يضيف عضوية قبل تأكيد الخادم.", color = Color.LightGray, fontSize = 12.sp)
         Button(onClick = onCreate, enabled = canCreate) {
             Text(if (canCreate) "إنشاء عالم على هذا الهاتف" else "العالم موجود بالفعل")
         }
