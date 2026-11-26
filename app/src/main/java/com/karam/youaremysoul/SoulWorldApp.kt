@@ -149,12 +149,13 @@ fun SoulWorldApp() {
                                     )
                                     persist(current.copy(dailyAnswerDate = java.time.LocalDate.now().toString(), dailyAnswer = value))
                                 },
-                                stage = world?.journeyStage ?: 0,
-                                onUnlock = { stage -> world?.let { persist(it.copy(journeyStage = stage)) } }
+                                stage = calculateJourneyStage(world?.relationshipStartDate.orEmpty())
                             )
-                            "الإعدادات" -> SettingsSection(world = world, onName = { value ->
-                                world?.let { persist(it.copy(worldName = value)) }
-                            })
+                            "الإعدادات" -> SettingsSection(
+                                world = world,
+                                onName = { value -> world?.let { persist(it.copy(worldName = value)) } },
+                                onRelationshipDate = { value -> world?.let { persist(it.copy(relationshipStartDate = value)) } }
+                            )
                             else -> WorldHome(world = world, onCreate = {
                                 val code = DeviceIdentity(context).code
                                 persist(WorldSnapshot("عالمنا الخاص", code, listOf(WorldMember(code, "صاحب العالم", true)), 0, emptyList()))
@@ -272,7 +273,7 @@ private fun WorldHome(world: WorldSnapshot?, onCreate: () -> Unit) {
         Card(colors = CardDefaults.cardColors(containerColor = CardTone), shape = RoundedCornerShape(20.dp)) {
             Column(Modifier.padding(16.dp)) {
                 Text(if (world == null) "بداية عالمكم" else "مركز عالمكم", color = Gold, fontWeight = FontWeight.Bold)
-                Text(if (world == null) "إنشاء العالم يثبت هذا الهاتف كمضيف محلي ويحفظ بياناته." else "المضيف: ${world.hostCode}\nالذكريات المحفوظة: ${world.memories.size}\nمرحلة الرحلة: ${world.journeyStage}",
+                Text(if (world == null) "إنشاء العالم يثبت هذا الهاتف كمضيف محلي ويحفظ بياناته." else "المضيف: ${world.hostCode}\nالذكريات المحفوظة: ${world.memories.size}\nمرحلة الرحلة: ${calculateJourneyStage(world.relationshipStartDate) + 1}",
                     color = Color.White, modifier = Modifier.padding(top = 6.dp))
                 if (world == null) Button(onClick = onCreate, modifier = Modifier.padding(top = 8.dp)) { Text("إنشاء عالمي") }
             }
@@ -336,7 +337,7 @@ private fun MemoriesSection(memories: List<String>, text: String, onText: (Strin
 @Composable
 private fun MomentsHub(
     flowers: Int, onPlant: () -> Unit, answer: String,
-    onAnswer: (String) -> Unit, stage: Int, onUnlock: (Int) -> Unit
+    onAnswer: (String) -> Unit, stage: Int
 ) {
     var selected by remember { mutableStateOf("الحديقة") }
     Column(Modifier.fillMaxSize()) {
@@ -356,7 +357,7 @@ private fun MomentsHub(
             when (selected) {
                 "الحديقة" -> GardenSection(flowers, onPlant)
                 "سؤال اليوم" -> DailyQuestionSection(answer, onAnswer)
-                else -> JourneySection(stage, onUnlock)
+                else -> JourneySection(stage)
             }
         }
     }
@@ -478,34 +479,79 @@ private fun DailyQuestionSection(answer: String, onAnswer: (String) -> Unit) {
 }
 
 @Composable
-private fun JourneySection(stage: Int, onUnlock: (Int) -> Unit) {
+private fun JourneySection(stage: Int) {
     val milestones = WorldLimits.journeyMilestones
+    val titles = listOf("الشرارة الأولى", "مدارنا", "نجمة مشتركة", "مجرة الذكريات", "عالم لا ينتهي")
     Column(Modifier.fillMaxSize().verticalScroll(androidx.compose.foundation.rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text("رحلتنا معاً", color = Gold, fontSize = 23.sp, fontWeight = FontWeight.Bold)
-        Text("مراحل الرحلة محفوظة محلياً. لا تُفتح تلقائياً قبل ربطها بتاريخ بداية موثوق.", color = Rose, fontSize = 12.sp)
+        Text(
+            if (stage < 0) "أدخلوا تاريخ بداية رحلتكم من الإعدادات لتُفتح المراحل تلقائياً."
+            else "تُفتح المراحل تلقائياً عند اكتمال الأيام المحددة.",
+            color = Rose, fontSize = 12.sp
+        )
         milestones.forEachIndexed { index, day ->
             val unlocked = index <= stage
             Card(colors = CardDefaults.cardColors(containerColor = CardTone), shape = RoundedCornerShape(16.dp)) {
                 Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
-                        Text("اليوم $day • ${listOf("الشرارة الأولى", "مدارنا", "نجمة مشتركة", "مجرة الذكريات", "عالم لا ينتهي")[index]}", color = if (unlocked) Gold else Rose, fontWeight = FontWeight.Bold)
-                        Text(if (unlocked) "مرحلة مسجّلة" else "مرحلة مقفلة", color = Color.LightGray, fontSize = 12.sp)
+                        Text("اليوم $day • ${titles[index]}", color = if (unlocked) Gold else Rose, fontWeight = FontWeight.Bold)
+                        Text(if (unlocked) "مفتوحة تلقائياً" else "تُفتح بعد اكتمال $day أيام", color = Color.LightGray, fontSize = 12.sp)
                     }
-                    if (!unlocked) TextButton(onClick = { onUnlock(index) }) { Text("تجربة فتح", color = Rose) }
+                    Text(if (unlocked) "✦" else "🔒", color = if (unlocked) Gold else Color.LightGray)
                 }
             }
         }
-        Text("تنبيه: زر التجربة يغيّر التقدم المحفوظ يدوياً، وليس إثباتاً لمرور الأيام.", color = Color.LightGray, fontSize = 11.sp)
     }
 }
 
 @Composable
-private fun SettingsSection(world: WorldSnapshot?, onName: (String) -> Unit) {
+private fun SettingsSection(
+    world: WorldSnapshot?,
+    onName: (String) -> Unit,
+    onRelationshipDate: (String) -> Unit
+) {
     var name by remember(world?.worldName) { mutableStateOf(world?.worldName ?: "عالمنا الخاص") }
+    var startDate by remember(world?.relationshipStartDate) {
+        mutableStateOf(world?.relationshipStartDate.orEmpty())
+    }
+    var dateMessage by remember { mutableStateOf("") }
     Column(Modifier.fillMaxWidth().verticalScroll(androidx.compose.foundation.rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text("إعدادات العالم", color = Gold, fontSize = 23.sp, fontWeight = FontWeight.Bold)
         OutlinedTextField(value = name, onValueChange = { name = it.take(40) }, label = { Text("اسم العالم") }, modifier = Modifier.fillMaxWidth())
         Button(onClick = { onName(name.trim().ifBlank { "عالمنا الخاص" }) }, enabled = world != null) { Text("حفظ الاسم") }
-        Text("بيانات هذا الإصدار تحفظ محلياً. النسخ الاحتياطي والمزامنة وحماية بيانات المشاركين ستُضاف قبل اعتبار التطبيق مكتملاً.", color = Color.LightGray, fontSize = 12.sp)
+        Divider(color = Rose.copy(alpha = .25f))
+        Text("بداية الرحلة", color = Gold, fontWeight = FontWeight.Bold)
+        Text("اكتبوا التاريخ بصيغة سنة-شهر-يوم، مثال: 2026-05-18. تُفتح المراحل بعد مرور 7 و10 و12 و15 و20 يوماً كاملاً.", color = Color.LightGray, fontSize = 12.sp)
+        OutlinedTextField(
+            value = startDate,
+            onValueChange = { startDate = it.take(10); dateMessage = "" },
+            label = { Text("تاريخ البداية YYYY-MM-DD") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+        )
+        Button(
+            onClick = {
+                val parsed = runCatching { java.time.LocalDate.parse(startDate) }.getOrNull()
+                when {
+                    world == null -> dateMessage = "أنشئوا العالم أولاً."
+                    parsed == null -> dateMessage = "صيغة التاريخ غير صحيحة. استخدم YYYY-MM-DD."
+                    parsed.isAfter(java.time.LocalDate.now()) -> dateMessage = "لا يمكن اختيار تاريخ في المستقبل."
+                    else -> {
+                        onRelationshipDate(parsed.toString())
+                        dateMessage = "تم حفظ تاريخ البداية."
+                    }
+                }
+            },
+            enabled = world != null && startDate.isNotBlank()
+        ) { Text("حفظ تاريخ البداية") }
+        if (dateMessage.isNotBlank()) Text(dateMessage, color = Rose, fontSize = 12.sp)
+        Text("البيانات المحلية مشفّرة على هذا الجهاز. المزامنة بين الأجهزة ستُفعّل بعد بناء الاتصال الآمن.", color = Color.LightGray, fontSize = 12.sp)
     }
+}
+
+private fun calculateJourneyStage(startDate: String): Int {
+    val start = runCatching { java.time.LocalDate.parse(startDate) }.getOrNull() ?: return -1
+    val elapsedDays = java.time.temporal.ChronoUnit.DAYS.between(start, java.time.LocalDate.now())
+    if (elapsedDays < 0) return -1
+    return WorldLimits.journeyMilestones.count { elapsedDays >= it } - 1
 }
