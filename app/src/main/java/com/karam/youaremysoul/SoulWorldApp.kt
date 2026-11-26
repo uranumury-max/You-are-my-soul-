@@ -52,6 +52,8 @@ fun SoulWorldApp() {
     val deviceRegistrar = remember { SupabaseDeviceRegistrar(context) }
     val worldRepository = remember { SupabaseWorldRepository() }
     val pairingRepository = remember { SupabasePairingRepository() }
+    val scope = rememberCoroutineScope()
+    val cloudBootstrapMutex = remember { Mutex() }
     var pendingJoinRequests by remember { mutableStateOf(emptyList<PendingWorldJoinRequest>()) }
     var pendingRequestsLoadFailed by remember { mutableStateOf(false) }
     var cloudStatus by remember { mutableStateOf("") }
@@ -70,11 +72,13 @@ fun SoulWorldApp() {
             runCatching { connectivity.unregisterNetworkCallback(callback) }
         }
     }
-    LaunchedEffect(authClient, deviceRegistrar, networkRevision) {
-        if (!SupabaseRuntimeConfig.fromBuildConfig().isConfigured) {
-            cloudAuthenticated = false
-            cloudStatus = "المزامنة السحابية بانتظار إعداد الخدمة."
-        } else {
+    suspend fun bootstrapCloud() {
+        cloudBootstrapMutex.withLock {
+            if (!SupabaseRuntimeConfig.fromBuildConfig().isConfigured) {
+                cloudAuthenticated = false
+                cloudStatus = "المزامنة السحابية بانتظار إعداد الخدمة."
+                return@withLock
+            }
             cloudStatus = "جارٍ تأمين هوية الاتصال..."
             try {
                 val session = authClient.ensureAuthenticatedSession()
@@ -97,6 +101,12 @@ fun SoulWorldApp() {
             }
         }
     }
+    LaunchedEffect(authClient, deviceRegistrar) {
+        bootstrapCloud()
+    }
+    LaunchedEffect(networkRevision) {
+        if (networkRevision > 0) scope.launch { bootstrapCloud() }
+    }
     var world by remember { mutableStateOf<WorldSnapshot?>(null) }
     var savedCloudWorldId by remember { mutableStateOf("") }
     var savedWorldName by remember { mutableStateOf("") }
@@ -104,7 +114,6 @@ fun SoulWorldApp() {
     var storageWarning by remember { mutableStateOf("") }
     val saveMutex = remember { Mutex() }
     val saveRevision = remember { AtomicLong(0L) }
-    val scope = rememberCoroutineScope()
     LaunchedEffect(store) {
         try {
             val loaded = withContext(Dispatchers.IO) { store.load() }
