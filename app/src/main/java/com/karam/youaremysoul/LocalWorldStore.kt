@@ -4,40 +4,74 @@ import android.content.Context
 import org.json.JSONArray
 import org.json.JSONObject
 
-/** Durable local checkpoint. Each device keeps its own copy; network replication is a separate layer. */
+/**
+ * Durable encrypted local checkpoint.
+ * The encryption key is held by Android Keystore; network replication is a separate layer.
+ */
 class LocalWorldStore(context: Context) {
     private val prefs = context.getSharedPreferences("world_checkpoint", Context.MODE_PRIVATE)
+    private val cipher = SecureSnapshotCipher()
 
     fun save(world: WorldSnapshot) {
-        val json = JSONObject().apply {
-            put("worldName", world.worldName)
-            put("hostCode", world.hostCode)
-            put("journeyStage", world.journeyStage)
-            put("gardenFlowers", world.gardenFlowers)
-            put("gardenLastWateredAt", world.gardenLastWateredAt)
-            put("dailyAnswerDate", world.dailyAnswerDate)
-            put("dailyAnswer", world.dailyAnswer)
-            put("memories", JSONArray().apply { world.memories.forEach(::put) })
-            put("members", JSONArray().apply {
-                world.members.forEach { member ->
-                    put(JSONObject().put("code", member.localCode)
-                        .put("name", member.displayName).put("host", member.isHost))
-                }
-            })
+        val encrypted = cipher.encrypt(encode(world))
+        // Commit before returning so the UI never reports a save that is still only queued.
+        check(prefs.edit().putString(ENCRYPTED_SNAPSHOT_KEY, encrypted).commit()) {
+            "Unable to persist encrypted world snapshot"
         }
-        prefs.edit().putString("snapshot", json.toString()).apply()
+        // Remove the old plaintext entry only after the encrypted copy is durable.
+        prefs.edit().remove(LEGACY_SNAPSHOT_KEY).apply()
     }
 
-    fun load(): WorldSnapshot? = runCatching {
-        val json = JSONObject(prefs.getString("snapshot", null) ?: return null)
+    fun load(): WorldSnapshot? {
+        val encrypted = prefs.getString(ENCRYPTED_SNAPSHOT_KEY, null)
+        if (encrypted != null) {
+            return runCatching { decode(cipher.decrypt(encrypted)) }.getOrNull()
+        }
+
+        // One-time migration from the previous plaintext format.
+        val legacy = prefs.getString(LEGACY_SNAPSHOT_KEY, null) ?: return null
+        val migrated = runCatching { decode(legacy) }.getOrNull() ?: return null
+        return runCatching {
+            save(migrated)
+            migrated
+        }.getOrNull()
+    }
+
+    private fun encode(world: WorldSnapshot): String = JSONObject().apply {
+        put("worldName", world.worldName)
+        put("hostCode", world.hostCode)
+        put("journeyStage", world.journeyStage)
+        put("gardenFlowers", world.gardenFlowers)
+        put("gardenLastWateredAt", world.gardenLastWateredAt)
+        put("dailyAnswerDate", world.dailyAnswerDate)
+        put("dailyAnswer", world.dailyAnswer)
+        put("memories", JSONArray().apply { world.memories.forEach(::put) })
+        put("members", JSONArray().apply {
+            world.members.forEach { member ->
+                put(
+                    JSONObject()
+                        .put("code", member.localCode)
+                        .put("name", member.displayName)
+                        .put("host", member.isHost)
+                )
+            }
+        })
+    }.toString()
+
+    private fun decode(raw: String): WorldSnapshot {
+        val json = JSONObject(raw)
         val membersJson = json.optJSONArray("members") ?: JSONArray()
         val memoriesJson = json.optJSONArray("memories") ?: JSONArray()
-        WorldSnapshot(
+        return WorldSnapshot(
             worldName = json.optString("worldName", "عالمنا الخاص"),
             hostCode = json.optString("hostCode"),
-            members = (0 until membersJson.length()).map { i ->
-                val m = membersJson.getJSONObject(i)
-                WorldMember(m.optString("code"), m.optString("name"), m.optBoolean("host"))
+            members = (0 until membersJson.length()).map { index ->
+                val member = membersJson.getJSONObject(index)
+                WorldMember(
+                    member.optString("code"),
+                    member.optString("name"),
+                    member.optBoolean("host")
+                )
             },
             journeyStage = json.optInt("journeyStage"),
             memories = (0 until memoriesJson.length()).map { memoriesJson.optString(it) },
@@ -46,5 +80,10 @@ class LocalWorldStore(context: Context) {
             dailyAnswerDate = json.optString("dailyAnswerDate", ""),
             dailyAnswer = json.optString("dailyAnswer", "")
         )
-    }.getOrNull()
+    }
+
+    private companion object {
+        const val ENCRYPTED_SNAPSHOT_KEY = "snapshot_encrypted_v1"
+        const val LEGACY_SNAPSHOT_KEY = "snapshot"
+    }
 }
