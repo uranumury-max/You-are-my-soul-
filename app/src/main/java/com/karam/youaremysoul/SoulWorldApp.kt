@@ -246,7 +246,9 @@ fun SoulWorldApp() {
                     ) {
                         try {
                             val session = authClient.ensureAuthenticatedSession()
-                            mutationSync.enqueueChanges(requireNotNull(lastPersistedWorld), next, session)
+                            withContext(Dispatchers.IO) {
+                                mutationSync.enqueueChanges(requireNotNull(lastPersistedWorld), next, session)
+                            }
                             val worldId = java.util.UUID.fromString(next.cloudWorldId)
                             val (_, applied) = syncCoordinator.syncAndApply(
                                 session, worldId, worldKeyVault
