@@ -141,7 +141,7 @@ fun SoulWorldApp() {
                                     )
                                     persist(current.copy(gardenFlowers = current.gardenFlowers + 1, gardenLastWateredAt = System.currentTimeMillis()))
                                 },
-                                answer = world?.dailyAnswer.orEmpty(),
+                                answer = world?.takeIf { it.dailyAnswerDate == java.time.LocalDate.now().toString() }?.dailyAnswer.orEmpty(),
                                 onAnswer = { value ->
                                     val current = world ?: WorldSnapshot(
                                         "عالمنا الخاص", DeviceIdentity(context).code,
@@ -317,7 +317,7 @@ private fun ConnectionSection(
 private fun MemoriesSection(memories: List<String>, text: String, onText: (String) -> Unit, onAdd: () -> Unit, onDelete: (Int) -> Unit) {
     Column(Modifier.fillMaxSize()) {
         Text("ذكرياتنا", color = Gold, fontSize = 23.sp, fontWeight = FontWeight.Bold)
-        Text("تُحفظ الذكريات على هذا الجهاز حتى إغلاق التطبيق.", color = Rose, fontSize = 12.sp)
+        Text("تبقى الذكريات محفوظة على هذا الجهاز حتى بعد إغلاق التطبيق.", color = Rose, fontSize = 12.sp)
         OutlinedTextField(value = text, onValueChange = { onText(it.take(500)) }, label = { Text("اكتب ذكرى أو رسالة قصيرة") }, modifier = Modifier.fillMaxWidth(), minLines = 2)
         Button(onClick = onAdd, enabled = text.isNotBlank(), modifier = Modifier.align(Alignment.End)) { Text("حفظ الذكرى") }
         if (memories.isEmpty()) Text("لم تُحفظ ذكريات بعد.", color = Color.LightGray)
