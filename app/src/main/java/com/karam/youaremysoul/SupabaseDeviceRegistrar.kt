@@ -101,7 +101,7 @@ class SupabaseDeviceRegistrar(context: Context) {
             connection.outputStream.use { it.write(body.toByteArray(StandardCharsets.UTF_8)) }
             val status = connection.responseCode
             val stream = if (status in 200..299) connection.inputStream else connection.errorStream
-            stream?.bufferedReader(StandardCharsets.UTF_8)?.use { it.readText() }
+            val response = stream?.bufferedReader(StandardCharsets.UTF_8)?.use { it.readText() }.orEmpty()
             if (status !in 200..299) {
                 throw SupabaseAuthException(
                     when {
@@ -111,6 +111,9 @@ class SupabaseDeviceRegistrar(context: Context) {
                         else -> "device_key_registration_failed"
                     }
                 )
+            }
+            if (!response.trim().equals("true", ignoreCase = true)) {
+                throw SupabaseAuthException("device_key_registration_not_confirmed")
             }
         } catch (error: SupabaseAuthException) {
             throw error
