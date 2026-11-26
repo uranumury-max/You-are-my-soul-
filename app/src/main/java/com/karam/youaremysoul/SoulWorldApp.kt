@@ -269,6 +269,11 @@ private fun WorldHome(world: WorldSnapshot?, onCreate: () -> Unit) {
         Text(world?.worldName ?: "عالم يتكوّن منكم", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.SemiBold)
         Text(if (world == null) "ابدأ بإنشاء عالم محفوظ على هذا الهاتف" else "عالم محفوظ محلياً • ${world.members.size} مشارك",
             color = Rose.copy(alpha = .9f), fontSize = 13.sp)
+        world?.relationshipStartDate?.let { startDate ->
+            daysSinceRelationshipStart(startDate)?.let { days ->
+                Text("منذ $days يوم من الحكاية", color = Gold.copy(alpha = .9f), fontSize = 13.sp)
+            }
+        }
         Spacer(Modifier.height(14.dp))
         Card(colors = CardDefaults.cardColors(containerColor = CardTone), shape = RoundedCornerShape(20.dp)) {
             Column(Modifier.padding(16.dp)) {
@@ -554,4 +559,11 @@ private fun calculateJourneyStage(startDate: String): Int {
     val elapsedDays = java.time.temporal.ChronoUnit.DAYS.between(start, java.time.LocalDate.now())
     if (elapsedDays < 0) return -1
     return WorldLimits.journeyMilestones.count { elapsedDays >= it } - 1
+}
+
+
+private fun daysSinceRelationshipStart(startDate: String): Long? {
+    val start = runCatching { java.time.LocalDate.parse(startDate) }.getOrNull() ?: return null
+    val days = java.time.temporal.ChronoUnit.DAYS.between(start, java.time.LocalDate.now())
+    return days.takeIf { it >= 0 }
 }
