@@ -22,7 +22,9 @@ data class SupabaseRuntimeConfig(
         }
 
         if (parsed.scheme != "https" || parsed.host.isNullOrBlank() ||
-            parsed.userInfo != null || parsed.fragment != null
+            parsed.userInfo != null || parsed.fragment != null ||
+            (!parsed.path.isNullOrBlank() && parsed.path != "/") ||
+            parsed.query != null
         ) return "https_project_url_required"
 
         val key = publishableKey.trim()
@@ -31,6 +33,9 @@ data class SupabaseRuntimeConfig(
         if (key.startsWith("sb_secret_", ignoreCase = true) || isLegacyServiceRoleJwt(key)) {
             return "service_role_key_forbidden"
         }
+        val isPublishableKey = key.startsWith("sb_publishable_", ignoreCase = true) &&
+            key.length > "sb_publishable_".length
+        if (!isPublishableKey && !isLegacyAnonJwt(key)) return "publishable_key_invalid"
         return null
     }
 
@@ -43,6 +48,18 @@ data class SupabaseRuntimeConfig(
                 projectUrl = BuildConfig.SUPABASE_URL,
                 publishableKey = BuildConfig.SUPABASE_PUBLISHABLE_KEY
             )
+
+        private fun isLegacyAnonJwt(value: String): Boolean {
+            val parts = value.split('.')
+            if (parts.size != 3) return false
+            val payload = try {
+                String(Base64.getUrlDecoder().decode(parts[1]), Charsets.UTF_8)
+            } catch (_: IllegalArgumentException) {
+                return false
+            }
+            return Regex("\\"role\\"\\s*:\\s*\\"anon\\"", RegexOption.IGNORE_CASE)
+                .containsMatchIn(payload)
+        }
 
         private fun isLegacyServiceRoleJwt(value: String): Boolean {
             val parts = value.split('.')
