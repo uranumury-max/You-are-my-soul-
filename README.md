@@ -8,8 +8,8 @@ The target design is cloud-first and offline-capable:
 - A managed Supabase backend coordinates authenticated membership and synchronization.
 - Each Android installation keeps local data so the app remains useful without a connection.
 - A durable Room database now contains sync outbox, downloaded-event, and cursor tables.
-- Four checked-in SQL migrations define world membership, owner-approved join requests, per-account/per-world rate-limited device-code discovery, append-only events, private media storage, device public-key registration, and restrictive RLS.
-- Local snapshots use AES-256-GCM with Android Keystore protection. A separate AES-GCM content envelope and per-world key vault have been added as cryptographic foundations, and an RSA-OAEP device key-exchange primitive plus authenticated public-key registration are now present, but member key delivery is not implemented.
+- Five checked-in SQL migrations define world membership, owner-approved join requests, per-account/per-world rate-limited device-code discovery, append-only events, private media storage, device public-key registration, owner-controlled recipient key envelopes, and restrictive RLS.
+- Local snapshots use AES-256-GCM with Android Keystore protection. A separate AES-GCM content envelope and per-world key vault have been added as cryptographic foundations, and an RSA-OAEP device key-exchange primitive plus authenticated public-key registration are now present, and authenticated owner-to-device encrypted key-envelope delivery is now implemented in source, but full content restoration and synchronization are not.
 
 ## Current implementation checkpoint
 
@@ -21,7 +21,7 @@ The target design is cloud-first and offline-capable:
 - Room sync outbox, downloaded-event cache, retry metadata, and monotonic cursor storage.
 - AES-GCM world-content envelope bound to world/event/type/key-version metadata, with tamper and nonce tests.
 - Android Keystore-wrapped per-world key vault; a local owner key is generated only after the encrypted world snapshot is durable, but member key distribution is not implemented.
-- Supabase SQL migrations 001–004 and backend security/deployment checklist.
+- Supabase SQL migrations 001–005 and backend security/deployment checklist.
 - Android anonymous Supabase Auth session creation/refresh with encrypted Keystore-backed session persistence.
 - Authenticated device registration, idempotent cloud-world provisioning, and local world-name metadata updates.
 - Authenticated join-request submission, owner inbox, approve/decline actions, and requester status refresh.
@@ -30,7 +30,7 @@ The target design is cloud-first and offline-capable:
 
 ## Not yet complete — do not treat as a working connected app
 
-- No Supabase project has been provisioned and migrations 001–004 have not been applied to a live/staging backend. Auth, device registration, cloud-world creation, and pairing clients are present in source but have not been verified against a live backend.
+- No Supabase project has been provisioned and migrations 001–005 have not been applied to a live/staging backend. Auth, device registration, cloud-world creation, and pairing clients are present in source but have not been verified against a live backend.
 - Android build configuration now accepts `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` from Gradle properties or environment variables; the GitHub Actions build reads the matching repository secrets. Missing values leave cloud connectivity unconfigured rather than fabricating a successful connection. Secret/service-role keys are rejected by the runtime config validator.
 - The encrypted world snapshot now migrates safely from SharedPreferences into Room. The durable outbox exists, but local UI edits are not yet atomically connected to outbox events.
 - Content encryption and the local key vault are not yet wired into the app's messages/memories/media.
