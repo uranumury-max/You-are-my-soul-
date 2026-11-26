@@ -167,7 +167,7 @@ class PairingAttemptLimiter(
     fun allow(deviceCode: String): Boolean {
         if (!PairingSecurity.isValidDeviceCode(deviceCode)) return false
         val now = clock()
-        if (deviceCode !in attempts && attempts.size >= MAX_TRACKED_DEVICES) {
+        if (!attempts.containsKey(deviceCode) && attempts.size >= MAX_TRACKED_DEVICES) {
             attempts.entries.removeIf { entry ->
                 entry.value.removeAll { now - it >= windowMs || it > now }
                 entry.value.isEmpty()
