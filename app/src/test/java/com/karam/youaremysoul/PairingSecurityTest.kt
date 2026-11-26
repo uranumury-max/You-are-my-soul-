@@ -56,7 +56,7 @@ class PairingSecurityTest {
     fun pendingChallengeQueueHasHardLimit() {
         val verifier = PairingChallengeVerifier { 100_000L }
         repeat(128) { index ->
-            verifier.issue("request-id-${index.toString().padStart(4, '0')}")
+            verifier.issue("request-id-test-${index.toString().padStart(4, '0')}")
         }
         val rejected = runCatching { verifier.issue("request-id-over-limit") }.isFailure
         assertTrue(rejected)
