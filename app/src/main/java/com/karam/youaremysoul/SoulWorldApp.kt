@@ -62,7 +62,7 @@ fun SoulWorldApp() {
                 cloudStatus = "هوية الاتصال والجهاز مسجلتان بأمان."
             } catch (error: SupabaseAuthException) {
                 cloudStatus = when (error.safeCode) {
-                    "auth_rate_limited", "device_registration_rate_limited" -> "الخدمة مزدحمة مؤقتاً؛ سنحاول لاحقاً."
+                    "auth_rate_limited", "device_registration_rate_limited" -> "الخدمة مزدحمة مؤقتاً؛ لم يكتمل تسجيل الاتصال."
                     "auth_network_unavailable", "auth_service_unavailable", "device_registration_network_unavailable", "device_registration_unavailable" -> "تعذر الاتصال مؤقتاً؛ بياناتكم المحلية آمنة."
                     "service_role_key_forbidden" -> "إعداد المفتاح غير آمن؛ أوقفنا الاتصال."
                     "device_registration_rejected", "device_registration_not_confirmed" -> "تعذر تسجيل هوية هذا الجهاز؛ لن نبدأ الربط قبل تأكيدها."
