@@ -3,8 +3,8 @@
 ## Stable device identity
 Each installation creates and locally retains a random nine-digit app identity. It is not a phone number and is not regenerated on each launch. A server-side uniqueness check is required before treating it as globally unique; the local generator alone cannot guarantee collision-free identities across every device.
 
-## Host-owned world
-The design assigns one participant's device as the authoritative host and stores a durable checkpoint on it. Participants also retain local snapshots. When a session ends, the latest received state should be checkpointed on every device.
+## Authority and availability
+No participant phone is the always-on server or sole source of truth. The production design uses a managed cloud backend as the coordination and durable synchronization authority, while every phone keeps its own encrypted local copy. This avoids making other participants' availability depend on the host phone remaining powered, online, and exempt from Android background process limits.
 
 ## Connectivity limitation
 A phone can serve as a host while its process, power, and network are available. Android background restrictions, changing IP addresses, NAT, and offline/powered-off states prevent a phone-only server from guaranteeing worldwide, always-on access. A reliable remote reconnect needs an explicitly selected network transport and, where direct connections are blocked, a relay or hosted rendezvous. No UI should claim that a remote invitation or live sync succeeded until the transport acknowledges it.
@@ -61,3 +61,29 @@ The intended flow is: copy local app code -> enter peer code -> send join reques
 - Snapshot encryption and durable SharedPreferences commits run on Dispatchers.IO and are serialized with a mutex so rapid edits cannot overwrite one another out of order.
 - If an encrypted snapshot cannot be decrypted or saved, editing is locked and world creation is disabled. Do not silently interpret unreadable encrypted data as an empty world.
 - Only the active Compose destination is built; outgoing content is retained for the short transition animation. Large media must be deferred to its own screen.
+
+
+## Selected production architecture (decision)
+The selected target is a hybrid cloud-first, offline-capable design:
+
+- **Backend:** Supabase (managed PostgreSQL, Auth, Realtime, private Storage, and server-side Edge Functions/RPC). It provides relational constraints and transactional authorization for membership, invitations, and append-only synchronization events. Supabase's official Android/Kotlin quickstart and Kotlin modules are available; project provisioning and credentials are a separate deployment step.
+- **Local-first UX:** Android Room is the durable local database and outbox. UI reads from Room; user edits are committed locally first, then queued for upload. Network state never blocks reading or editing already available content.
+- **Synchronization:** use immutable, uniquely identified events rather than repeatedly overwriting one shared world JSON blob. The backend assigns authoritative ordering/timestamps. Clients deduplicate by event ID, pull missing events, and apply deterministic reducers. Conflicting user edits must be resolved by explicit domain rules; do not silently use last-write-wins for the entire world.
+- **Media:** encrypted media files are uploaded to private object storage. Store metadata and encrypted object references in the event stream. Never expose public buckets for private memories or photos.
+- **Realtime:** Realtime is a notification that new events may exist, not the sole delivery mechanism. On reconnect or missed notifications, clients fetch events from the last acknowledged cursor.
+- **Pairing:** the nine-digit device code is only a human-friendly discovery hint. A request must use an expiring, single-use invitation/challenge, authenticated device identity, explicit owner approval, and a revocable membership grant. Do not treat possession of a nine-digit code as authorization.
+- **Transport:** use HTTPS/WSS with platform certificate validation. Do not add brittle certificate pins without a tested pin-rotation and backup-pin process. Never ship a Supabase service-role/secret key in the APK; only publishable client configuration may be embedded, and every exposed table/function/storage object must enforce least-privilege authorization.
+- **End-to-end privacy:** private content (messages, memories, journal entries, photos, drawings, capsule contents) should be encrypted on-device with a per-world data key before upload. The backend stores ciphertext and minimal routing metadata. Share the world key only after an approved authenticated pairing, and support member revocation by rotating the world key for future content. Do not claim old content is inaccessible to a removed member if that member already downloaded it.
+- **Recovery:** provide an explicit encrypted recovery/export path. A device-bound Android Keystore key alone cannot restore data on a replacement phone. Recovery must be designed before promising account/device recovery; do not silently upload plaintext keys.
+- **Scale:** cap a world at five active members. Apply server-side rate limits, payload-size limits, schema validation, audit events for membership changes, and per-world authorization on every operation.
+
+### Important implementation boundary
+This is the chosen architecture, not a claim that cloud synchronization already works. The repository currently has local encrypted storage and pairing-security primitives, but no provisioned Supabase project, no production credentials, no Room outbox, no cloud schema deployed, and no live network pairing/synchronization. Do not show a successful connection state until a real server acknowledgement is received.
+
+### Delivery sequence
+1. Introduce Room and migrate existing encrypted snapshots without data loss.
+2. Define and test the local event/outbox model and deterministic conflict rules.
+3. Add Supabase schema, restrictive RLS policies, RPC/Edge Functions, and private storage policies.
+4. Add authenticated Android networking and server-authorized pairing.
+5. Add encrypted event/media synchronization, reconnect recovery, and revocation/key rotation.
+6. Add integration tests, abuse/rate-limit tests, backup/restore tests, and real multi-device tests before release.
