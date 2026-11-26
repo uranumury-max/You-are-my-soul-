@@ -47,7 +47,7 @@ internal class SecureSnapshotCipher {
         val iv = payload.copyOfRange(0, IV_LENGTH_BYTES)
         val encrypted = payload.copyOfRange(IV_LENGTH_BYTES, payload.size)
         val cipher = Cipher.getInstance(transformation)
-        cipher.init(Cipher.DECRYPT_MODE, getOrCreateKey(), GCMParameterSpec(tagLengthBits, iv))
+        cipher.init(Cipher.DECRYPT_MODE, getOrCreateKey(), GCMParameterSpec(TAG_LENGTH_BYTES * 8, iv))
         if (version == 2) cipher.updateAAD(V2_ASSOCIATED_DATA)
         val plainBytes = cipher.doFinal(encrypted)
         require(plainBytes.size <= MAX_PLAINTEXT_BYTES) { "Decrypted snapshot exceeds the safe size limit" }
