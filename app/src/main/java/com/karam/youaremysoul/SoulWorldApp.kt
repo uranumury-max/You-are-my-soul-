@@ -56,6 +56,9 @@ fun SoulWorldApp() {
     val snapshotBootstrapper = remember { WorldSnapshotBootstrapper(context) }
     val deviceKeyVault = remember { DeviceKeyVault() }
     val worldKeyVault = remember { WorldKeyVault(context) }
+    val syncCoordinator = remember { WorldSyncCoordinator(context) }
+    val mutationSync = remember { WorldMutationSync(RoomSyncStore(context), worldKeyVault) }
+    val syncMutex = remember { Mutex() }
     val scope = rememberCoroutineScope()
     val cloudBootstrapMutex = remember { Mutex() }
     var pendingJoinRequests by remember { mutableStateOf(emptyList<PendingWorldJoinRequest>()) }
@@ -219,31 +222,84 @@ fun SoulWorldApp() {
 
     fun persist(next: WorldSnapshot) {
         if (storageWarning.isNotBlank()) return
+        val previous = world
         world = next
-        // Each edit receives a monotonic revision. If rapid UI actions launch
-        // coroutines out of order, an older snapshot is skipped rather than
-        // overwriting a newer one after waiting for the IO lock.
         val revision = saveRevision.incrementAndGet()
         scope.launch {
             val result = try {
-                saveMutex.withLock {
-                    if (revision == saveRevision.get()) {
-                        withContext(Dispatchers.IO) { store.save(next) }
+                syncMutex.withLock {
+                    saveMutex.withLock {
                         if (revision == saveRevision.get()) {
-                            savedCloudWorldId = next.cloudWorldId
-                            savedWorldName = next.worldName
+                            withContext(Dispatchers.IO) { store.save(next) }
+                            if (revision == saveRevision.get()) {
+                                savedCloudWorldId = next.cloudWorldId
+                                savedWorldName = next.worldName
+                            }
+                        }
+                    }
+                    if (revision == saveRevision.get() &&
+                        cloudAuthenticated && worldKeyReady &&
+                        previous != null && previous.cloudWorldId == next.cloudWorldId &&
+                        next.cloudWorldId.isNotBlank()
+                    ) {
+                        try {
+                            val session = authClient.ensureAuthenticatedSession()
+                            mutationSync.enqueueChanges(previous, next, session)
+                            val worldId = java.util.UUID.fromString(next.cloudWorldId)
+                            val (_, applied) = syncCoordinator.syncAndApply(
+                                session, worldId, worldKeyVault
+                            )
+                            if (revision == saveRevision.get() && applied != null) {
+                                world = applied
+                                savedCloudWorldId = applied.cloudWorldId
+                                savedWorldName = applied.worldName
+                                cloudStatus = "تم حفظ التعديلات ومزامنتها مع العالم المشترك."
+                            }
+                        } catch (cancelled: CancellationException) {
+                            throw cancelled
+                        } catch (_: Exception) {
+                            cloudStatus = "حُفظ التعديل محلياً؛ ستُعاد محاولة المزامنة تلقائياً."
                         }
                     }
                 }
                 true
             } catch (cancelled: CancellationException) {
                 throw cancelled
-            } catch (error: Exception) {
+            } catch (_: Exception) {
                 false
             }
             if (revision == saveRevision.get()) {
                 storageWarning = if (result) "" else "تعذر حفظ التغييرات على هذا الجهاز. تحقق من مساحة التخزين."
             }
+        }
+    }
+
+    LaunchedEffect(worldLoaded, cloudAuthenticated, worldKeyReady, world?.cloudWorldId, networkRevision) {
+        val current = world
+        if (!worldLoaded || !cloudAuthenticated || !worldKeyReady ||
+            current == null || current.cloudWorldId.isBlank()
+        ) return@LaunchedEffect
+        val cloudId = current.cloudWorldId
+        while (true) {
+            try {
+                syncMutex.withLock {
+                    val session = authClient.ensureAuthenticatedSession()
+                    val (_, applied) = syncCoordinator.syncAndApply(
+                        session, java.util.UUID.fromString(cloudId), worldKeyVault
+                    )
+                    if (applied != null && world?.cloudWorldId == cloudId) {
+                        world = applied
+                        savedCloudWorldId = applied.cloudWorldId
+                        savedWorldName = applied.worldName
+                        cloudStatus = "العالم متزامن بين الأجهزة."
+                    }
+                }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                cloudStatus = "المزامنة متوقفة مؤقتاً؛ ستُعاد المحاولة تلقائياً."
+            }
+            kotlinx.coroutines.delay(20_000L)
         }
     }
 
