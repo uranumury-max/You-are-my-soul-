@@ -380,7 +380,7 @@ returns boolean
 language plpgsql
 security definer
 set search_path = ''
-as $$
+as $device_registration$
 begin
     if auth.uid() is null then
         raise exception 'authentication required' using errcode = '28000';
@@ -415,7 +415,7 @@ exception
         -- Handles two installations racing to claim the same code.
         return false;
 end;
-$;
+$device_registration$;
 
 create or replace function public.request_join_by_device_code(p_device_code text)
 returns uuid
