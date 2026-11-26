@@ -17,6 +17,8 @@ import javax.crypto.spec.SecretKeySpec
  */
 data class PairingChallenge(
     val requestId: String,
+    val fromDeviceCode: String,
+    val hostDeviceCode: String,
     val nonce: String,
     val expiresAtEpochMs: Long
 )
@@ -57,11 +59,21 @@ object PairingSecurity {
     /** Generate a one-time 256-bit secret. Deliver it only inside authenticated TLS. */
     fun newPairingSecret(): String = randomBytes(SECRET_BYTES).toUrlSafeBase64()
 
-    fun newChallenge(requestId: String, nowEpochMs: Long, lifetimeMs: Long = 120_000L): PairingChallenge {
+    fun newChallenge(
+        requestId: String,
+        fromDeviceCode: String,
+        hostDeviceCode: String,
+        nowEpochMs: Long,
+        lifetimeMs: Long = 120_000L
+    ): PairingChallenge {
         require(requestId.length in 16..80)
+        require(isValidDeviceCode(fromDeviceCode) && isValidDeviceCode(hostDeviceCode))
+        require(fromDeviceCode != hostDeviceCode)
         require(lifetimeMs in 10_000L..300_000L)
         return PairingChallenge(
             requestId = requestId,
+            fromDeviceCode = fromDeviceCode,
+            hostDeviceCode = hostDeviceCode,
             nonce = randomBytes(NONCE_BYTES).toUrlSafeBase64(),
             expiresAtEpochMs = nowEpochMs + lifetimeMs
         )
@@ -85,7 +97,7 @@ object PairingSecurity {
     }
 
     private fun canonicalMessage(challenge: PairingChallenge): ByteArray =
-        "${challenge.requestId}\n${challenge.nonce}\n${challenge.expiresAtEpochMs}"
+        "${challenge.requestId}\n${challenge.fromDeviceCode}\n${challenge.hostDeviceCode}\n${challenge.nonce}\n${challenge.expiresAtEpochMs}"
             .toByteArray(Charsets.UTF_8)
 
     private fun decodeSecret(secret: String): ByteArray {
@@ -108,10 +120,15 @@ class PairingChallengeVerifier(private val clock: () -> Long = System::currentTi
     private val pending = ConcurrentHashMap<String, PairingChallenge>()
 
     @Synchronized
-    fun issue(requestId: String, lifetimeMs: Long = 120_000L): PairingChallenge {
+    fun issue(
+        requestId: String,
+        fromDeviceCode: String,
+        hostDeviceCode: String,
+        lifetimeMs: Long = 120_000L
+    ): PairingChallenge {
         purgeExpired()
         check(pending.size < MAX_PENDING_CHALLENGES) { "Too many pending pairing challenges" }
-        val challenge = PairingSecurity.newChallenge(requestId, clock(), lifetimeMs)
+        val challenge = PairingSecurity.newChallenge(requestId, fromDeviceCode, hostDeviceCode, clock(), lifetimeMs)
         check(pending.putIfAbsent(requestId, challenge) == null) { "Duplicate pairing request" }
         return challenge
     }
