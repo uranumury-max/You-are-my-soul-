@@ -69,8 +69,16 @@ class SupabaseAuthClient(context: Context) {
     private fun persistResponse(response: JSONObject): AuthenticatedSupabaseUser {
         val user = response.optJSONObject("user")
             ?: throw SupabaseAuthException("auth_response_missing_user")
-        val userId = user.optString("id").takeIf { it.isNotBlank() }
+        if (user.has("is_anonymous") && !user.optBoolean("is_anonymous")) {
+            throw SupabaseAuthException("auth_response_not_anonymous")
+        }
+        val rawUserId = user.optString("id").takeIf { it.isNotBlank() }
             ?: throw SupabaseAuthException("auth_response_missing_user_id")
+        val userId = try {
+            java.util.UUID.fromString(rawUserId).toString()
+        } catch (_: IllegalArgumentException) {
+            throw SupabaseAuthException("auth_response_invalid_user_id")
+        }
         val accessToken = response.optString("access_token")
             .takeIf { it.isNotBlank() }
             ?: throw SupabaseAuthException("auth_response_missing_access_token")
