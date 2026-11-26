@@ -90,6 +90,10 @@ object SyncProtocolRules {
         val keyVersion = remainder.substring(0, separator).toIntOrNull()
         if (keyVersion == null || keyVersion <= 0) return "invalid_ciphertext_encoding"
         val encodedPayload = remainder.substring(separator + 1)
+        if (encodedPayload.isEmpty() || encodedPayload.any {
+                it !in 'A'..'Z' && it !in 'a'..'z' && it !in '0'..'9' && it != '+' && it != '/'
+            }
+        ) return "invalid_ciphertext_encoding"
         val decoded = try {
             Base64.getDecoder().decode(encodedPayload)
         } catch (_: IllegalArgumentException) {
