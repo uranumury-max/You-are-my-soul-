@@ -402,17 +402,17 @@ fun SoulWorldApp() {
                                                         check(worldKeyReady && worldKeyVault.hasWorldKey(
                                                             java.util.UUID.fromString(current.cloudWorldId), 1
                                                         )) { "World key is not ready for secure member delivery" }
+                                                        snapshotBootstrapper.publishOwnerSnapshot(
+                                                            session = session,
+                                                            world = current,
+                                                            worldKeyVault = worldKeyVault
+                                                        )
                                                         val deliveredDevices = worldKeyExchangeRepository.distributeOwnerWorldKey(
                                                             session = session,
                                                             worldId = current.cloudWorldId,
                                                             keyVersion = 1,
                                                             worldKeyVault = worldKeyVault,
                                                             deviceKeyVault = deviceKeyVault
-                                                        )
-                                                        snapshotBootstrapper.publishOwnerSnapshot(
-                                                            session = session,
-                                                            world = current,
-                                                            worldKeyVault = worldKeyVault
                                                         )
                                                         requestStatus = "تمت الموافقة وتأمين مفاتيح التشفير وإرسال نسخة العالم المشفرة إلى الأجهزة المسجلة ($deliveredDevices)."
                                                     } else {
