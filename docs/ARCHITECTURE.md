@@ -96,7 +96,7 @@ The checked-in migration currently defines:
 - Worlds and active/revoked memberships, with owner membership created atomically.
 - Private world invitation hashes with expiry and single-use acceptance.
 - Device-code registration and account-level throttling for code lookups.
-- Join requests resolved from a nine-digit device discovery code, with validated participant display names and explicit owner approve/decline RPCs (migration 003).
+- Join requests resolved from a nine-digit device discovery code, with validated participant display names, per-account and per-world request throttles, and explicit owner approve/decline RPCs (migration 003).
 - Owner-only member revocation and a five-active-member cap protected by per-world row locks during admission.
 - An append-only event stream with per-world idempotency and server sequence.
 - A private encrypted-media bucket with member-scoped object policies.
@@ -104,7 +104,7 @@ The checked-in migration currently defines:
 
 Security boundaries and remaining work:
 - The SQL migrations 001–003 are source code only until applied to a newly provisioned Supabase project and reviewed against its actual Auth/Storage settings.
-- Rate limiting in SQL is per authenticated account. Add IP/device-level throttling and monitoring at the API/Edge layer to resist account farming and enumeration.
+- Pairing lookups are rate-limited per authenticated account and per target world (20 requests per ten-minute world window). Add IP/device-level throttling and monitoring at the API/Edge layer to resist account farming and enumeration.
 - The app must generate high-entropy invite tokens and send only SHA-256 hashes to the database; the raw token must never be logged.
 - The event ciphertext envelope and local world-key vault primitives are implemented and unit-tested, but are not wired into the content model or uploads. Member key distribution, recovery, key rotation, and forward secrecy are not implemented yet.
 - Revoking a member blocks future server access, but cannot erase content that member already downloaded. Rotate the world key for future content after revocation.
