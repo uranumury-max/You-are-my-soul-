@@ -43,8 +43,8 @@ fun SoulWorldApp() {
     val store = remember { LocalWorldStore(context) }
     var world by remember { mutableStateOf(store.load()) }
     var tab by remember { mutableStateOf("العالم") }
-    val tabs = listOf("العالم", "الربط", "الذكريات", "حديقتنا", "سؤال اليوم", "رحلتنا", "الإعدادات")
-    val symbols = listOf("✧", "⌁", "♡", "❀", "?", "◷", "⚙")
+    val tabs = listOf("العالم", "الربط", "الذكريات", "لحظاتنا", "الإعدادات")
+    val symbols = listOf("✧", "⌁", "♡", "✦", "⚙")
     var worldName by remember { mutableStateOf("عالمنا الخاص") }
     var memoryText by remember { mutableStateOf("") }
     var displayName by remember { mutableStateOf("") }
@@ -81,9 +81,7 @@ fun SoulWorldApp() {
                         "العالم" -> "مساحتكم التي تكبر معكم"
                         "الربط" -> "لكل شخص هويته الخاصة"
                         "الذكريات" -> "تفاصيل صغيرة تستحق البقاء"
-                        "حديقتنا" -> "كل لمسة تترك أثراً ينمو"
-                        "سؤال اليوم" -> "سؤال صغير يفتح حديثاً جميلاً"
-                        "رحلتنا" -> "خطواتكم عبر الزمن"
+                        "لحظاتنا" -> "تجارب صغيرة تصنع عالمكم"
                         else -> "رتّبوا عالمكم كما تحبّون"
                     },
                     color = Color.White.copy(alpha = .62f), fontSize = 12.sp
@@ -134,7 +132,7 @@ fun SoulWorldApp() {
                                     world?.let { current -> persist(current.copy(memories = current.memories.filterIndexed { i, _ -> i != index })) }
                                 }
                             )
-                            "حديقتنا" -> GardenSection(
+                            "لحظاتنا" -> MomentsHub(
                                 flowers = world?.gardenFlowers ?: 0,
                                 onPlant = {
                                     val current = world ?: WorldSnapshot(
@@ -142,9 +140,7 @@ fun SoulWorldApp() {
                                         listOf(WorldMember(DeviceIdentity(context).code, "صاحب العالم", true))
                                     )
                                     persist(current.copy(gardenFlowers = current.gardenFlowers + 1, gardenLastWateredAt = System.currentTimeMillis()))
-                                }
-                            )
-                            "سؤال اليوم" -> DailyQuestionSection(
+                                },
                                 answer = world?.dailyAnswer.orEmpty(),
                                 onAnswer = { value ->
                                     val current = world ?: WorldSnapshot(
@@ -152,11 +148,10 @@ fun SoulWorldApp() {
                                         listOf(WorldMember(DeviceIdentity(context).code, "صاحب العالم", true))
                                     )
                                     persist(current.copy(dailyAnswerDate = java.time.LocalDate.now().toString(), dailyAnswer = value))
-                                }
+                                },
+                                stage = world?.journeyStage ?: 0,
+                                onUnlock = { stage -> world?.let { persist(it.copy(journeyStage = stage)) } }
                             )
-                            "رحلتنا" -> JourneySection(stage = world?.journeyStage ?: 0, onUnlock = { stage ->
-                                world?.let { persist(it.copy(journeyStage = stage)) }
-                            })
                             "الإعدادات" -> SettingsSection(world = world, onName = { value ->
                                 world?.let { persist(it.copy(worldName = value)) }
                             })
@@ -333,6 +328,35 @@ private fun MemoriesSection(memories: List<String>, text: String, onText: (Strin
                         TextButton(onClick = { onDelete(index) }) { Text("حذف", color = Rose) }
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MomentsHub(
+    flowers: Int, onPlant: () -> Unit, answer: String,
+    onAnswer: (String) -> Unit, stage: Int, onUnlock: (Int) -> Unit
+) {
+    var selected by remember { mutableStateOf("الحديقة") }
+    Column(Modifier.fillMaxSize()) {
+        Row(
+            Modifier.fillMaxWidth().padding(bottom = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            listOf("الحديقة", "سؤال اليوم", "الرحلة").forEach { item ->
+                FilterChip(
+                    selected = selected == item,
+                    onClick = { selected = item },
+                    label = { Text(item, fontSize = 11.sp) }
+                )
+            }
+        }
+        Box(Modifier.weight(1f).fillMaxWidth()) {
+            when (selected) {
+                "الحديقة" -> GardenSection(flowers, onPlant)
+                "سؤال اليوم" -> DailyQuestionSection(answer, onAnswer)
+                else -> JourneySection(stage, onUnlock)
             }
         }
     }
