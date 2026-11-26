@@ -26,7 +26,7 @@ class LocalWorldStore(context: Context) {
     fun load(): WorldSnapshot? {
         val encrypted = prefs.getString(ENCRYPTED_SNAPSHOT_KEY, null)
         if (encrypted != null) {
-            return runCatching { decode(cipher.decrypt(encrypted)) }.getOrNull()
+            return decode(cipher.decrypt(encrypted))
         }
 
         // One-time migration from the previous plaintext format.
