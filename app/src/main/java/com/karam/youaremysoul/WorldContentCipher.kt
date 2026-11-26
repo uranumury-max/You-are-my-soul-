@@ -34,7 +34,9 @@ internal object WorldContentCipher {
         cipher.init(Cipher.ENCRYPT_MODE, SecretKeySpec(worldKey, "AES"))
         cipher.updateAAD(associatedData(worldId, eventId, eventType, keyVersion))
         val encrypted = cipher.doFinal(plaintext)
-        val envelope = cipher.iv + encrypted
+        val nonce = cipher.iv
+        check(nonce.size == NONCE_BYTES) { "Unexpected AES-GCM nonce length" }
+        val envelope = nonce + encrypted
         val encoded = Base64.getEncoder().withoutPadding().encodeToString(envelope)
         val result = "$PREFIX$keyVersion:$encoded"
         require(result.toByteArray(Charsets.UTF_8).size <= SyncProtocolRules.MAX_CIPHERTEXT_BYTES) {
