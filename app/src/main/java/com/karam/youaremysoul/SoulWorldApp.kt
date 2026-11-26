@@ -3,6 +3,7 @@ package com.karam.youaremysoul
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.animation.togetherWith
+import androidx.compose.animation.core.tween
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
