@@ -146,6 +146,17 @@ fun SoulWorldApp() {
             ) { page ->
                 Column(Modifier.fillMaxSize().padding(horizontal = 18.dp)) {
                     Box(Modifier.weight(1f).fillMaxWidth()) {
+                        if (storageWarning.isNotBlank()) {
+                            Column(
+                                Modifier.fillMaxSize().padding(18.dp),
+                                verticalArrangement = Arrangement.spacedBy(10.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text("وضع حماية البيانات", color = Gold, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                                Text(storageWarning, color = Color.White, fontSize = 13.sp)
+                                Text("أوقفنا التعديلات مؤقتاً حتى لا نخاطر باستبدال نسخة عالمكم.", color = Rose, fontSize = 12.sp)
+                            }
+                        } else {
                         when (page) {
                             "الربط" -> ConnectionSection(
                                 displayName = displayName, onName = { displayName = it },
@@ -213,6 +224,7 @@ fun SoulWorldApp() {
                                 persist(WorldSnapshot("عالمنا الخاص", code, listOf(WorldMember(code, "صاحب العالم", true)), 0, emptyList()))
                                 tab = "الربط"
                             })
+                        }
                         }
                     }
                     DeveloperCredit()
