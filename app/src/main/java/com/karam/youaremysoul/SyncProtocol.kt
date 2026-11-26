@@ -19,7 +19,12 @@ enum class SyncEventType(val wireValue: String) {
     DRAWING_UPDATE("drawing_update"),
     CAPSULE_UPDATE("capsule_update"),
     MEDIA_ADD("media_add"),
-    SETTINGS_UPDATE("settings_update")
+    SETTINGS_UPDATE("settings_update");
+
+    companion object {
+        fun fromWire(value: String): SyncEventType? =
+            entries.firstOrNull { it.wireValue == value }
+    }
 }
 
 data class WorldSyncEvent(
