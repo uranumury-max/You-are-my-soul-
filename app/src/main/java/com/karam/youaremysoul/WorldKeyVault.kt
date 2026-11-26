@@ -40,6 +40,43 @@ class WorldKeyVault(context: Context) {
         }
     }
 
+
+    /** Creates a recipient-specific envelope without exposing the key to callers. */
+    fun createDeviceEnvelope(
+        worldId: UUID,
+        keyVersion: Int,
+        recipientPublicKeyBase64: String,
+        deviceKeyVault: DeviceKeyVault
+    ): String {
+        val rawKey = loadWorldKey(worldId, keyVersion)
+        return try {
+            deviceKeyVault.wrapWorldKey(recipientPublicKeyBase64, rawKey)
+        } finally {
+            rawKey.fill(0)
+        }
+    }
+
+    /** Imports a key received for this installation and immediately re-wraps it locally. */
+    @Synchronized
+    fun importDeviceEnvelope(
+        worldId: UUID,
+        keyVersion: Int,
+        envelope: String,
+        deviceKeyVault: DeviceKeyVault
+    ) {
+        require(keyVersion > 0)
+        val storageKey = storageKey(worldId, keyVersion)
+        val rawKey = deviceKeyVault.unwrapWorldKey(envelope)
+        try {
+            val wrapped = wrapWorldKey(worldId, keyVersion, rawKey)
+            check(prefs.edit().putString(storageKey, wrapped).commit()) {
+                "Unable to persist imported world key"
+            }
+        } finally {
+            rawKey.fill(0)
+        }
+    }
+
     fun hasWorldKey(worldId: UUID, keyVersion: Int = 1): Boolean =
         prefs.contains(storageKey(worldId, keyVersion))
 
