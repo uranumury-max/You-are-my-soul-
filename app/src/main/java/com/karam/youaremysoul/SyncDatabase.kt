@@ -97,23 +97,31 @@ interface SyncDao {
     @Query("SELECT * FROM sync_cursors WHERE worldId = :worldId LIMIT 1")
     suspend fun getCursor(worldId: String): SyncCursorEntity?
 
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertCursorIfMissing(cursor: SyncCursorEntity)
+
     @Query(
         """
-        INSERT INTO sync_cursors(worldId, serverSequence, updatedAtEpochMs)
-        VALUES(:worldId, :serverSequence, :updatedAtEpochMs)
-        ON CONFLICT(worldId) DO UPDATE SET
-            serverSequence = MAX(sync_cursors.serverSequence, excluded.serverSequence),
-            updatedAtEpochMs = excluded.updatedAtEpochMs
+        UPDATE sync_cursors
+        SET serverSequence = MAX(serverSequence, :serverSequence),
+            updatedAtEpochMs = :updatedAtEpochMs
+        WHERE worldId = :worldId
         """
     )
-    suspend fun advanceCursor(
+    suspend fun updateCursorMonotonically(
         worldId: String,
         serverSequence: Long,
         updatedAtEpochMs: Long
     )
 
-    @Insert(onConflict = OnConflictStrategy.IGNORE)
-    suspend fun insertRemoteEvents(events: List<SyncedEventEntity>)
+    @Query("SELECT * FROM sync_events WHERE worldId = :worldId AND eventId = :eventId LIMIT 1")
+    suspend fun findRemoteById(worldId: String, eventId: String): SyncedEventEntity?
+
+    @Query("SELECT * FROM sync_events WHERE worldId = :worldId AND serverSequence = :sequence LIMIT 1")
+    suspend fun findRemoteBySequence(worldId: String, sequence: Long): SyncedEventEntity?
+
+    @Insert(onConflict = OnConflictStrategy.ABORT)
+    suspend fun insertRemoteEvent(event: SyncedEventEntity)
 
     @Query(
         """
@@ -136,8 +144,20 @@ interface SyncDao {
         nextCursor: Long,
         updatedAtEpochMs: Long
     ) {
-        insertRemoteEvents(events)
-        advanceCursor(worldId, nextCursor, updatedAtEpochMs)
+        // Replayed pages are safe, but a reused event ID or server sequence
+        // with different contents is treated as corruption, not ignored.
+        for (event in events) {
+            val byId = findRemoteById(worldId, event.eventId)
+            val bySequence = findRemoteBySequence(worldId, event.serverSequence)
+            check((byId == null || byId == event) && (bySequence == null || bySequence == event)) {
+                "Conflicting event ID or server sequence in sync database"
+            }
+            if (byId == null && bySequence == null) insertRemoteEvent(event)
+        }
+        insertCursorIfMissing(
+            SyncCursorEntity(worldId, serverSequence = 0L, updatedAtEpochMs = updatedAtEpochMs)
+        )
+        updateCursorMonotonically(worldId, nextCursor, updatedAtEpochMs)
     }
 }
 
@@ -275,5 +295,3 @@ class RoomSyncStore(context: Context) {
         const val MAX_RETRY_DELAY_MS = 6 * 60 * 60 * 1000L
     }
 }
-
-private fun SyncEventType.CompanionPlaceholder() = Unit
