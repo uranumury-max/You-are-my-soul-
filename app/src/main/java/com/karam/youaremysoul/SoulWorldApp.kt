@@ -4,6 +4,10 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
@@ -25,6 +29,8 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlin.random.Random
+import kotlin.math.cos
+import kotlin.math.sin
 
 private val Night = Color(0xFF100B1B)
 private val Rose = Color(0xFFFF9CCB)
@@ -188,29 +194,59 @@ private fun DeveloperCredit() {
 
 @Composable
 private fun StarField() {
+    val motion = rememberInfiniteTransition(label = "starfield_motion")
+    val phase by motion.animateFloat(
+        initialValue = 0f, targetValue = (2f * Math.PI).toFloat(),
+        animationSpec = infiniteRepeatable(tween(14000), repeatMode = RepeatMode.Restart),
+        label = "star_twinkle"
+    )
     Canvas(Modifier.fillMaxSize()) {
         val random = Random(41)
         repeat(105) {
             val x = random.nextFloat() * size.width
             val y = random.nextFloat() * size.height
-            drawCircle(if (it % 7 == 0) Gold.copy(alpha = .65f) else Color.White.copy(alpha = .35f),
-                radius = if (it % 9 == 0) 2.5f else 1.1f, center = Offset(x, y))
+            val twinkle = (sin(phase + it * .73f) + 1f) / 2f
+            val base = if (it % 7 == 0) Gold else Color.White
+            drawCircle(
+                base.copy(alpha = .16f + twinkle * if (it % 7 == 0) .58f else .28f),
+                radius = (if (it % 9 == 0) 1.8f else .7f) + twinkle * .9f,
+                center = Offset(x, y)
+            )
         }
     }
 }
 
 @Composable
 private fun WorldHome(world: WorldSnapshot?, onCreate: () -> Unit) {
+    val orbit = rememberInfiniteTransition(label = "world_orbit")
+    val angle by orbit.animateFloat(
+        initialValue = 0f, targetValue = (2f * Math.PI).toFloat(),
+        animationSpec = infiniteRepeatable(tween(18000), repeatMode = RepeatMode.Restart),
+        label = "orbit_angle"
+    )
+    val pulse by orbit.animateFloat(
+        initialValue = .88f, targetValue = 1.08f,
+        animationSpec = infiniteRepeatable(tween(2600), repeatMode = RepeatMode.Reverse),
+        label = "heart_pulse"
+    )
     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth().verticalScroll(androidx.compose.foundation.rememberScrollState())) {
         Spacer(Modifier.height(10.dp))
         Box(Modifier.size(220.dp), contentAlignment = Alignment.Center) {
             Canvas(Modifier.fillMaxSize()) {
-                drawCircle(Brush.radialGradient(listOf(Rose.copy(alpha = .28f), Color.Transparent)), radius = size.minDimension * .48f)
-                drawCircle(Rose.copy(alpha = .36f), radius = size.minDimension * .38f, style = androidx.compose.ui.graphics.drawscope.Stroke(1.5f))
-                drawCircle(Gold.copy(alpha = .5f), radius = size.minDimension * .25f, style = androidx.compose.ui.graphics.drawscope.Stroke(1f))
-                drawCircle(Rose, radius = 8f)
+                val center = Offset(size.width / 2f, size.height / 2f)
+                val outer = size.minDimension * .39f
+                val inner = size.minDimension * .25f
+                drawCircle(Brush.radialGradient(listOf(Rose.copy(alpha = .34f), Color.Transparent)), radius = size.minDimension * .49f)
+                drawCircle(Rose.copy(alpha = .32f), radius = outer, style = androidx.compose.ui.graphics.drawscope.Stroke(1.4f))
+                drawCircle(Gold.copy(alpha = .46f), radius = inner, style = androidx.compose.ui.graphics.drawscope.Stroke(1f))
+                val outerPoint = Offset(center.x + cos(angle) * outer, center.y + sin(angle) * outer)
+                val innerPoint = Offset(center.x + cos(-angle * .72f) * inner, center.y + sin(-angle * .72f) * inner)
+                drawCircle(Gold, radius = 4.5f, center = outerPoint)
+                drawCircle(Rose.copy(alpha = .95f), radius = 3.5f, center = innerPoint)
+                drawCircle(Rose.copy(alpha = .16f), radius = 12f * pulse, center = center)
+                drawCircle(Rose, radius = 7f * pulse, center = center)
             }
-            Text("✦", color = Gold, fontSize = 42.sp)
+            Text("✦", color = Gold, fontSize = 35.sp)
         }
         Text(world?.worldName ?: "عالم يتكوّن منكم", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.SemiBold)
         Text(if (world == null) "ابدأ بإنشاء عالم محفوظ على هذا الهاتف" else "عالم محفوظ محلياً • ${world.members.size} مشارك",
