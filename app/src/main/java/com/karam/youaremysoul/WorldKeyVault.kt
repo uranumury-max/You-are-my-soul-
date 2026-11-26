@@ -91,6 +91,7 @@ class WorldKeyVault(context: Context) {
 
     private fun unwrapWorldKey(worldId: UUID, keyVersion: Int, wrapped: String): ByteArray {
         require(wrapped.startsWith(WRAPPED_PREFIX)) { "Unsupported wrapped world key format" }
+        require(wrapped.length <= MAX_WRAPPED_KEY_CHARS) { "Wrapped world key exceeds the safe size limit" }
         val payload = Base64.decode(wrapped.removePrefix(WRAPPED_PREFIX), Base64.NO_WRAP)
         require(payload.size == NONCE_BYTES + WORLD_KEY_BYTES + TAG_BYTES) {
             "Invalid wrapped world key size"
@@ -145,5 +146,6 @@ class WorldKeyVault(context: Context) {
         const val TAG_BITS = 128
         const val TAG_BYTES = TAG_BITS / 8
         const val WRAPPED_PREFIX = "wrapped:v1:"
+        const val MAX_WRAPPED_KEY_CHARS = 128
     }
 }
