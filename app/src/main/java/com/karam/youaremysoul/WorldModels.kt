@@ -11,5 +11,7 @@ data class WorldSnapshot(
     val gardenLastWateredAt: Long = 0L,
     val dailyAnswerDate: String = "",
     val dailyAnswer: String = "",
-    val relationshipStartDate: String = ""
+    val relationshipStartDate: String = "",
+    /** Stable cloud world UUID; blank until assigned for legacy local worlds. */
+    val cloudWorldId: String = ""
 )
