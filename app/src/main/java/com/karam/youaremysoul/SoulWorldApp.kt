@@ -210,8 +210,29 @@ private fun DeveloperCredit() {
     )
 }
 
+private data class StarDot(
+    val x: Float,
+    val y: Float,
+    val phase: Float,
+    val isGold: Boolean,
+    val isLarge: Boolean
+)
+
 @Composable
 private fun StarField() {
+    // Generate the star map once; drawing frames only updates their twinkle.
+    val stars = remember {
+        val random = Random(41)
+        List(105) { index ->
+            StarDot(
+                x = random.nextFloat(),
+                y = random.nextFloat(),
+                phase = index * .73f,
+                isGold = index % 7 == 0,
+                isLarge = index % 9 == 0
+            )
+        }
+    }
     val motion = rememberInfiniteTransition(label = "starfield_motion")
     val phase by motion.animateFloat(
         initialValue = 0f, targetValue = (2f * Math.PI).toFloat(),
@@ -219,16 +240,14 @@ private fun StarField() {
         label = "star_twinkle"
     )
     Canvas(Modifier.fillMaxSize()) {
-        val random = Random(41)
-        repeat(105) {
-            val x = random.nextFloat() * size.width
-            val y = random.nextFloat() * size.height
-            val twinkle = (sin(phase + it * .73f) + 1f) / 2f
-            val base = if (it % 7 == 0) Gold else Color.White
+        stars.forEach { star ->
+            val twinkle = (sin(phase + star.phase) + 1f) / 2f
+            val base = if (star.isGold) Gold else Color.White
+            val glow = if (star.isGold) .58f else .28f
             drawCircle(
-                base.copy(alpha = .16f + twinkle * if (it % 7 == 0) .58f else .28f),
-                radius = (if (it % 9 == 0) 1.8f else .7f) + twinkle * .9f,
-                center = Offset(x, y)
+                base.copy(alpha = .16f + twinkle * glow),
+                radius = (if (star.isLarge) 1.8f else .7f) + twinkle * .9f,
+                center = Offset(star.x * size.width, star.y * size.height)
             )
         }
     }
