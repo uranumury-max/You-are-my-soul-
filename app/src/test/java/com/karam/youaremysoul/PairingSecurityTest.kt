@@ -13,7 +13,7 @@ class PairingSecurityTest {
         assertNotNull(PairingSecurity.validateJoinRequest("123", "987654321", "Karam", 1))
         assertNotNull(PairingSecurity.validateJoinRequest("123456789", "123456789", "Karam", 1))
         assertNotNull(PairingSecurity.validateJoinRequest("123456789", "987654321", "Karam", 5))
-        assertNotNull(PairingSecurity.validateJoinRequest("123456789", "987654321", "Bad\\nName", 1))
+        assertNotNull(PairingSecurity.validateJoinRequest("123456789", "987654321", "Bad\nName", 1))
         assertFalse(PairingSecurity.isValidDeviceCode("١٢٣٤٥٦٧٨٩"))
     }
 
