@@ -68,7 +68,7 @@ The intended flow is: copy local app code -> enter peer code -> send join reques
 The selected target is a hybrid cloud-first, offline-capable design:
 
 - **Backend:** Supabase (managed PostgreSQL, Auth, Realtime, private Storage, and server-side RPC/Edge Functions). A first SQL migration is now checked into `supabase/migrations/202611270001_secure_world_sync.sql`; it is not deployed to a live project yet.
-- **Local-first UX:** Android Room is the durable local database and outbox. UI reads from Room; user edits are committed locally first, then queued for upload. Network state never blocks reading or editing already available content.
+- **Local-first UX:** Android Room is now added with durable outbox, downloaded-event, and cursor tables. The outbox repository is implemented but is not yet wired into UI mutations; the existing world snapshot remains in encrypted SharedPreferences until a tested Room migration is ready. Network state must never block reading or editing already available content.
 - **Synchronization:** use immutable, uniquely identified events rather than repeatedly overwriting one shared world JSON blob. The migration defines an append-only event table with a server sequence and a unique (world, event) key. Client writes go through an authenticated idempotent RPC that derives actor identity from the session and rejects event-ID payload collisions. A transport-neutral Kotlin contract and JVM tests now validate ciphertext envelopes, page size, monotonic server cursors, and retry limits. The Room outbox and network client are still to be implemented.
 - **Media:** encrypted media files are uploaded to private object storage. Store metadata and encrypted object references in the event stream. Never expose public buckets for private memories or photos.
 - **Realtime:** Realtime is a notification that new events may exist, not the sole delivery mechanism. On reconnect or missed notifications, clients fetch events from the last acknowledged cursor.
@@ -79,14 +79,14 @@ The selected target is a hybrid cloud-first, offline-capable design:
 - **Scale:** cap a world at five active members. Apply server-side rate limits, payload-size limits, schema validation, audit events for membership changes, and per-world authorization on every operation.
 
 ### Important implementation boundary
-This is the chosen architecture, not a claim that cloud synchronization already works. The repository has local encrypted snapshot storage, pairing-security primitives, a checked-in Supabase SQL migration, and a transport-neutral sync contract with JVM tests. There is no provisioned Supabase project, no production credentials, no Room outbox, no deployed cloud schema, no on-device end-to-end encryption/key exchange, and no live network pairing/synchronization. Do not show a successful connection state until a real server acknowledgement is received.
+This is the chosen architecture, not a claim that cloud synchronization already works. The repository has local encrypted snapshot storage, pairing-security primitives, a checked-in Supabase SQL migration, and a transport-neutral sync contract with JVM tests. There is no provisioned Supabase project, no production credentials, no UI-integrated Room outbox, no deployed cloud schema, no on-device end-to-end encryption/key exchange, and no live network pairing/synchronization. Do not show a successful connection state until a real server acknowledgement is received.
 
 ### Delivery sequence
-1. Introduce Room and migrate existing encrypted snapshots without data loss.
-2. Define and test the local event/outbox model and deterministic conflict rules.
-3. Add Supabase schema, restrictive RLS policies, RPC/Edge Functions, and private storage policies.
+1. Migrate the existing encrypted snapshot into Room with a tested, recoverable migration.
+2. Wire every local edit to a transactionally persisted outbox event and deterministic conflict rules.
+3. Apply the checked-in Supabase migration to staging and pass the owner/member/revocation authorization matrix.
 4. Add authenticated Android networking and server-authorized pairing.
-5. Add encrypted event/media synchronization, reconnect recovery, and revocation/key rotation.
+5. Add end-to-end encrypted event/media synchronization, reconnect recovery, and revocation/key rotation.
 6. Add integration tests, abuse/rate-limit tests, backup/restore tests, and real multi-device tests before release.
 
 
