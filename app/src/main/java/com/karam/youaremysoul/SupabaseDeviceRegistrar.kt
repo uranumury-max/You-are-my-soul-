@@ -19,6 +19,20 @@ class SupabaseDeviceRegistrar(context: Context) {
 
     suspend fun register(accessToken: String) = withContext(Dispatchers.IO) {
         require(accessToken.isNotBlank()) { "Authenticated access token required" }
+        for (attempt in 0 until MAX_REGISTRATION_ATTEMPTS) {
+            if (registerOnce(accessToken)) return@withContext Unit
+            if (attempt < MAX_REGISTRATION_ATTEMPTS - 1) {
+                identity.regenerateCode()
+            }
+        }
+        throw SupabaseAuthException("device_code_collision")
+    }
+
+    /**
+     * A false RPC result means only that another installation currently owns
+     * this public code. Ownership conflicts for installationId are server errors.
+     */
+    private fun registerOnce(accessToken: String): Boolean {
         val endpoint = URL(config.projectUrl.trimEnd('/') + "/rest/v1/rpc/register_device_code")
         val connection = (endpoint.openConnection() as HttpURLConnection).apply {
             requestMethod = "POST"
@@ -49,10 +63,11 @@ class SupabaseDeviceRegistrar(context: Context) {
                     }
                 )
             }
-            if (response.trim() != "true") {
-                throw SupabaseAuthException("device_registration_not_confirmed")
+            return when (response.trim()) {
+                "true" -> true
+                "false" -> false
+                else -> throw SupabaseAuthException("device_registration_not_confirmed")
             }
-            Unit
         } catch (error: SupabaseAuthException) {
             throw error
         } catch (_: IOException) {
@@ -60,5 +75,9 @@ class SupabaseDeviceRegistrar(context: Context) {
         } finally {
             connection.disconnect()
         }
+    }
+
+    private companion object {
+        const val MAX_REGISTRATION_ATTEMPTS = 4
     }
 }
