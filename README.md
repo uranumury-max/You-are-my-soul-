@@ -32,7 +32,7 @@ The target design is cloud-first and offline-capable:
 
 - No Supabase project has been provisioned and migrations 001–005 have not been applied to a live/staging backend. Auth, device registration, cloud-world creation, and pairing clients are present in source but have not been verified against a live backend.
 - Android build configuration now accepts `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` from Gradle properties or environment variables; the GitHub Actions build reads the matching repository secrets. Missing values leave cloud connectivity unconfigured rather than fabricating a successful connection. Secret/service-role keys are rejected by the runtime config validator.
-- The encrypted world snapshot now migrates safely from SharedPreferences into Room. The durable outbox exists, but local UI edits are not yet atomically connected to outbox events.
+- The encrypted world snapshot now migrates safely from SharedPreferences into Room, and an approved joining device can receive an initial world snapshot encrypted under the per-world content key. The durable outbox exists, but local UI edits are not yet atomically connected to outbox events.
 - Content encryption and the local key vault are not yet wired into the app's messages/memories/media.
 - Device public keys can now be registered per installation, but no authenticated member-to-member key distribution, recovery, or key rotation exists yet; an approved join request grants database membership but does not yet deliver the world encryption key.
 - Join-request delivery and owner approval UI are implemented but remain unusable until the backend migrations are deployed and tested. Cross-device event synchronization is not yet implemented.
