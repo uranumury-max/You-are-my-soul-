@@ -1,3 +1,13 @@
+val configuredSupabaseUrl = providers.gradleProperty("SUPABASE_URL")
+    .orElse(providers.environmentVariable("SUPABASE_URL"))
+    .getOrElse("")
+val configuredSupabasePublishableKey = providers.gradleProperty("SUPABASE_PUBLISHABLE_KEY")
+    .orElse(providers.environmentVariable("SUPABASE_PUBLISHABLE_KEY"))
+    .getOrElse("")
+
+fun asBuildConfigString(value: String): String =
+    "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -13,6 +23,10 @@ android {
         targetSdk = 35
         versionCode = 1
         versionName = "0.1.0"
+        // Only the public/publishable client key may be embedded in an APK.
+        // Keep these values empty in source control; inject them at build time.
+        buildConfigField("String", "SUPABASE_URL", asBuildConfigString(configuredSupabaseUrl))
+        buildConfigField("String", "SUPABASE_PUBLISHABLE_KEY", asBuildConfigString(configuredSupabasePublishableKey))
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -21,7 +35,10 @@ android {
     kotlinOptions {
         jvmTarget = "17"
     }
-    buildFeatures { compose = true }
+    buildFeatures {
+        compose = true
+        buildConfig = true
+    }
 }
 dependencies {
     implementation("androidx.core:core-ktx:1.15.0")
