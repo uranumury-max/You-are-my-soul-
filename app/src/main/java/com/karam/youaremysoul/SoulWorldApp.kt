@@ -87,7 +87,14 @@ fun SoulWorldApp() {
     val scope = rememberCoroutineScope()
     LaunchedEffect(store) {
         try {
-            world = withContext(Dispatchers.IO) { store.load() }
+            val loaded = withContext(Dispatchers.IO) { store.load() }
+            world = if (loaded != null && loaded.cloudWorldId.isBlank()) {
+                loaded.copy(cloudWorldId = java.util.UUID.randomUUID().toString()).also { migrated ->
+                    withContext(Dispatchers.IO) { store.save(migrated) }
+                }
+            } else {
+                loaded
+            }
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (error: Exception) {
@@ -275,7 +282,8 @@ fun SoulWorldApp() {
                                 onAnswer = { value ->
                                     val current = world ?: WorldSnapshot(
                                         "عالمنا الخاص", DeviceIdentity(context).code,
-                                        listOf(WorldMember(DeviceIdentity(context).code, "صاحب العالم", true))
+                                        listOf(WorldMember(DeviceIdentity(context).code, "صاحب العالم", true)),
+                                        cloudWorldId = java.util.UUID.randomUUID().toString()
                                     )
                                     persist(current.copy(dailyAnswerDate = java.time.LocalDate.now().toString(), dailyAnswer = value))
                                 },
