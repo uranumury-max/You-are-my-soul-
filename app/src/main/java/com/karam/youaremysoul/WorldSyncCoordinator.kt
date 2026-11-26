@@ -2,6 +2,8 @@ package com.karam.youaremysoul
 
 import android.content.Context
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.util.UUID
 
 data class SyncPassResult(
@@ -32,7 +34,8 @@ class WorldSyncCoordinator(context: Context) {
             snapshotStore = LocalWorldStore(appContext),
             keyVault = worldKeyVault
         )
-        return result to reducer.rebuild(worldId)
+        val applied = withContext(Dispatchers.IO) { reducer.rebuild(worldId) }
+        return result to applied
     }
 
     suspend fun syncOnce(
