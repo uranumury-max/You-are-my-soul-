@@ -51,6 +51,8 @@ fun SoulWorldApp() {
     val authClient = remember { SupabaseAuthClient(context) }
     val deviceRegistrar = remember { SupabaseDeviceRegistrar(context) }
     val worldRepository = remember { SupabaseWorldRepository() }
+    val pairingRepository = remember { SupabasePairingRepository() }
+    var pendingJoinRequests by remember { mutableStateOf(emptyList<PendingWorldJoinRequest>()) }
     var cloudStatus by remember { mutableStateOf("") }
     var cloudAuthenticated by remember { mutableStateOf(false) }
     LaunchedEffect(authClient, deviceRegistrar) {
@@ -111,6 +113,22 @@ fun SoulWorldApp() {
     var displayName by remember { mutableStateOf("") }
     var enteredCode by remember { mutableStateOf("") }
     var requestStatus by remember { mutableStateOf("") }
+
+    LaunchedEffect(tab, world?.cloudWorldId, cloudAuthenticated) {
+        val current = world
+        if (tab == "الربط" && cloudAuthenticated && current != null &&
+            current.cloudWorldId.isNotBlank() && current.members.any { it.isHost }
+        ) {
+            try {
+                val session = authClient.ensureAuthenticatedSession()
+                pendingJoinRequests = pairingRepository.pendingRequests(session, current.cloudWorldId)
+            } catch (_: Exception) {
+                pendingJoinRequests = emptyList()
+            }
+        } else {
+            pendingJoinRequests = emptyList()
+        }
+    }
 
     LaunchedEffect(worldLoaded, cloudAuthenticated, world?.cloudWorldId) {
         if (!worldLoaded || !cloudAuthenticated) return@LaunchedEffect
@@ -233,17 +251,70 @@ fun SoulWorldApp() {
                             "الربط" -> ConnectionSection(
                                 displayName = displayName, onName = { displayName = it },
                                 enteredCode = enteredCode, onCode = { enteredCode = it },
-                                requestStatus = requestStatus, canCreate = world == null && storageWarning.isBlank(), onRequest = {
-                                    val currentWorld = world
-                                    requestStatus = if (currentWorld == null) {
-                                        "أنشئ العالم على هذا الهاتف أولاً قبل طلب الانضمام."
+                                requestStatus = requestStatus,
+                                canCreate = world == null && storageWarning.isBlank(),
+                                pendingRequests = pendingJoinRequests,
+                                isOwner = world?.members?.any { it.isHost } == true,
+                                onRefreshRequests = {
+                                    scope.launch {
+                                        val current = world
+                                        if (cloudAuthenticated && current != null && current.cloudWorldId.isNotBlank()) {
+                                            try {
+                                                val session = authClient.ensureAuthenticatedSession()
+                                                pendingJoinRequests = pairingRepository.pendingRequests(session, current.cloudWorldId)
+                                            } catch (_: Exception) {
+                                                requestStatus = "تعذر تحديث طلبات الانضمام حالياً."
+                                            }
+                                        }
+                                    }
+                                },
+                                onDecideRequest = { requestId, approve ->
+                                    scope.launch {
+                                        try {
+                                            val session = authClient.ensureAuthenticatedSession()
+                                            val decided = pairingRepository.decideRequest(session, requestId, approve)
+                                            if (decided) {
+                                                val current = world
+                                                if (current != null) {
+                                                    pendingJoinRequests = pairingRepository.pendingRequests(session, current.cloudWorldId)
+                                                }
+                                                requestStatus = if (approve) "تمت الموافقة على طلب الانضمام." else "تم رفض طلب الانضمام."
+                                            } else {
+                                                requestStatus = "انتهت صلاحية الطلب أو لم يعد متاحاً."
+                                            }
+                                        } catch (_: Exception) {
+                                            requestStatus = "تعذر تنفيذ القرار؛ لم نغيّر حالة العضوية محلياً."
+                                        }
+                                    }
+                                },
+                                onRequest = {
+                                    val fromCode = DeviceIdentity(context).code
+                                    val name = displayName.trim().ifBlank { "مشارك" }
+                                    val validation = PairingSecurity.validateJoinRequest(
+                                        fromCode = fromCode,
+                                        hostCode = enteredCode,
+                                        displayName = name,
+                                        currentMemberCount = 1
+                                    )
+                                    if (validation != null) {
+                                        requestStatus = validation
+                                    } else if (!cloudAuthenticated) {
+                                        requestStatus = "الاتصال السحابي غير جاهز؛ لم يُرسل أي طلب."
                                     } else {
-                                        PairingSecurity.validateJoinRequest(
-                                            fromCode = DeviceIdentity(context).code,
-                                            hostCode = enteredCode,
-                                            displayName = displayName.trim().ifBlank { "مشارك" },
-                                            currentMemberCount = currentWorld.members.size
-                                        ) ?: "الرمز والبيانات صالحة مبدئياً فقط. لم يُرسل طلب؛ الاتصال المشفّر وموافقة المضيف لم يُفعّلا بعد."
+                                        requestStatus = "جارٍ إرسال طلب الانضمام..."
+                                        scope.launch {
+                                            try {
+                                                val session = authClient.ensureAuthenticatedSession()
+                                                val requestId = pairingRepository.requestJoin(session, enteredCode, name)
+                                                requestStatus = if (requestId != null) {
+                                                    "وصل طلبك إلى صاحب العالم. انتظر موافقته."
+                                                } else {
+                                                    "تعذر العثور على رمز نشط أو قبول الطلب حالياً."
+                                                }
+                                            } catch (_: Exception) {
+                                                requestStatus = "تعذر إرسال الطلب؛ تحقق من الاتصال وحاول لاحقاً."
+                                            }
+                                        }
                                     }
                                 },
                                 onCreate = {
