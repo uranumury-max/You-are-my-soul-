@@ -54,7 +54,7 @@ data class SyncCursorEntity(
 
 @Dao
 interface SyncDao {
-    @Insert(onConflict = OnConflictStrategy.ABORT)
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun enqueue(record: SyncOutboxEntity)
 
     @Query(
@@ -194,20 +194,29 @@ class RoomSyncStore(context: Context) {
     suspend fun enqueue(event: WorldSyncEvent, queuedAtEpochMs: Long = System.currentTimeMillis()) {
         require(SyncProtocolRules.validate(event) == null) { "Invalid encrypted sync event" }
         require(queuedAtEpochMs > 0L)
-        dao.enqueue(
-            SyncOutboxEntity(
-                eventId = event.eventId.toString(),
-                worldId = event.worldId.toString(),
-                actorUserId = event.actorUserId.toString(),
-                eventType = event.type.wireValue,
-                ciphertextBase64 = event.ciphertextBase64,
-                clientCreatedAtEpochMs = event.clientCreatedAtEpochMs,
-                queuedAtEpochMs = queuedAtEpochMs,
-                attemptCount = 0,
-                nextAttemptAtEpochMs = queuedAtEpochMs,
-                lastFailureCode = null
-            )
+        val record = SyncOutboxEntity(
+            eventId = event.eventId.toString(),
+            worldId = event.worldId.toString(),
+            actorUserId = event.actorUserId.toString(),
+            eventType = event.type.wireValue,
+            ciphertextBase64 = event.ciphertextBase64,
+            clientCreatedAtEpochMs = event.clientCreatedAtEpochMs,
+            queuedAtEpochMs = queuedAtEpochMs,
+            attemptCount = 0,
+            nextAttemptAtEpochMs = queuedAtEpochMs,
+            lastFailureCode = null
         )
+        dao.enqueue(record)
+        val stored = requireNotNull(dao.findPending(record.eventId)) {
+            "Sync outbox insert did not persist"
+        }
+        check(
+            stored.worldId == record.worldId &&
+                stored.actorUserId == record.actorUserId &&
+                stored.eventType == record.eventType &&
+                stored.ciphertextBase64 == record.ciphertextBase64 &&
+                stored.clientCreatedAtEpochMs == record.clientCreatedAtEpochMs
+        ) { "Sync event ID was reused with different content" }
     }
 
     suspend fun dueEvents(
@@ -240,6 +249,7 @@ class RoomSyncStore(context: Context) {
     }
 
     suspend fun recordFailure(eventId: java.util.UUID, nowEpochMs: Long, safeFailureCode: String?) {
+        require(nowEpochMs > 0L)
         val row = dao.findPending(eventId.toString()) ?: return
         val nextAttempt = (row.attemptCount + 1).coerceAtMost(SyncProtocolRules.MAX_PENDING_ATTEMPTS)
         val multiplier = 1L shl (nextAttempt - 1).coerceAtLeast(0)
