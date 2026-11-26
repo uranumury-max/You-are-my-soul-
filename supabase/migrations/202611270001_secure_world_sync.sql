@@ -2,8 +2,6 @@
 -- All user content is expected to be encrypted on-device before insertion.
 -- Apply only to a Supabase project after reviewing its Auth and Storage configuration.
 
-create extension if not exists pgcrypto with schema extensions;
-
 create table if not exists public.worlds (
     id uuid primary key default gen_random_uuid(),
     owner_id uuid not null references auth.users(id) on delete restrict,
@@ -585,6 +583,21 @@ grant execute on function public.request_join_by_device_code(text) to authentica
 grant execute on function public.decide_join_request(uuid, boolean) to authenticated;
 grant execute on function public.revoke_world_member(uuid, uuid) to authenticated;
 
+
+-- Explicit table grants: RLS policies do not replace SQL privileges.
+revoke all on public.worlds, public.world_members, public.world_invites,
+    public.world_events, public.device_profiles, public.join_requests
+from anon, authenticated;
+
+grant select, insert, update on public.worlds to authenticated;
+grant select on public.world_members to authenticated;
+grant select on public.world_invites to authenticated;
+grant select, insert on public.world_events to authenticated;
+grant select on public.device_profiles to authenticated;
+grant select on public.join_requests to authenticated;
+
+-- The identity sequence is used by inserts into the append-only event stream.
+grant usage, select on sequence public.world_events_server_seq_seq to authenticated;
 
 -- Realtime is a wake-up signal only; clients must still fetch by server_seq cursor.
 do $$
