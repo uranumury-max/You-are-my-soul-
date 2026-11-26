@@ -6,5 +6,7 @@ data class WorldSnapshot(
     val hostCode: String = "",
     val members: List<WorldMember> = emptyList(),
     val journeyStage: Int = 0,
-    val memories: List<String> = emptyList()
+    val memories: List<String> = emptyList(),
+    val gardenFlowers: Int = 0,
+    val gardenLastWateredAt: Long = 0L
 )
