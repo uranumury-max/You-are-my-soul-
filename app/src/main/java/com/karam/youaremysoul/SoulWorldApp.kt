@@ -31,6 +31,11 @@ import androidx.compose.ui.unit.sp
 import kotlin.random.Random
 import kotlin.math.cos
 import kotlin.math.sin
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 
 private val Night = Color(0xFF100B1B)
 private val Rose = Color(0xFFFF9CCB)
@@ -41,7 +46,17 @@ private val CardTone = Color(0xCC28172F)
 fun SoulWorldApp() {
     val context = androidx.compose.ui.platform.LocalContext.current
     val store = remember { LocalWorldStore(context) }
-    var world by remember { mutableStateOf(store.load()) }
+    var world by remember { mutableStateOf<WorldSnapshot?>(null) }
+    var worldLoaded by remember { mutableStateOf(false) }
+    val saveMutex = remember { Mutex() }
+    val scope = rememberCoroutineScope()
+    LaunchedEffect(store) {
+        try {
+            world = withContext(Dispatchers.IO) { store.load() }
+        } finally {
+            worldLoaded = true
+        }
+    }
     var tab by remember { mutableStateOf("العالم") }
     val tabs = listOf("العالم", "الربط", "الذكريات", "لحظاتنا", "الإعدادات")
     val symbols = listOf("✧", "⌁", "♡", "✦", "⚙")
@@ -53,7 +68,11 @@ fun SoulWorldApp() {
 
     fun persist(next: WorldSnapshot) {
         world = next
-        store.save(next)
+        scope.launch {
+            saveMutex.withLock {
+                withContext(Dispatchers.IO) { store.save(next) }
+            }
+        }
     }
 
     Box(
@@ -61,6 +80,14 @@ fun SoulWorldApp() {
             .background(Brush.verticalGradient(listOf(Night, Color(0xFF1B1028), Color(0xFF100B1B))))
     ) {
         StarField()
+        if (!worldLoaded) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    CircularProgressIndicator(color = Rose, strokeWidth = 2.dp)
+                    Text("نجهّز عالمكم...", color = Gold, fontSize = 14.sp)
+                }
+            }
+        } else {
         Column(Modifier.fillMaxSize()) {
             Column(Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 18.dp, bottom = 8.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -202,6 +229,7 @@ fun SoulWorldApp() {
                     )
                 }
             }
+        }
         }
     }
 }
