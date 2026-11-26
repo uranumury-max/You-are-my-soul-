@@ -60,20 +60,24 @@ data class PendingSyncEvent(
 object SyncProtocolRules {
     const val MAX_EVENTS_PER_PAGE = 100
     const val MAX_CIPHERTEXT_BYTES = 1_048_576
-    const val MIN_CIPHERTEXT_BYTES = 32
+    const val MIN_ENCODED_CIPHERTEXT_BYTES = 32
+    const val MIN_DECODED_CIPHERTEXT_BYTES = 28
     const val MAX_PENDING_ATTEMPTS = 20
 
     fun validate(event: WorldSyncEvent): String? {
         if (event.clientCreatedAtEpochMs <= 0L) return "invalid_client_timestamp"
         if (event.ciphertextBase64.isBlank()) return "missing_ciphertext"
+        // The server limits the UTF-8 Base64 column to one MiB; Base64 is ASCII,
+        // so its character count is also its encoded byte count.
+        if (event.ciphertextBase64.length !in MIN_ENCODED_CIPHERTEXT_BYTES..MAX_CIPHERTEXT_BYTES) {
+            return "ciphertext_size_out_of_range"
+        }
         val decoded = try {
             Base64.getDecoder().decode(event.ciphertextBase64)
         } catch (_: IllegalArgumentException) {
             return "invalid_ciphertext_encoding"
         }
-        if (decoded.size !in MIN_CIPHERTEXT_BYTES..MAX_CIPHERTEXT_BYTES) {
-            return "ciphertext_size_out_of_range"
-        }
+        if (decoded.size < MIN_DECODED_CIPHERTEXT_BYTES) return "ciphertext_size_out_of_range"
         return null
     }
 
