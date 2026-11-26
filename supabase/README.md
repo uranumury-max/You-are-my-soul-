@@ -43,7 +43,7 @@ The SQL currently limits code lookups to five per authenticated account per ten-
 - Encrypt private content on the Android device before upload.
 - Store only authenticated ciphertext in world_events.ciphertext.
 - Use a fresh AEAD nonce for every encryption operation; never reuse a nonce with the same key.
-- Keep event IDs stable across retries so a repeated upload is idempotent.
+- Keep event IDs stable across retries and write only through append_world_event; the RPC returns the original sequence for an identical retry and rejects a payload collision.
 - Fetch pages using server_seq as a cursor. Realtime notifications are only hints that a pull is needed.
 - Upload encrypted media as application/octet-stream under a path beginning with the world UUID.
 - Never store plaintext messages, memories, photo captions, or capsule contents in event metadata, object names, analytics, or logs.
@@ -59,8 +59,8 @@ Run these tests against a disposable local database with at least four separate 
 | Unauthenticated read/write | Denied |
 | Unrelated account reads a world | No rows |
 | Active member reads world and events | Allowed |
-| Active member inserts an event as their own user | Allowed |
-| Member inserts an event with another actor ID | Denied |
+| Active member appends an event through append_world_event | Allowed |
+| Client supplies or forges an actor ID | Impossible; RPC derives actor_id from the authenticated session |
 | Member updates or deletes an event | Denied |
 | Member reads another world's private media | Denied |
 | Non-owner creates an invite | Denied |
@@ -72,7 +72,7 @@ Run these tests against a disposable local database with at least four separate 
 | Sixth active member is admitted | Denied |
 | Revoked member reads future events/media | Denied |
 | Five concurrent join approvals race for remaining slots | Active member count never exceeds five |
-| Replayed event ID is uploaded twice | One event row only |
+| Identical event ID and payload are retried through append_world_event | Original server sequence returned; one event row only |
 
 Also test malformed UUIDs, invalid ciphertext encodings, oversized payloads, expired challenges, repeated code guesses, and reconnects from an old cursor.
 
