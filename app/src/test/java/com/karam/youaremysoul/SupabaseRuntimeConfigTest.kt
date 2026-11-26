@@ -46,9 +46,9 @@ class SupabaseRuntimeConfigTest {
     @Test
     fun rejectsLegacyServiceRoleJwt() {
         val header = Base64.getUrlEncoder().withoutPadding()
-            .encodeToString("{"alg":"HS256"}".toByteArray())
+            .encodeToString("""{"alg":"HS256"}""".toByteArray())
         val payload = Base64.getUrlEncoder().withoutPadding()
-            .encodeToString("{"role":"service_role"}".toByteArray())
+            .encodeToString("""{"role":"service_role"}""".toByteArray())
         val config = SupabaseRuntimeConfig(
             "https://example.supabase.co",
             "$header.$payload.signature"
