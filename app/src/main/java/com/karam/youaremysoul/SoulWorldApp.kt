@@ -37,6 +37,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import java.util.concurrent.atomic.AtomicLong
 
 private val Night = Color(0xFF100B1B)
 private val Rose = Color(0xFFFF9CCB)
@@ -51,6 +52,7 @@ fun SoulWorldApp() {
     var worldLoaded by remember { mutableStateOf(false) }
     var storageWarning by remember { mutableStateOf("") }
     val saveMutex = remember { Mutex() }
+    val saveRevision = remember { AtomicLong(0L) }
     val scope = rememberCoroutineScope()
     LaunchedEffect(store) {
         try {
@@ -75,10 +77,16 @@ fun SoulWorldApp() {
     fun persist(next: WorldSnapshot) {
         if (storageWarning.isNotBlank()) return
         world = next
+        // Each edit receives a monotonic revision. If rapid UI actions launch
+        // coroutines out of order, an older snapshot is skipped rather than
+        // overwriting a newer one after waiting for the IO lock.
+        val revision = saveRevision.incrementAndGet()
         scope.launch {
-            val saved = try {
+            val result = try {
                 saveMutex.withLock {
-                    withContext(Dispatchers.IO) { store.save(next) }
+                    if (revision == saveRevision.get()) {
+                        withContext(Dispatchers.IO) { store.save(next) }
+                    }
                 }
                 true
             } catch (cancelled: CancellationException) {
@@ -86,7 +94,9 @@ fun SoulWorldApp() {
             } catch (error: Exception) {
                 false
             }
-            storageWarning = if (saved) "" else "تعذر حفظ التغييرات على هذا الجهاز. تحقق من مساحة التخزين."
+            if (revision == saveRevision.get()) {
+                storageWarning = if (result) "" else "تعذر حفظ التغييرات على هذا الجهاز. تحقق من مساحة التخزين."
+            }
         }
     }
 
