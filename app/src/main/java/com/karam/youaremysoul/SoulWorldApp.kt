@@ -117,6 +117,7 @@ fun SoulWorldApp() {
     var displayName by remember { mutableStateOf("") }
     var enteredCode by remember { mutableStateOf("") }
     var requestStatus by remember { mutableStateOf("") }
+    var ownJoinRequestId by remember { mutableStateOf("") }
 
     LaunchedEffect(tab, world?.cloudWorldId, cloudAuthenticated) {
         val current = world
@@ -263,6 +264,24 @@ fun SoulWorldApp() {
                                 canCreate = world == null && storageWarning.isBlank(),
                                 pendingRequests = pendingJoinRequests,
                                 requestsLoadFailed = pendingRequestsLoadFailed,
+                                hasOwnRequest = ownJoinRequestId.isNotBlank(),
+                                onRefreshOwnRequest = {
+                                    scope.launch {
+                                        try {
+                                            val session = authClient.ensureAuthenticatedSession()
+                                            val status = pairingRepository.requestStatus(session, ownJoinRequestId)
+                                            requestStatus = when (status?.status) {
+                                                "pending" -> "طلبك ما زال بانتظار موافقة صاحب العالم."
+                                                "approved" -> "تمت الموافقة على العضوية؛ تجهيز نقل العالم ومفاتيح التشفير ما زال قيد التنفيذ."
+                                                "declined" -> "لم تتم الموافقة على طلب الانضمام."
+                                                "expired" -> "انتهت صلاحية طلب الانضمام؛ يمكنك إرسال طلب جديد."
+                                                else -> "لم نتمكن من العثور على حالة الطلب."
+                                            }
+                                        } catch (_: Exception) {
+                                            requestStatus = "تعذر تحديث حالة الطلب حالياً."
+                                        }
+                                    }
+                                },
                                 isOwner = world?.members?.any { it.isHost } == true,
                                 canManageRequests = cloudAuthenticated && world?.cloudWorldId?.isNotBlank() == true,
                                 onRefreshRequests = {
@@ -319,6 +338,7 @@ fun SoulWorldApp() {
                                                 val session = authClient.ensureAuthenticatedSession()
                                                 val requestId = pairingRepository.requestJoin(session, enteredCode, name)
                                                 requestStatus = if (requestId != null) {
+                                                    ownJoinRequestId = requestId
                                                     "وصل طلبك إلى صاحب العالم. انتظر موافقته."
                                                 } else {
                                                     "تعذر العثور على رمز نشط أو قبول الطلب حالياً."
@@ -333,7 +353,7 @@ fun SoulWorldApp() {
                                     val code = DeviceIdentity(context).code
                                     val member = WorldMember(code, displayName.trim().ifBlank { "صاحب العالم" }, true)
                                     persist(WorldSnapshot(worldName.trim().ifBlank { "عالمنا الخاص" }, code, listOf(member), 0, emptyList(), cloudWorldId = java.util.UUID.randomUUID().toString()))
-                                    requestStatus = "أُنشئ العالم وحُفظ على هذا الهاتف. المزامنة السحابية لم تُفعّل بعد."
+                                    requestStatus = "أُنشئ العالم وحُفظ محلياً؛ سيُسجّل سحابياً عند جاهزية الاتصال."
                                 }
                             )
                             "الذكريات" -> MemoriesSection(
@@ -542,6 +562,8 @@ private fun ConnectionSection(
     canCreate: Boolean,
     pendingRequests: List<PendingWorldJoinRequest>,
     requestsLoadFailed: Boolean,
+    hasOwnRequest: Boolean,
+    onRefreshOwnRequest: () -> Unit,
     isOwner: Boolean,
     canManageRequests: Boolean,
     onRefreshRequests: () -> Unit,
@@ -569,6 +591,11 @@ private fun ConnectionSection(
         Text("تنبيه أمان: رمز الـ9 أرقام للتعرّف فقط، وليس كلمة مرور. لا يعني وجود الجهازين على شبكة Wi‑Fi واحدة أن الاتصال آمن.", color = Gold.copy(alpha = .9f), fontSize = 11.sp)
         Button(onClick = onRequest, enabled = enteredCode.length == 9 && enteredCode != code) { Text("إرسال طلب الانضمام") }
         if (requestStatus.isNotBlank()) Text(requestStatus, color = Gold, fontSize = 12.sp)
+        if (hasOwnRequest && !isOwner) {
+            TextButton(onClick = onRefreshOwnRequest) {
+                Text("تحديث حالة طلب الانضمام", color = Rose)
+            }
+        }
         Divider(color = Rose.copy(alpha = .25f))
         if (isOwner) {
             Divider(color = Rose.copy(alpha = .25f))
