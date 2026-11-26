@@ -103,10 +103,10 @@ The checked-in migration currently defines:
 - Realtime publication of the event table as a notification channel; cursor-based fetch remains authoritative.
 
 Security boundaries and remaining work:
-- The SQL migrations 001–003 are source code only until applied to a newly provisioned Supabase project and reviewed against its actual Auth/Storage settings.
+- The SQL migrations 001–004 are source code only until applied to a newly provisioned Supabase project and reviewed against its actual Auth/Storage settings.
 - Pairing lookups are rate-limited per authenticated account and per target world (20 requests per ten-minute world window). Add IP/device-level throttling and monitoring at the API/Edge layer to resist account farming and enumeration.
 - The app must generate high-entropy invite tokens and send only SHA-256 hashes to the database; the raw token must never be logged.
-- The event ciphertext envelope and local world-key vault primitives are implemented and unit-tested, but are not wired into the content model or uploads. Member key distribution, recovery, key rotation, and forward secrecy are not implemented yet.
+- The event ciphertext envelope and local world-key vault primitives are implemented, but are not wired into the content model or uploads. Migration 004 adds authenticated per-installation RSA public-key registration; Android Keystore keeps the corresponding private key non-exportable, and the client has an RSA-OAEP-SHA-256 envelope primitive. Owner-authorized public-key discovery, wrapped-key envelope storage/delivery, recovery, key rotation, and forward secrecy are not implemented yet.
 - Revoking a member blocks future server access, but cannot erase content that member already downloaded. Rotate the world key for future content after revocation.
 - Never expose the Supabase service-role key to Android. Verify every RLS policy and RPC with separate owner, member, revoked-member, and unrelated-account tests before production.
 
