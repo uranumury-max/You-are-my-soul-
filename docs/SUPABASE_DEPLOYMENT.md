@@ -20,6 +20,7 @@ Run the checked-in SQL files in the Supabase SQL Editor, one at a time, in this 
 6. `supabase/migrations/202611270006_server_clock.sql`
 7. `supabase/migrations/202611270007_immutable_device_public_key.sql`
 8. `supabase/migrations/202611270008_owner_member_management.sql`
+9. `supabase/migrations/202611270009_immutable_world_key_envelopes.sql`
 
 Do not skip a migration or reorder them. The private `world-media` bucket and its member-scoped read, insert, and delete policies are created by migration 001. The upload policy enforces a per-world limit of 100 objects.
 
@@ -51,4 +52,4 @@ A successful Android build or SQL parser run does not replace these live integra
 
 ## Device-key safety note
 
-Migration 007 makes each registered installation's RSA public key immutable through ordinary registration. Migration 008 adds an owner-only active-member list and the display labels needed for explicit member revocation. This prevents a repeated registration call from silently replacing a key that already has world-key envelopes. A future explicit key-rotation/recovery flow must be designed and tested before replacing a registered key; do not manually edit device-key rows to work around a rejected registration.
+Migration 007 makes each registered installation's RSA public key immutable through ordinary registration. Migration 008 adds an owner-only active-member list and the display labels needed for explicit member revocation. Migration 009 makes a recipient envelope immutable within one world-key version: retrying the exact same envelope is idempotent, while changing it requires a new key version. This prevents silent replacement of key material or recipient ciphertext. A complete key-rotation/recovery workflow is still pending; do not manually edit device-key or envelope rows to work around a rejected operation.
