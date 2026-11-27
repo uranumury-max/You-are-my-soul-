@@ -179,7 +179,8 @@ private fun SoulSceneViewer(scene: SoulScene, number: Int, onBack: () -> Unit) {
                         drawLine(Color(0xFFFFD68A), Offset(x, y), Offset(x - base * 0.10f, y + base * 0.17f), strokeWidth = (1.2f + i % 3).dp.toPx())
                         drawCircle(Color(0xFFFFF0C8), base * 0.018f, Offset(x, y))
                     }
-                }                9 -> {
+                }
+                9 -> {
                     // A spiral of nine small stars winds toward a warm center.
                     repeat(9) { i ->
                         val progress = (i + 1) / 9f
