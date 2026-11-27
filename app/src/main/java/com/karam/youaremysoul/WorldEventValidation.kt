@@ -22,9 +22,11 @@ internal object WorldEventValidation {
         value.isNotBlank() && value.length <= 400
 
     fun message(id: String, senderName: String, text: String, createdAtEpochMs: Long): Boolean =
-        id.length in 1..64 &&
+        id.length in 1..64 && id.none(Char::isISOControl) &&
             senderName.isNotBlank() && senderName.length <= 40 &&
+            senderName.none(Char::isISOControl) &&
             text.isNotBlank() && text.length <= 1000 &&
+            text.none { it.isISOControl() && it !in '\\n' && it !in '\\r' && it !in '\\t' } &&
             createdAtEpochMs > 0L
 
     fun capsule(
