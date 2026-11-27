@@ -303,7 +303,7 @@ internal class WorldEventReducer(
                                 state.cloudWorldId, media.id, media.displayName, media.mimeType,
                                 media.sizeBytes, media.createdAtEpochMs, media.objectPath, media.keyVersion
                             ) || state.media.any { it.id == media.id }
-                        ) state else state.copy(media = (state.media + media).takeLast(100))
+                        ) state else state.copy(media = (state.media + media).takeLast(WorldLimits.MAX_MEDIA_ITEMS))
                     }
                     SyncEventType.MEDIA_DELETE -> {
                         val mediaId = payload.optString("id")
