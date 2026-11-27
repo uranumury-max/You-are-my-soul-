@@ -859,7 +859,7 @@ fun SoulWorldApp() {
                                 onRestoreDrawingVersion = { versionId ->
                                     world?.let { current ->
                                         val version = current.drawingVersions.firstOrNull { it.id == versionId }
-                                        if (version != null) persist(current.copy(drawings = version.strokes))
+                                        if (version != null) persist(current.copy(drawings = DrawingVersionHistory.restore(version)))
                                     }
                                 },
                                 capsules = world?.capsules.orEmpty(),
