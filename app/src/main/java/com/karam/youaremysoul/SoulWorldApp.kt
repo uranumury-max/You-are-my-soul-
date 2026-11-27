@@ -381,9 +381,11 @@ fun SoulWorldApp() {
 
     Box(
         Modifier.fillMaxSize()
-            .background(Brush.verticalGradient(listOf(Night, Color(0xFF1B1028), Color(0xFF100B1B))))
+            .background(Brush.verticalGradient(listOf(Color(0xFF080610), Night, Color(0xFF21102F), Color(0xFF100B1B))))
     ) {
+        NebulaGlow()
         StarField()
+        FloatingHearts()
         if (!worldLoaded) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -396,8 +398,8 @@ fun SoulWorldApp() {
             Column(Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 18.dp, bottom = 8.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
-                        Text("عالمنا الخاص", color = Rose, fontSize = 26.sp, fontWeight = FontWeight.Bold)
-                        Text("YOU ARE MY SOUL  ·  OUR LITTLE UNIVERSE", color = Gold.copy(alpha = .78f), fontSize = 9.sp, letterSpacing = 1.2.sp)
+                        Text("عالمنا الخاص", color = Rose, fontSize = 27.sp, fontWeight = FontWeight.Bold)
+                        Text("✦  YOU ARE MY SOUL  ·  OUR LITTLE UNIVERSE  ✦", color = Gold.copy(alpha = .82f), fontSize = 8.sp, letterSpacing = 1.05.sp)
                     }
                     Box(
                         Modifier.size(42.dp).background(Color.White.copy(alpha = .06f), RoundedCornerShape(15.dp)),
@@ -1022,6 +1024,61 @@ private data class StarDot(
     val isGold: Boolean,
     val isLarge: Boolean
 )
+
+@Composable
+private fun NebulaGlow() {
+    Canvas(Modifier.fillMaxSize()) {
+        drawCircle(
+            brush = Brush.radialGradient(
+                colors = listOf(Color(0x553F1B78), Color.Transparent),
+                center = Offset(size.width * .18f, size.height * .23f),
+                radius = size.width * .62f
+            ),
+            radius = size.width * .62f,
+            center = Offset(size.width * .18f, size.height * .23f)
+        )
+        drawCircle(
+            brush = Brush.radialGradient(
+                colors = listOf(Color(0x332D5FA5), Color.Transparent),
+                center = Offset(size.width * .86f, size.height * .72f),
+                radius = size.width * .54f
+            ),
+            radius = size.width * .54f,
+            center = Offset(size.width * .86f, size.height * .72f)
+        )
+    }
+}
+
+@Composable
+private fun FloatingHearts() {
+    val motion = rememberInfiniteTransition(label = "ambient_heart_motion")
+    val phase by motion.animateFloat(
+        initialValue = 0f,
+        targetValue = (2f * Math.PI).toFloat(),
+        animationSpec = infiniteRepeatable(tween(18000), repeatMode = RepeatMode.Restart),
+        label = "ambient_heart_phase"
+    )
+    Canvas(Modifier.fillMaxSize()) {
+        val hearts = listOf(
+            Triple(.13f, .28f, .018f), Triple(.82f, .20f, .014f),
+            Triple(.73f, .49f, .021f), Triple(.20f, .73f, .012f),
+            Triple(.91f, .82f, .017f), Triple(.46f, .13f, .010f)
+        )
+        hearts.forEachIndexed { index, heart ->
+            val x = size.width * heart.first + kotlin.math.sin(phase + index) * size.width * .012f
+            val y = size.height * heart.second + kotlin.math.cos(phase * .72f + index) * size.height * .012f
+            val r = size.minDimension * heart.third
+            val pulse = .78f + ((kotlin.math.sin(phase * 1.4f + index) + 1f) * .18f)
+            val path = androidx.compose.ui.graphics.Path().apply {
+                moveTo(x, y + r * .72f * pulse)
+                cubicTo(x - r * 1.8f, y - r * .3f, x - r * 1.15f, y - r * 1.55f, x, y - r * .62f)
+                cubicTo(x + r * 1.15f, y - r * 1.55f, x + r * 1.8f, y - r * .3f, x, y + r * .72f * pulse)
+                close()
+            }
+            drawPath(path, (if (index % 2 == 0) Rose else Gold).copy(alpha = .10f + pulse * .08f))
+        }
+    }
+}
 
 @Composable
 private fun StarField() {
