@@ -110,7 +110,18 @@ internal class WorldMutationSync(
                 .put("lastWateredAt", next.gardenLastWateredAt)
         }
 
-        if (next.dailyAnswerDate != previous.dailyAnswerDate ||
+        if (next.dailyAnswers != previous.dailyAnswers) {
+            val previousAnswers = previous.dailyAnswers.associateBy { it.date + "|" + it.authorCode }
+            next.dailyAnswers.forEach { answer ->
+                if (previousAnswers[answer.date + "|" + answer.authorCode] != answer) {
+                    changes += SyncEventType.DAILY_ANSWER to JSONObject()
+                        .put("date", answer.date)
+                        .put("authorCode", answer.authorCode)
+                        .put("answer", answer.answer)
+                        .put("createdAtEpochMs", answer.createdAtEpochMs)
+                }
+            }
+        } else if (next.dailyAnswerDate != previous.dailyAnswerDate ||
             next.dailyAnswer != previous.dailyAnswer
         ) {
             changes += SyncEventType.DAILY_ANSWER to JSONObject()
@@ -312,8 +323,27 @@ internal class WorldEventReducer(
                     SyncEventType.DAILY_ANSWER -> {
                         val date = payload.optString("date")
                         val answer = payload.optString("answer")
-                        if (!WorldEventValidation.dailyAnswer(date, answer)) state
-                        else state.copy(dailyAnswerDate = date, dailyAnswer = answer)
+                        val authorCode = payload.optString("authorCode")
+                        val createdAt = payload.optLong("createdAtEpochMs")
+                        if (authorCode.isBlank()) {
+                            if (!WorldEventValidation.dailyAnswer(date, answer)) state
+                            else state.copy(dailyAnswerDate = date, dailyAnswer = answer)
+                        } else if (!WorldEventValidation.dailyAnswerEntry(
+                                date, authorCode, answer, createdAt
+                            )
+                        ) {
+                            state
+                        } else {
+                            val entry = DailyAnswerEntry(date, authorCode, answer, createdAt)
+                            val updated = state.dailyAnswers.filterNot {
+                                it.date == date && it.authorCode == authorCode
+                            } + entry
+                            state.copy(
+                                dailyAnswerDate = date,
+                                dailyAnswer = answer,
+                                dailyAnswers = updated.takeLast(100)
+                            )
+                        }
                     }
                     SyncEventType.SETTINGS_UPDATE -> {
                         val worldName = if (payload.has("worldName")) payload.optString("worldName") else null
