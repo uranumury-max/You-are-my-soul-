@@ -182,9 +182,9 @@ class WorldKeyVault(context: Context) {
         }
     }
 
-    private fun getOrCreateWrappingKey(): SecretKey {
+    private fun getOrCreateWrappingKey(): SecretKey = synchronized(KEYSTORE_LOCK) {
         val keyStore = KeyStore.getInstance(ANDROID_KEY_STORE).apply { load(null) }
-        (keyStore.getKey(WRAPPING_KEY_ALIAS, null) as? SecretKey)?.let { return it }
+        (keyStore.getKey(WRAPPING_KEY_ALIAS, null) as? SecretKey)?.let { return@synchronized it }
 
         val generator = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, ANDROID_KEY_STORE)
         generator.init(
@@ -198,7 +198,7 @@ class WorldKeyVault(context: Context) {
                 .setRandomizedEncryptionRequired(true)
                 .build()
         )
-        return generator.generateKey()
+        generator.generateKey()
     }
 
     private fun storageKey(worldId: UUID, keyVersion: Int): String =
@@ -209,6 +209,7 @@ class WorldKeyVault(context: Context) {
             .toByteArray(Charsets.UTF_8)
 
     private companion object {
+        val KEYSTORE_LOCK = Any()
         const val ANDROID_KEY_STORE = "AndroidKeyStore"
         const val WRAPPING_KEY_ALIAS = "you_are_my_soul_world_key_wrap_v1"
         const val TRANSFORMATION = "AES/GCM/NoPadding"
