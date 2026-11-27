@@ -324,7 +324,7 @@ class LocalWorldStore(context: Context) {
                         it.createdAtEpochMs, it.objectPath, it.keyVersion
                     )
                 }
-            }.takeLast(100)
+            }.takeLast(WorldLimits.MAX_MEDIA_ITEMS)
         )
     }
 
