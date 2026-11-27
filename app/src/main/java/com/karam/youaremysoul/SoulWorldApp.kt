@@ -552,7 +552,7 @@ fun SoulWorldApp() {
                                     if (value.isNotEmpty()) {
                                         val current = world ?: WorldSnapshot("عالمنا الخاص", DeviceIdentity(context).code,
                                             listOf(WorldMember(DeviceIdentity(context).code, "صاحب العالم", true)), 0, emptyList(), cloudWorldId = java.util.UUID.randomUUID().toString())
-                                        persist(current.copy(memories = current.memories + value))
+                                        persist(current.copy(memories = (current.memories + value).takeLast(100)))
                                         memoryText = ""
                                     }
                                 },
@@ -580,7 +580,7 @@ fun SoulWorldApp() {
                                             text = value,
                                             createdAtEpochMs = System.currentTimeMillis()
                                         )
-                                        persist(current.copy(messages = (current.messages + message).takeLast(200)))
+                                        persist(current.copy(messages = (current.messages + message).takeLast(100)))
                                         messageText = ""
                                     }
                                 }
@@ -611,7 +611,7 @@ fun SoulWorldApp() {
                                         listOf(WorldMember(DeviceIdentity(context).code, "صاحب العالم", true)),
                                         cloudWorldId = java.util.UUID.randomUUID().toString()
                                     )
-                                    persist(current.copy(drawings = (current.drawings + stroke).takeLast(100)))
+                                    persist(current.copy(drawings = (current.drawings + stroke).takeLast(40)))
                                 },
                                 onClearDrawing = {
                                     world?.let { current -> persist(current.copy(drawings = emptyList())) }
@@ -630,7 +630,7 @@ fun SoulWorldApp() {
                                         createdAtEpochMs = now,
                                         unlockAtEpochMs = unlockAt
                                     )
-                                    persist(current.copy(capsules = (current.capsules + capsule).takeLast(100)))
+                                    persist(current.copy(capsules = (current.capsules + capsule).takeLast(50)))
                                 },
                                 onOpenCapsule = { capsuleId ->
                                     scope.launch {
@@ -1172,7 +1172,7 @@ private fun DrawingSection(
                     onDrag = { change, _ ->
                         change.consume()
                         activeStroke?.let { stroke ->
-                            if (stroke.points.size < 200) {
+                            if (stroke.points.size < 150) {
                                 activeStroke = stroke.copy(points = stroke.points + normalizedPoint(change.position))
                             }
                         }
@@ -1243,7 +1243,7 @@ private fun CapsuleSection(
         Text("اكتبوا رسالة لا تُفتح إلا في موعدها. لا يمكن تغيير الموعد بعد الحفظ.", color = Rose, fontSize = 12.sp)
         OutlinedTextField(
             value = draft,
-            onValueChange = { draft = it.take(1200); feedback = "" },
+            onValueChange = { draft = it.take(800); feedback = "" },
             modifier = Modifier.fillMaxWidth(),
             minLines = 3,
             maxLines = 6,
