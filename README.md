@@ -29,6 +29,7 @@ The target design is cloud-first and offline-capable:
 - Authenticated append/fetch transport for versioned AES-GCM event envelopes, a bounded Room outbox/download coordinator, and automatic periodic synchronization with deterministic event replay.
 - UI changes to memories, messages, drawing strokes, future capsules, garden flowers, daily answers, world name, and relationship start date are converted into separate encrypted events; they are no longer uploaded as whole-snapshot replacements.
 - The Moments area includes a shared drawing board, fixed-date future capsules, a daily question, a relationship-day counter, and a guided conversation/reconciliation flow.
+- Shared calendar calculations for the daily question, relationship counter, and milestone progression use UTC, preventing two devices in different time zones from showing different day states. Home-screen sync copy now distinguishes local encrypted persistence from cloud sync that still depends on backend setup and approved pairing.
 - GitHub Actions workflow runs unit tests before building the debug APK.
 
 ## Not yet complete — do not treat as a working connected app
