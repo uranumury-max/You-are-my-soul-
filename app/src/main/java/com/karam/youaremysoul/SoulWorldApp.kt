@@ -1324,7 +1324,16 @@ private fun MomentsHub(
                 )
                 "مفاجأة اليوم" -> DailySurpriseSection()
                 "كبسولة المستقبل" -> CapsuleSection(capsules, onCreateCapsule, onOpenCapsule)
-                "لوحتنا" -> DrawingSection(drawings, onAddStroke, onClearDrawing)
+                "لوحتنا" -> DrawingSection(
+                                drawings, onAddStroke, onClearDrawing,
+                                onUndo = {
+                                    world?.let { current ->
+                                        if (current.drawings.isNotEmpty()) {
+                                            persist(current.copy(drawings = current.drawings.dropLast(1)))
+                                        }
+                                    }
+                                }
+                            )
                 "مساحة التفاهم" -> ReconciliationSection()
                 else -> JourneySection(stage, relationshipStartDate)
             }
@@ -1607,10 +1616,12 @@ private fun DailyQuestionSection(
 private fun DrawingSection(
     strokes: List<DrawingStroke>,
     onAddStroke: (DrawingStroke) -> Unit,
-    onClear: () -> Unit
- ) {
+    onClear: () -> Unit,
+    onUndo: () -> Unit
+) {
     var activeStroke by remember { mutableStateOf<DrawingStroke?>(null) }
     var showScene by remember { mutableStateOf(false) }
+    var confirmClear by remember { mutableStateOf(false) }
     if (showScene) {
         DrawingSceneSection(strokes, onBack = { showScene = false })
     } else Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -1671,11 +1682,37 @@ private fun DrawingSection(
                 }
             }
         }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Text("${strokes.size} خطاً محفوظاً", color = Color.LightGray, fontSize = 11.sp)
-            OutlinedButton(onClick = onClear, enabled = strokes.isNotEmpty()) {
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("${strokes.size} خطاً محفوظاً", color = Color.LightGray, fontSize = 11.sp, modifier = Modifier.weight(1f))
+            OutlinedButton(onClick = onUndo, enabled = strokes.isNotEmpty()) {
+                Text("تراجع عن آخر خط")
+            }
+            OutlinedButton(onClick = { confirmClear = true }, enabled = strokes.isNotEmpty()) {
                 Text("مسح اللوحة")
             }
+        }
+        if (confirmClear) {
+            AlertDialog(
+                onDismissRequest = { confirmClear = false },
+                title = { Text("مسح اللوحة؟") },
+                text = { Text("سيُحذف الرسم الحالي من العالم المشترك. لا يمكن استعادته بعد المزامنة.") },
+                confirmButton = {
+                    TextButton(onClick = {
+                        confirmClear = false
+                        onClear()
+                    }) { Text("مسح") }
+                },
+                dismissButton = {
+                    TextButton(onClick = { confirmClear = false }) { Text("إلغاء") }
+                },
+                containerColor = CardTone,
+                titleContentColor = Gold,
+                textContentColor = Color.White
+            )
         }
         Button(
             onClick = { showScene = true },
