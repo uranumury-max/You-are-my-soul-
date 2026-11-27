@@ -135,3 +135,5 @@ The follow-up migration `202611270002_append_world_event_rpc.sql` removes direct
 - This implementation is source-complete for the listed data types but is not production-verified until the SQL migrations are deployed, CI is green on the latest commit, and two-device integration tests pass.
 
 - Future capsules store a fixed unlock timestamp in the encrypted world snapshot. The creation flow does not expose an edit operation for that timestamp. Opening requests fetch the database clock through authenticated RPC `get_server_time`; the client keeps the capsule closed if the server clock cannot be reached or says the unlock time has not arrived. This is an application-level gate, not a claim that a modified client can be made tamper-proof.
+
+- The shared drawing board stores normalized vector points rather than device-pixel coordinates. Strokes are bounded by point count and history length, encrypted as DRAWING_UPDATE events, and replayed in server-sequence order. A clear event resets the board before any later strokes are replayed.
