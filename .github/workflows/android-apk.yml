@@ -2,6 +2,15 @@ name: Android APK
 on:
   push:
     branches: [ main ]
+    paths:
+      - "app/**"
+      - "supabase/migrations/**"
+      - "scripts/**"
+      - "gradle/**"
+      - "*.gradle.kts"
+      - "gradle.properties"
+      - "settings.gradle.kts"
+      - ".github/workflows/android-apk.yml"
   workflow_dispatch:
 permissions:
   contents: read
