@@ -29,6 +29,15 @@ class DrawingDiffTest {
     }
 
     @Test
+    fun nonUndoRemovalRebuildsBoardDeterministically() {
+        val old = listOf(stroke("one"), stroke("middle"), stroke("last"))
+        val next = listOf(stroke("one"), stroke("last"))
+        val delta = DrawingDiff.between(old, next)
+        assertTrue(delta.clearBoard)
+        assertEquals(listOf("one", "last"), delta.addedStrokes.map { it.id })
+    }
+
+    @Test
     fun addingAStrokeDoesNotClearExistingBoard() {
         val old = listOf(stroke("one"))
         val delta = DrawingDiff.between(old, old + stroke("two"))
