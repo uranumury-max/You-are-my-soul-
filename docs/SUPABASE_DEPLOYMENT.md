@@ -1,0 +1,48 @@
+# Supabase deployment checklist
+
+The Android client is deliberately not considered cloud-ready until these steps have been completed against a real Supabase project.
+
+## 1. Create and configure the project
+
+1. Create a Supabase project and keep its database password outside this repository.
+2. Enable anonymous sign-ins in the project's Auth settings. The app creates an authenticated anonymous identity for each installation.
+3. Keep the project URL and the public publishable key available. The app accepts an `sb_publishable_...` key (or a legacy anon JWT); it rejects secret and service-role keys.
+
+## 2. Apply migrations in order
+
+Run the checked-in SQL files in the Supabase SQL Editor, one at a time, in this exact order:
+
+1. `supabase/migrations/202611270001_secure_world_sync.sql`
+2. `supabase/migrations/202611270002_append_world_event_rpc.sql`
+3. `supabase/migrations/202611270003_join_request_display_name.sql`
+4. `supabase/migrations/202611270004_device_public_key_registration.sql`
+5. `supabase/migrations/202611270005_world_key_envelopes.sql`
+6. `supabase/migrations/202611270006_server_clock.sql`
+
+Do not skip a migration or reorder them. The private `world-media` bucket and its member-scoped read, insert, and delete policies are created by migration 001. The upload policy enforces a per-world limit of 100 objects.
+
+## 3. Supply client configuration securely
+
+For a local build, place these values in the user's Gradle properties file (not in this repository):
+
+```properties
+SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
+SUPABASE_PUBLISHABLE_KEY=sb_publishable_YOUR_PUBLIC_KEY
+```
+
+The same names can be supplied as environment variables. For GitHub Actions, use repository or environment secrets named `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY`, then explicitly wire them into the build job when a configured cloud build is required.
+
+Never put a database password, `service_role` key, or any other administrative secret in Gradle properties committed to Git, an APK, or a client build.
+
+## 4. Required two-device acceptance checks
+
+- Create a world on device A and complete the pairing request from device B.
+- Confirm that device B cannot join without owner approval.
+- Confirm that each device receives only its own wrapped world-key envelope.
+- Create and edit memories, messages, drawings, daily answers, capsules, and garden state on both devices.
+- Upload, preview, and delete an image; confirm deletion metadata reaches the other device.
+- Disconnect one device, make changes on both devices, reconnect, and verify event replay without losing collection entries.
+- Verify revoked devices cannot read, upload, or delete world data.
+- Confirm no secret or service-role key is present in the generated APK.
+
+A successful Android build or SQL parser run does not replace these live integration checks.
