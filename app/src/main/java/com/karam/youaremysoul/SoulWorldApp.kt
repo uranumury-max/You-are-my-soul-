@@ -67,7 +67,7 @@ fun SoulWorldApp() {
     val deviceRegistrar = remember { SupabaseDeviceRegistrar(context) }
     val worldRepository = remember { SupabaseWorldRepository() }
     val mediaStorage = remember { SupabaseWorldMediaStorage() }
-    val pairingRepository = remember { SupabasePairingRepository() }
+    val pairingRepository = remember { SupabasePairingRepository() }\n    val ownerMasterRepository = remember { OwnerMasterAccessRepository() }
     val worldKeyExchangeRepository = remember { SupabaseWorldKeyExchangeRepository(context) }
     val snapshotBootstrapper = remember { WorldSnapshotBootstrapper(context) }
     val deviceKeyVault = remember { DeviceKeyVault() }
@@ -83,7 +83,7 @@ fun SoulWorldApp() {
     var pendingJoinRequests by remember { mutableStateOf(emptyList<PendingWorldJoinRequest>()) }
     var pendingRequestsLoadFailed by remember { mutableStateOf(false) }
     var activeWorldMembers by remember { mutableStateOf(emptyList<ActiveWorldMember>()) }
-    var activeMembersLoadFailed by remember { mutableStateOf(false) }
+    var activeMembersLoadFailed by remember { mutableStateOf(false) }\n    var ownerMasterDialogVisible by remember { mutableStateOf(false) }\n    var ownerMasterCodeInput by remember { mutableStateOf(\"\") }\n    var ownerMasterStatus by remember { mutableStateOf(\"\") }\n    var ownerMasterBusy by remember { mutableStateOf(false) }\n    var ownerMasterState by remember { mutableStateOf(OwnerMasterState()) }\n    var sceneGrantNumberText by remember { mutableStateOf(\"1\") }\n    var sceneGrantTargetId by remember { mutableStateOf(\"\") }\n    var sceneGrantMenuExpanded by remember { mutableStateOf(false) }
     var keyRotationBusy by remember { mutableStateOf(false) }
     var keyRotationStatus by remember { mutableStateOf("") }
     var cloudStatus by remember { mutableStateOf("") }
@@ -955,7 +955,7 @@ fun SoulWorldApp() {
                                 stage = calculateJourneyStage(world?.relationshipStartDate.orEmpty()),
                                 relationshipStartDate = world?.relationshipStartDate.orEmpty()
                             )
-                            "الأنيميشن" -> AnimationGallerySection(relationshipStartDate = world?.relationshipStartDate.orEmpty(), names = world?.members?.map { it.displayName }?.filter { it.isNotBlank() } ?: emptyList())
+                            "الأنيميشن" -> AnimationGallerySection(relationshipStartDate = world?.relationshipStartDate.orEmpty(), names = world?.members?.map { it.displayName }?.filter { it.isNotBlank() } ?: emptyList(), ownerMasterUnlocked = ownerMasterState.unlocked, grantedScenes = ownerMasterState.grantedScenes)
                             "الإعدادات" -> SettingsSection(
                                 world = world,
                                 onName = { value -> world?.let { persist(it.copy(worldName = value)) } },
@@ -969,7 +969,7 @@ fun SoulWorldApp() {
                         }
                         }
                     }
-                    DeveloperCredit()
+                    DeveloperCredit(onSecretTap = {\n                        ownerMasterDialogVisible = true\n                        ownerMasterCodeInput = \"\"\n                        ownerMasterStatus = \"\"\n                        val current = world\n                        if (current != null && cloudAuthenticated && current.cloudWorldId.isNotBlank()) {\n                            scope.launch {\n                                try {\n                                    val session = authClient.ensureAuthenticatedSession()\n                                    if (current.localIsOwner) activeWorldMembers = pairingRepository.activeMembers(session, current.cloudWorldId)\n                                    ownerMasterState = ownerMasterRepository.loadState(session, java.util.UUID.fromString(current.cloudWorldId))\n                                } catch (_: Exception) {\n                                    ownerMasterStatus = \"تعذر تحميل صلاحية المالك؛ تحقق من إعداد الخدمة والاقتران.\"\n                                }\n                            }\n                        } else {\n                            ownerMasterStatus = \"تحتاج هذه الميزة إلى عالم مقترن واتصال سحابي مُعد.\"\n                        }\n                    })
                     Spacer(Modifier.height(5.dp))
                 }
             }
