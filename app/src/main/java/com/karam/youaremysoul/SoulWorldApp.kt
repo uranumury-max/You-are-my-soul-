@@ -479,14 +479,14 @@ fun SoulWorldApp() {
                                                         withContext(Dispatchers.IO) {
                                                             val cloudId = java.util.UUID.fromString(status.worldId)
                                                             if (!worldKeyVault.hasWorldKey(cloudId, envelope.keyVersion)) {
-                                                                worldKeyVault.importDeviceEnvelope(
-                                                                    cloudId,
-                                                                    envelope.keyVersion,
-                                                                    envelope.envelope,
-                                                                    deviceKeyVault
-                                                                )
-                                                                 worldKeyVault.setActiveKeyVersion(cloudId, envelope.keyVersion)
+                                                                 worldKeyVault.importDeviceEnvelope(
+                                                                     cloudId,
+                                                                     envelope.keyVersion,
+                                                                     envelope.envelope,
+                                                                     deviceKeyVault
+                                                                 )
                                                              }
+                                                             worldKeyVault.setActiveKeyVersion(cloudId, envelope.keyVersion)
                                                         }
                                                         val restored = snapshotBootstrapper.restoreMemberSnapshot(
                                                             session = session,
