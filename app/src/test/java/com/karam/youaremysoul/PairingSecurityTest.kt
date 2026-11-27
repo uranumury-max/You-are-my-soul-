@@ -26,6 +26,28 @@ class PairingSecurityTest {
     }
 
     @Test
+    fun pairingSecretHasOneCanonicalUnpaddedEncoding() {
+        val secret = PairingSecurity.newPairingSecret()
+        assertEquals(43, secret.length)
+        assertTrue(runCatching {
+            PairingSecurity.createProof(
+                PairingChallenge("request-id-canonical", "123456789", "987654321", "nonce", 10L),
+                "$secret="
+            )
+        }.isFailure)
+
+        val alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
+        val last = alphabet.indexOf(secret.last())
+        val alternate = secret.dropLast(1) + alphabet[last xor 1]
+        assertTrue(runCatching {
+            PairingSecurity.createProof(
+                PairingChallenge("request-id-canonical", "123456789", "987654321", "nonce", 10L),
+                alternate
+            )
+        }.isFailure)
+    }
+
+    @Test
     fun challengeProofIsValidOnlyOnce() {
         var now = 1_000_000L
         val verifier = PairingChallengeVerifier { now }
