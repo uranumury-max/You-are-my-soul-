@@ -1141,6 +1141,7 @@ private fun ConnectionSection(
     val context = androidx.compose.ui.platform.LocalContext.current
     val code = DeviceIdentity(context).code
     var memberToRevoke by remember { mutableStateOf<ActiveWorldMember?>(null) }
+    var confirmKeyRotation by remember { mutableStateOf(false) }
     Column(Modifier.fillMaxWidth().verticalScroll(androidx.compose.foundation.rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text("هوية هذا الجهاز", color = Gold, fontSize = 20.sp, fontWeight = FontWeight.Bold)
         Card(colors = CardDefaults.cardColors(containerColor = CardTone)) {
@@ -1203,7 +1204,7 @@ private fun ConnectionSection(
             Text("حماية العالم", color = Gold, fontSize = 17.sp, fontWeight = FontWeight.Bold)
             Text("تدوير مفتاح التشفير يحدّث مفتاح المحتوى للأجهزة النشطة. لا تُحذف المفاتيح القديمة من هذا الجهاز.", color = Color.LightGray, fontSize = 11.sp)
             OutlinedButton(
-                onClick = onRotateKey,
+                onClick = { confirmKeyRotation = true },
                 enabled = canManageRequests && !keyRotationBusy,
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -1240,6 +1241,27 @@ private fun ConnectionSection(
                     }
                 }
             }
+        }
+        if (confirmKeyRotation) {
+            AlertDialog(
+                onDismissRequest = { confirmKeyRotation = false },
+                title = { Text("تدوير مفتاح تشفير العالم؟") },
+                text = {
+                    Text("سيُنشأ إصدار جديد وتُرسل أغلفته المشفّرة إلى الأجهزة النشطة. لن يُفعّل الخادم الإصدار الجديد قبل تأكيد تسليم الأغلفة، وستبقى المفاتيح القديمة محفوظة لقراءة البيانات السابقة.")
+                },
+                confirmButton = {
+                    TextButton(onClick = {
+                        confirmKeyRotation = false
+                        onRotateKey()
+                    }) { Text("بدء التدوير") }
+                },
+                dismissButton = {
+                    TextButton(onClick = { confirmKeyRotation = false }) { Text("إلغاء") }
+                },
+                containerColor = CardTone,
+                titleContentColor = Gold,
+                textContentColor = Color.White
+            )
         }
         memberToRevoke?.let { member ->
             AlertDialog(
