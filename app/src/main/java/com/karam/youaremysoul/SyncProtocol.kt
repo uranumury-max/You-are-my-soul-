@@ -121,6 +121,9 @@ object SyncProtocolRules {
         if (page.events.isEmpty() && page.nextCursor.serverSequence != requestedAfter.serverSequence) {
             return "empty_page_changed_cursor"
         }
+        // An empty page that claims more data leaves the cursor unchanged and
+        // can make a polling client repeat the same request forever.
+        if (page.events.isEmpty() && page.hasMore) return "empty_page_claims_more"
         return null
     }
 
