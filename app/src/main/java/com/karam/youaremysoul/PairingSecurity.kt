@@ -75,7 +75,7 @@ object PairingSecurity {
         nowEpochMs: Long,
         lifetimeMs: Long = 120_000L
     ): PairingChallenge {
-        require(requestId.length in 16..80 && requestId.all { it.isLetterOrDigit() || it in "-_" })
+        require(requestId.length in 16..80 && requestId.all { it.code in 65..90 || it.code in 97..122 || it.code in 48..57 || "-_".contains(it) })
         require(isValidDeviceCode(fromDeviceCode) && isValidDeviceCode(hostDeviceCode))
         require(fromDeviceCode != hostDeviceCode)
         require(lifetimeMs in 10_000L..300_000L)
