@@ -601,6 +601,32 @@ fun SoulWorldApp() {
                                     )
                                     persist(current.copy(dailyAnswerDate = java.time.LocalDate.now().toString(), dailyAnswer = value))
                                 },
+                                capsules = world?.capsules.orEmpty(),
+                                onCreateCapsule = { message, unlockAt ->
+                                    val current = world ?: WorldSnapshot(
+                                        "عالمنا الخاص", DeviceIdentity(context).code,
+                                        listOf(WorldMember(DeviceIdentity(context).code, "صاحب العالم", true)),
+                                        cloudWorldId = java.util.UUID.randomUUID().toString()
+                                    )
+                                    val now = System.currentTimeMillis()
+                                    val capsule = FutureCapsule(
+                                        id = java.util.UUID.randomUUID().toString(),
+                                        message = message,
+                                        createdAtEpochMs = now,
+                                        unlockAtEpochMs = unlockAt
+                                    )
+                                    persist(current.copy(capsules = (current.capsules + capsule).takeLast(100)))
+                                },
+                                onOpenCapsule = { capsuleId ->
+                                    world?.let { current ->
+                                        val now = System.currentTimeMillis()
+                                        persist(current.copy(capsules = current.capsules.map { capsule ->
+                                            if (capsule.id == capsuleId && capsule.openedAtEpochMs == null &&
+                                                now >= capsule.unlockAtEpochMs
+                                            ) capsule.copy(openedAtEpochMs = now) else capsule
+                                        }))
+                                    }
+                                },
                                 stage = calculateJourneyStage(world?.relationshipStartDate.orEmpty())
                             )
                             "الإعدادات" -> SettingsSection(
@@ -935,7 +961,11 @@ private fun MessagesSection(
 @Composable
 private fun MomentsHub(
     flowers: Int, onPlant: () -> Unit, answer: String,
-    onAnswer: (String) -> Unit, stage: Int
+    onAnswer: (String) -> Unit,
+    capsules: List<FutureCapsule>,
+    onCreateCapsule: (String, Long) -> Unit,
+    onOpenCapsule: (String) -> Unit,
+    stage: Int
 ) {
     var selected by remember { mutableStateOf("الحديقة") }
     Column(Modifier.fillMaxSize()) {
@@ -943,7 +973,7 @@ private fun MomentsHub(
             Modifier.fillMaxWidth().padding(bottom = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            listOf("الحديقة", "سؤال اليوم", "الرحلة").forEach { item ->
+            listOf("الحديقة", "سؤال اليوم", "الرحلة", "كبسولة المستقبل").forEach { item ->
                 FilterChip(
                     selected = selected == item,
                     onClick = { selected = item },
@@ -955,6 +985,7 @@ private fun MomentsHub(
             when (selected) {
                 "الحديقة" -> GardenSection(flowers, onPlant)
                 "سؤال اليوم" -> DailyQuestionSection(answer, onAnswer)
+                "كبسولة المستقبل" -> CapsuleSection(capsules, onCreateCapsule, onOpenCapsule)
                 else -> JourneySection(stage)
             }
         }
@@ -1073,6 +1104,97 @@ private fun DailyQuestionSection(answer: String, onAnswer: (String) -> Unit) {
             "يتغير السؤال بحسب اليوم، وتُزامَن الإجابة المشفّرة مع بقية أجهزة العالم عند توفر الاتصال.",
             color = Color.LightGray, fontSize = 11.sp
         )
+    }
+}
+
+@Composable
+private fun CapsuleSection(
+    capsules: List<FutureCapsule>,
+    onCreate: (String, Long) -> Unit,
+    onOpen: (String) -> Unit
+) {
+    var draft by remember { mutableStateOf("") }
+    var unlockDateText by remember { mutableStateOf("") }
+    var feedback by remember { mutableStateOf("") }
+    val parsedDate = remember(unlockDateText) {
+        runCatching { java.time.LocalDate.parse(unlockDateText) }.getOrNull()
+    }
+    val unlockAt = parsedDate?.atStartOfDay(java.time.ZoneId.systemDefault())
+        ?.toInstant()?.toEpochMilli()
+    val canCreate = draft.isNotBlank() && unlockAt != null &&
+        unlockAt > System.currentTimeMillis()
+
+    Column(
+        Modifier.fillMaxSize().verticalScroll(androidx.compose.foundation.rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Text("كبسولة المستقبل", color = Gold, fontSize = 23.sp, fontWeight = FontWeight.Bold)
+        Text("اكتبوا رسالة لا تُفتح إلا في موعدها. لا يمكن تغيير الموعد بعد الحفظ.", color = Rose, fontSize = 12.sp)
+        OutlinedTextField(
+            value = draft,
+            onValueChange = { draft = it.take(1200); feedback = "" },
+            modifier = Modifier.fillMaxWidth(),
+            minLines = 3,
+            maxLines = 6,
+            label = { Text("ماذا تريدون أن تتذكروا؟") }
+        )
+        OutlinedTextField(
+            value = unlockDateText,
+            onValueChange = { unlockDateText = it.take(10); feedback = "" },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            label = { Text("موعد الفتح YYYY-MM-DD") }
+        )
+        Button(
+            onClick = {
+                val timestamp = unlockAt
+                if (timestamp != null && timestamp > System.currentTimeMillis() && draft.isNotBlank()) {
+                    onCreate(draft.trim(), timestamp)
+                    draft = ""
+                    unlockDateText = ""
+                    feedback = "حُفظت الكبسولة، وثُبّت موعد فتحها."
+                } else {
+                    feedback = "أدخل رسالة وموعداً مستقبلياً صحيحاً."
+                }
+            },
+            enabled = canCreate
+        ) { Text("حفظ الكبسولة") }
+        if (feedback.isNotBlank()) Text(feedback, color = Gold, fontSize = 12.sp)
+        Divider(color = Rose.copy(alpha = .25f))
+        if (capsules.isEmpty()) {
+            Text("لا توجد كبسولات بعد.", color = Color.LightGray)
+        } else {
+            capsules.sortedBy { it.unlockAtEpochMs }.forEach { capsule ->
+                val isOpened = capsule.openedAtEpochMs != null
+                val isReady = System.currentTimeMillis() >= capsule.unlockAtEpochMs
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = CardTone),
+                    shape = RoundedCornerShape(18.dp)
+                ) {
+                    Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                        Text(
+                            if (isOpened) "كبسولة مفتوحة" else "رسالة تنتظر موعدها",
+                            color = Gold,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.ROOT)
+                                .format(java.util.Date(capsule.unlockAtEpochMs)),
+                            color = Rose,
+                            fontSize = 11.sp
+                        )
+                        if (isOpened) {
+                            Text(capsule.message, color = Color.White)
+                        } else if (isReady) {
+                            Button(onClick = { onOpen(capsule.id) }) { Text("افتحوا الكبسولة") }
+                        } else {
+                            Text("ستبقى الرسالة مغلقة حتى الموعد المحدد.", color = Color.LightGray, fontSize = 12.sp)
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
