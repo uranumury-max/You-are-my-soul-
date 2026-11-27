@@ -277,6 +277,16 @@ class RoomSyncStore(context: Context) {
         database.withTransaction { database.syncBaselineDao().save(baseline) }
     }
 
+    suspend fun commitRemoteState(
+        snapshot: LocalWorldSnapshotEntity,
+        baseline: LocalSyncBaselineEntity
+    ) {
+        database.withTransaction {
+            database.worldSnapshotDao().save(snapshot)
+            database.syncBaselineDao().save(baseline)
+        }
+    }
+
     suspend fun commitLocalChange(
         snapshot: LocalWorldSnapshotEntity,
         baseline: LocalSyncBaselineEntity,
@@ -327,7 +337,7 @@ class RoomSyncStore(context: Context) {
         queuedAtEpochMs: Long
     ): List<SyncOutboxEntity> {
         require(queuedAtEpochMs > 0L)
-        require(events.size <= SyncProtocolRules.MAX_EVENTS_PER_PAGE)
+        require(events.size <= MAX_LOCAL_MUTATION_EVENTS)
         return events.map { event ->
             require(SyncProtocolRules.validate(event) == null) { "Invalid encrypted sync event" }
             SyncOutboxEntity(
@@ -469,5 +479,6 @@ class RoomSyncStore(context: Context) {
         const val MAX_REPLAY_EVENTS = 10_000
         const val REPLAY_PAGE_SIZE = 500
         const val MAX_RETRY_DELAY_MS = 6 * 60 * 60 * 1000L
+        const val MAX_LOCAL_MUTATION_EVENTS = 500
     }
 }
