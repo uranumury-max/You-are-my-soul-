@@ -37,7 +37,7 @@ begin
         raise exception 'expected RSA-2048 X.509 public key' using errcode = '22023';
     end if;
 
-    v_canonical := replace(encode(v_decoded, 'base64'), E'\\n', '');
+    v_canonical := replace(encode(v_decoded, 'base64'), E'\n', '');
     if v_canonical <> p_public_key then
         raise exception 'non-canonical public key encoding' using errcode = '22023';
     end if;
