@@ -73,6 +73,26 @@ class SupabaseWorldRepository {
         Unit
     }
 
+    private fun readBoundedResponse(stream: java.io.InputStream, maximumBytes: Int): String {
+        val output = java.io.ByteArrayOutputStream()
+        val buffer = ByteArray(8 * 1024)
+        var total = 0
+        while (true) {
+            val count = stream.read(buffer)
+            if (count < 0) break
+            total += count
+            if (total > maximumBytes) {
+                throw SupabaseAuthException("cloud_world_response_too_large")
+            }
+            output.write(buffer, 0, count)
+        }
+        return output.toString(StandardCharsets.UTF_8.name())
+    }
+
+    private companion object {
+        const val MAX_RESPONSE_BYTES = 1024 * 1024
+    }
+
     private fun verifyOwnerRow(row: JSONObject, expectedId: String, expectedOwner: String) {
         if (row.optString("id") != expectedId || row.optString("owner_id") != expectedOwner) {
             throw SupabaseAuthException("cloud_world_owner_mismatch")
@@ -106,7 +126,7 @@ class SupabaseWorldRepository {
             }
             val status = connection.responseCode
             val stream = if (status in 200..299) connection.inputStream else connection.errorStream
-            val response = stream?.bufferedReader(StandardCharsets.UTF_8)?.use { it.readText() }.orEmpty()
+            val response = stream?.use { readBoundedResponse(it, MAX_RESPONSE_BYTES) }.orEmpty()
             if (status !in 200..299) {
                 throw SupabaseAuthException(
                     when {
