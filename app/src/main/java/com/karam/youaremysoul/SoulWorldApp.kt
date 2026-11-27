@@ -1280,6 +1280,9 @@ private fun MessagesSection(
 private fun MomentsHub(
     flowers: Int, onPlant: () -> Unit, answer: String,
     onAnswer: (String) -> Unit,
+    dailyAnswers: List<DailyAnswerEntry>,
+    currentAuthorCode: String,
+    memberNames: Map<String, String>,
     capsules: List<FutureCapsule>,
     onCreateCapsule: (String, Long) -> Unit,
     onOpenCapsule: (String) -> Unit,
@@ -1306,7 +1309,9 @@ private fun MomentsHub(
         Box(Modifier.weight(1f).fillMaxWidth()) {
             when (selected) {
                 "الحديقة" -> GardenSection(flowers, onPlant)
-                "سؤال اليوم" -> DailyQuestionSection(answer, onAnswer)
+                "سؤال اليوم" -> DailyQuestionSection(
+                    answer, onAnswer, dailyAnswers, currentAuthorCode, memberNames
+                )
                 "كبسولة المستقبل" -> CapsuleSection(capsules, onCreateCapsule, onOpenCapsule)
                 "لوحتنا" -> DrawingSection(drawings, onAddStroke, onClearDrawing)
                 "مساحة التفاهم" -> ReconciliationSection()
