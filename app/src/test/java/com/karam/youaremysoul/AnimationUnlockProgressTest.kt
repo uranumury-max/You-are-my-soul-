@@ -16,6 +16,16 @@ class AnimationUnlockProgressTest {
         assertEquals(7, calculateUnlockedAnimationCount(start, start.plusDays(6)))
     }
 
+    @Test fun allTwentyOneScenesAreAvailableOnDayTwentyOne() {
+        val start = LocalDate.parse("2026-11-01")
+        assertEquals(21, calculateUnlockedAnimationCount(start, start.plusDays(20)))
+    }
+
+    @Test fun sameDayNeverUnlocksMoreThanOneScene() {
+        val date = LocalDate.parse("2026-11-27")
+        assertEquals(1, calculateUnlockedAnimationCount(date, date))
+    }
+
     @Test fun unlockCountNeverExceedsTwentyOne() {
         val start = LocalDate.parse("2026-11-01")
         assertEquals(21, calculateUnlockedAnimationCount(start, start.plusDays(50)))
