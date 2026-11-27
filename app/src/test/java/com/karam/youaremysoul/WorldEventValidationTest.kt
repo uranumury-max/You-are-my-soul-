@@ -42,6 +42,14 @@ class WorldEventValidationTest {
     }
 
     @Test
+    fun acceptsOnlySupportedSharedCanvasPaletteValues() {
+        assertTrue(WorldEventValidation.drawingColor(androidx.compose.ui.graphics.Color(0xFFFF9CCB).value.toLong()))
+        assertTrue(WorldEventValidation.drawingColor(androidx.compose.ui.graphics.Color(0xFF8FE7FF).value.toLong()))
+        assertFalse(WorldEventValidation.drawingColor(Long.MIN_VALUE))
+        assertFalse(WorldEventValidation.drawingColor(123456789L))
+    }
+
+    @Test
     fun validatesDailyAnswerDateAndTextBounds() {
         assertTrue(WorldEventValidation.dailyAnswer("2026-11-27", "إجابة اليوم"))
         assertFalse(WorldEventValidation.dailyAnswer("27-11-2026", "إجابة"))
