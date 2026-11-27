@@ -731,7 +731,7 @@ fun SoulWorldApp() {
                                     persist(current.copy(gardenFlowers = current.gardenFlowers + 1, gardenLastWateredAt = System.currentTimeMillis()))
                                 },
                                 answer = world?.let { current ->
-                                    val today = java.time.LocalDate.now().toString()
+                                    val today = java.time.LocalDate.now(java.time.ZoneOffset.UTC).toString()
                                     val own = current.dailyAnswers.firstOrNull {
                                         it.date == today && it.authorCode == DeviceIdentity(context).code
                                     }?.answer
@@ -748,7 +748,7 @@ fun SoulWorldApp() {
                                         listOf(WorldMember(DeviceIdentity(context).code, "صاحب العالم", true)),
                                         cloudWorldId = java.util.UUID.randomUUID().toString()
                                     )
-                                    val today = java.time.LocalDate.now().toString()
+                                    val today = java.time.LocalDate.now(java.time.ZoneOffset.UTC).toString()
                                     val authorCode = DeviceIdentity(context).code
                                     val entry = DailyAnswerEntry(today, authorCode, value, System.currentTimeMillis())
                                     val answers = current.dailyAnswers.filterNot {
