@@ -137,7 +137,7 @@ private fun SoulSceneViewer(scene: SoulScene, number: Int, onBack: () -> Unit) {
             val base = minOf(size.width, size.height)
             // Each unlocked scene has its own animated visual motif, not a shared placeholder.
             when (number) {
-                1, 20, 21 -> {
+                1 -> {
                     val heart = androidx.compose.ui.graphics.Path().apply {
                         moveTo(center.x, center.y + base * 0.25f * pulse)
                         cubicTo(center.x - base * 0.48f, center.y - base * 0.08f, center.x - base * 0.30f, center.y - base * 0.43f, center.x, center.y - base * 0.16f)
@@ -148,14 +148,60 @@ private fun SoulSceneViewer(scene: SoulScene, number: Int, onBack: () -> Unit) {
                     drawPath(heart, Color(0xFFFFD68A), style = Stroke(width = 2.2.dp.toPx()))
                     drawCircle(Color(0x55FF9CCB), base * 0.38f * pulse, center)
                 }
-                2, 9, 16 -> {
+                20 -> {
+                    // Twin comets cross a quiet orbital path, then separate again.
+                    repeat(2) { i ->
+                        val phase = pulse * 2.4f + i * Math.PI.toFloat()
+                        val x = center.x + kotlin.math.cos(phase).toFloat() * base * 0.30f
+                        val y = center.y + kotlin.math.sin(phase).toFloat() * base * 0.20f
+                        drawLine(Color(0x66FFD68A), Offset(x - base * 0.13f, y - base * 0.08f), Offset(x, y), strokeWidth = 2.4.dp.toPx())
+                        drawCircle(if (i == 0) Color(0xFFFFD68A) else Color(0xFFE8D9FF), base * 0.065f * pulse, Offset(x, y))
+                        drawCircle(Color(0x55FF9CCB), base * 0.12f, Offset(x, y), style = Stroke(width = 1.4.dp.toPx()))
+                    }
+                    drawCircle(Color(0x66FF9CCB), base * 0.36f, center, style = Stroke(width = 1.2.dp.toPx()))
+                }
+                21 -> {
+                    // Three luminous rings breathe in sequence around a central star.
+                    repeat(3) { i ->
+                        val radius = base * (0.14f + i * 0.105f) * (0.82f + pulse * 0.18f)
+                        drawCircle(if (i == 1) Color(0xFFFF9CCB) else Color(0xFFFFD68A), radius, center, style = Stroke(width = (2.2f - i * 0.45f).dp.toPx()))
+                        val angle = pulse * (1.2f + i * 0.45f) + i * 2.1f
+                        val dot = Offset(center.x + kotlin.math.cos(angle).toFloat() * radius, center.y + kotlin.math.sin(angle).toFloat() * radius)
+                        drawCircle(Color.White, base * 0.025f, dot)
+                    }
+                    drawCircle(Color(0xFFFF75B8), base * 0.07f * pulse, center)
+                    drawCircle(Color(0xFFFFF0C8), base * 0.025f, center)
+                }
+                2 -> {
                     repeat(7) { i ->
                         val x = size.width * (0.12f + i * 0.13f) + base * drift * (i % 2)
                         val y = size.height * ((i * 31 % 83) / 100f) + (pulse - 0.9f) * base
                         drawLine(Color(0xFFFFD68A), Offset(x, y), Offset(x - base * 0.10f, y + base * 0.17f), strokeWidth = (1.2f + i % 3).dp.toPx())
                         drawCircle(Color(0xFFFFF0C8), base * 0.018f, Offset(x, y))
                     }
+                }                9 -> {
+                    // A spiral of nine small stars winds toward a warm center.
+                    repeat(9) { i ->
+                        val progress = (i + 1) / 9f
+                        val angle = pulse * 2.0f + i * 0.72f
+                        val radius = base * (0.06f + progress * 0.31f)
+                        val point = Offset(center.x + kotlin.math.cos(angle).toFloat() * radius, center.y + kotlin.math.sin(angle).toFloat() * radius)
+                        drawLine(Color(0x55E8D9FF), center, point, strokeWidth = 1.dp.toPx())
+                        drawCircle(if (i % 3 == 0) Color(0xFFFFD68A) else Color(0xFFE8D9FF), base * (0.018f + progress * 0.025f), point)
+                    }
+                    drawCircle(Color(0x88FF9CCB), base * 0.075f * pulse, center)
                 }
+                16 -> {
+                    // A floating nebula: layered rings rotate at different rates.
+                    repeat(4) { i ->
+                        val angle = pulse * (0.6f + i * 0.25f) + i * 0.7f
+                        val offset = Offset(center.x + kotlin.math.cos(angle).toFloat() * base * 0.10f, center.y + kotlin.math.sin(angle).toFloat() * base * 0.08f)
+                        drawCircle(if (i % 2 == 0) Color(0x66C7A6FF) else Color(0x66FF9CCB), base * (0.14f + i * 0.055f), offset, style = Stroke(width = (2.2f - i * 0.3f).dp.toPx()))
+                        drawCircle(Color(0xFFFFD68A), base * 0.022f, offset)
+                    }
+                    drawCircle(Color(0x33C7A6FF), base * 0.32f * pulse, center)
+                }
+
                 3 -> {
                     // Soft cloud layers drift at different speeds.
                     repeat(4) { i ->
