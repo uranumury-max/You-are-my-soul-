@@ -19,6 +19,7 @@ enum class SyncEventType(val wireValue: String) {
     DRAWING_UPDATE("drawing_update"),
     CAPSULE_UPDATE("capsule_update"),
     MEDIA_ADD("media_add"),
+    MEDIA_DELETE("media_delete"),
     SETTINGS_UPDATE("settings_update");
 
     companion object {
