@@ -135,6 +135,12 @@ class WorldEventValidationTest {
                 worldId, mediaId, "ملف", "application/pdf", 2048L, 100L, path, 1
             )
         )
+        // The importer and preview decoder intentionally support this same set.
+        assertFalse(
+            WorldEventValidation.media(
+                worldId, mediaId, "صورة", "image/heic", 2048L, 100L, path, 1
+            )
+        )
         assertFalse(
             WorldEventValidation.media(
                 worldId, mediaId, "ذكرى.png", "image/png", 2048L, 100L, "$worldId/other.wmd", 1
