@@ -281,9 +281,6 @@ fun SoulWorldApp() {
                             )
                             if (revision == saveRevision.get() && applied != null) {
                                 world = applied
-                                withContext(Dispatchers.IO) {
-                                    store.updateSyncBaseline(applied, roomSyncStore)
-                                }
                                 lastPersistedWorld = applied
                                 savedCloudWorldId = applied.cloudWorldId
                                 savedWorldName = applied.worldName
@@ -337,9 +334,6 @@ fun SoulWorldApp() {
                     )
                     if (applied != null && world?.cloudWorldId == cloudId) {
                         world = applied
-                        withContext(Dispatchers.IO) {
-                            store.updateSyncBaseline(applied, roomSyncStore)
-                        }
                         lastPersistedWorld = applied
                         savedCloudWorldId = applied.cloudWorldId
                         savedWorldName = applied.worldName
