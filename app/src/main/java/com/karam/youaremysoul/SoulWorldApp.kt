@@ -643,7 +643,7 @@ fun SoulWorldApp() {
                                                 }
                                             } catch (error: Exception) {
                                                 mediaStatus = when ((error as? SupabaseAuthException)?.safeCode) {
-                                                    "media_authorization_failed" -> "لا يملك هذا الجهاز صلاحية رفع الصورة إلى العالم."
+                                                    "media_authorization_failed" -> "تعذر السماح بالرفع؛ تحققوا من عضوية الجهاز ومن عدم بلوغ الألبوم حد 100 صورة."
                                                     "media_rate_limited" -> "طلبات التخزين كثيرة حالياً؛ حاولوا لاحقاً."
                                                     "media_service_unavailable", "media_network_unavailable" -> "تعذر الاتصال بالتخزين؛ لم تُضف بيانات الصورة إلى الألبوم."
                                                     else -> "تعذر رفع الصورة بأمان؛ لم تُضف إلى الألبوم."
