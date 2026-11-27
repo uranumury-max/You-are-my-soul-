@@ -308,8 +308,15 @@ with check (
     and public.is_active_world_member((storage.foldername(name))[1]::uuid)
 );
 
--- No client UPDATE/DELETE policy for media by default. Deletion is a future
--- owner-authorized server operation after retention and key-rotation rules exist.
+-- Active world members may delete objects only inside their own private world-media
+-- namespace. The app removes synchronized metadata only after Storage confirms deletion.
+drop policy if exists world_media_delete_member on storage.objects;
+create policy world_media_delete_member on storage.objects
+for delete to authenticated
+using (
+    bucket_id = 'world-media'
+    and public.is_active_world_member((storage.foldername(name))[1]::uuid)
+);
 
 
 -- Device-code discovery and explicit host approval.
