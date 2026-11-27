@@ -451,6 +451,8 @@ fun SoulWorldApp() {
                                 canCreate = world == null && storageWarning.isBlank(),
                                 pendingRequests = pendingJoinRequests,
                                 requestsLoadFailed = pendingRequestsLoadFailed,
+                                activeMembers = activeWorldMembers,
+                                membersLoadFailed = activeMembersLoadFailed,
                                 hasOwnRequest = ownJoinRequestId.isNotBlank(),
                                 onRefreshOwnRequest = {
                                     scope.launch {
