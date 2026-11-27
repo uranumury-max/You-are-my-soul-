@@ -86,12 +86,12 @@ fun SoulWorldApp() {
     var activeWorldMembers by remember { mutableStateOf(emptyList<ActiveWorldMember>()) }
     var activeMembersLoadFailed by remember { mutableStateOf(false) }
     var ownerMasterDialogVisible by remember { mutableStateOf(false) }
-    var ownerMasterCodeInput by remember { mutableStateOf(\"\") }
-    var ownerMasterStatus by remember { mutableStateOf(\"\") }
+    var ownerMasterCodeInput by remember { mutableStateOf("") }
+    var ownerMasterStatus by remember { mutableStateOf("") }
     var ownerMasterBusy by remember { mutableStateOf(false) }
     var ownerMasterState by remember { mutableStateOf(OwnerMasterState()) }
-    var sceneGrantNumberText by remember { mutableStateOf(\"1\") }
-    var sceneGrantTargetId by remember { mutableStateOf(\"\") }
+    var sceneGrantNumberText by remember { mutableStateOf("1") }
+    var sceneGrantTargetId by remember { mutableStateOf("") }
     var sceneGrantMenuExpanded by remember { mutableStateOf(false) }
     var keyRotationBusy by remember { mutableStateOf(false) }
     var keyRotationStatus by remember { mutableStateOf("") }
@@ -1005,8 +1005,8 @@ fun SoulWorldApp() {
                     }
                     DeveloperCredit(onSecretTap = {
                         ownerMasterDialogVisible = true
-                        ownerMasterCodeInput = \"\"
-                        ownerMasterStatus = \"\"
+                        ownerMasterCodeInput = ""
+                        ownerMasterStatus = ""
                         val current = world
                         if (current != null && cloudAuthenticated && current.cloudWorldId.isNotBlank()) {
                             scope.launch {
@@ -1015,11 +1015,11 @@ fun SoulWorldApp() {
                                     if (current.localIsOwner) activeWorldMembers = pairingRepository.activeMembers(session, current.cloudWorldId)
                                     ownerMasterState = ownerMasterRepository.loadState(session, java.util.UUID.fromString(current.cloudWorldId))
                                 } catch (_: Exception) {
-                                    ownerMasterStatus = \"تعذر تحميل صلاحية المالك؛ تحقق من إعداد الخدمة والاقتران.\"
+                                    ownerMasterStatus = "تعذر تحميل صلاحية المالك؛ تحقق من إعداد الخدمة والاقتران."
                                 }
                             }
                         } else {
-                            ownerMasterStatus = \"تحتاج هذه الميزة إلى عالم مقترن واتصال سحابي مُعد.\"
+                            ownerMasterStatus = "تحتاج هذه الميزة إلى عالم مقترن واتصال سحابي مُعد."
                         }
                     })
                     Spacer(Modifier.height(5.dp))
@@ -1145,7 +1145,7 @@ fun SoulWorldApp() {
                 val current = world
                 val target = runCatching { java.util.UUID.fromString(sceneGrantTargetId) }.getOrNull()
                 val number = sceneGrantNumberText.toIntOrNull()
-                if (current == null || target == null || number !in 1..21 || !ownerMasterState.unlocked) {
+                if (current == null || target == null || number == null || number !in 1..21 || !ownerMasterState.unlocked) {
                     ownerMasterStatus = "اختر الشريك ورقم مشهد صحيحاً، ثم تحقق من الرمز الرئيسي."
                 } else {
                     scope.launch {
@@ -1269,7 +1269,7 @@ private fun OwnerMasterDialog(
                     Button(
                         onClick = onGrant,
                         enabled = !busy && selectedTargetId.isNotBlank() &&
-                            sceneNumber.toIntOrNull() in 1..21
+                            sceneNumber.toIntOrNull()?.let { it in 1..21 } == true
                     ) {
                         Text("منح المشهد المحدد")
                     }
