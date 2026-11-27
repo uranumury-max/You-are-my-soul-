@@ -2,6 +2,8 @@ package com.karam.youaremysoul
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.json.JSONArray
+import org.json.JSONObject
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.net.HttpURLConnection
@@ -64,12 +66,32 @@ class SupabaseWorldMediaStorage {
         }
     }
 
+    suspend fun delete(
+        session: AuthenticatedSupabaseUser,
+        worldId: UUID,
+        mediaId: UUID
+    ) = withContext(Dispatchers.IO) {
+        require(config.isConfigured) { "media_storage_not_configured" }
+        val path = objectPath(worldId, mediaId)
+        val body = JSONObject().put("prefixes", JSONArray().put(path))
+            .toString().toByteArray(Charsets.UTF_8)
+        request(
+            path = "/storage/v1/object/world-media",
+            method = "DELETE",
+            session = session,
+            body = body,
+            maxResponseBytes = 16 * 1024,
+            contentType = "application/json"
+        )
+    }
+
     private fun request(
         path: String,
         method: String,
         session: AuthenticatedSupabaseUser,
         body: ByteArray?,
-        maxResponseBytes: Int
+        maxResponseBytes: Int,
+        contentType: String = "application/octet-stream"
     ): ByteArray {
         val connection = (URL(config.projectUrl.trimEnd('/') + path)
             .openConnection() as HttpURLConnection).apply {
@@ -81,7 +103,7 @@ class SupabaseWorldMediaStorage {
             setRequestProperty("Authorization", "Bearer ${session.accessToken}")
             setRequestProperty("Accept", "application/json")
             if (body != null) {
-                setRequestProperty("Content-Type", "application/octet-stream")
+                setRequestProperty("Content-Type", contentType)
                 setRequestProperty("x-upsert", "false")
             }
         }
