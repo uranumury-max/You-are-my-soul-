@@ -38,7 +38,7 @@ internal class WorldMutationSync(
         }
         next.drawings.filter { boardWasCleared || it.id !in previousStrokeIds }.forEach { stroke ->
             val points = JSONArray().apply {
-                stroke.points.take(200).forEach { point ->
+                stroke.points.take(150).forEach { point ->
                     put(JSONArray().put(point.x.toDouble()).put(point.y.toDouble()))
                 }
             }
@@ -162,7 +162,7 @@ internal class WorldEventReducer(
                 state = when (event.type) {
                     SyncEventType.WORLD_UPDATE -> state
                     SyncEventType.MEMORY_CREATE -> state.copy(
-                        memories = state.memories + payload.getString("value")
+                        memories = (state.memories + payload.getString("value")).takeLast(50)
                     )
                     SyncEventType.MEMORY_DELETE -> {
                         val memories = state.memories.toMutableList()
@@ -192,7 +192,7 @@ internal class WorldEventReducer(
                                         colorArgb = payload.optLong("colorArgb", -1L),
                                         widthFraction = width,
                                         points = points
-                                    )).takeLast(100)
+                                    )).takeLast(40)
                                 )
                             }
                             else -> state
@@ -239,7 +239,7 @@ internal class WorldEventReducer(
                                     senderName = payload.optString("senderName", "مشارك"),
                                     text = payload.optString("text"),
                                     createdAtEpochMs = payload.optLong("createdAtEpochMs")
-                                )).takeLast(200)
+                                )).takeLast(100)
                             )
                         }
                     }
