@@ -9,7 +9,12 @@ class DailyQuestionSelectorTest {
         assertEquals(17, DailyQuestionSelector.indexForEpochDay(17L, 50))
         assertEquals(17, DailyQuestionSelector.indexForEpochDay(17L, 50))
         assertEquals(18, DailyQuestionSelector.indexForEpochDay(18L, 50))
+        @Test(expected = IllegalArgumentException::class)
+    fun rejectsAnEmptyQuestionBank() {
+        DailyQuestionSelector.indexForEpochDay(0L, 0)
     }
+
+}
 
     @Test
     fun negativeEpochDaysStillProduceAValidIndex() {
