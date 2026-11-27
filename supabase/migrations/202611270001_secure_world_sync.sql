@@ -317,10 +317,10 @@ grant execute on function public.can_upload_world_media(uuid) to authenticated;
 
 -- Private encrypted media bucket. Object names must begin with the world UUID.
 insert into storage.buckets(id, name, public, file_size_limit, allowed_mime_types)
-values ('world-media', 'world-media', false, 52428800, array['application/octet-stream'])
+values ('world-media', 'world-media', false, 20971648, array['application/octet-stream'])
 on conflict (id) do update
 set public = false,
-    file_size_limit = 52428800,
+    file_size_limit = 20971648,
     allowed_mime_types = array['application/octet-stream'];
 
 drop policy if exists world_media_read_member on storage.objects;
