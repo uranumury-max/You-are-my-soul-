@@ -135,10 +135,85 @@ private fun SoulSceneViewer(scene: SoulScene, number: Int, onBack: () -> Unit) {
         Canvas(Modifier.fillMaxWidth().height(235.dp)) {
             val center = Offset(size.width / 2f, size.height / 2f)
             val base = minOf(size.width, size.height)
-            drawCircle(Color(0x44FF9CCB), radius = base * 0.31f * pulse, center = center)
-            drawCircle(Color(0x33FFD68A), radius = base * 0.22f * pulse, center = center)
-            drawCircle(Color(0x88FFD68A), radius = base * 0.31f, center = center, style = Stroke(width = 1.5.dp.toPx()))
-            drawCircle(Color(0x66FF9CCB), radius = base * 0.42f, center = center, style = Stroke(width = 1.dp.toPx()))
+            // Each unlocked scene has its own animated visual motif, not a shared placeholder.
+            when (number) {
+                1, 5, 20, 21 -> {
+                    val heart = androidx.compose.ui.graphics.Path().apply {
+                        moveTo(center.x, center.y + base * 0.25f * pulse)
+                        cubicTo(center.x - base * 0.48f, center.y - base * 0.08f, center.x - base * 0.30f, center.y - base * 0.43f, center.x, center.y - base * 0.16f)
+                        cubicTo(center.x + base * 0.30f, center.y - base * 0.43f, center.x + base * 0.48f, center.y - base * 0.08f, center.x, center.y + base * 0.25f * pulse)
+                        close()
+                    }
+                    drawPath(heart, Color(0x99FF75B8))
+                    drawPath(heart, Color(0xFFFFD68A), style = Stroke(width = 2.2.dp.toPx()))
+                    drawCircle(Color(0x55FF9CCB), base * 0.38f * pulse, center)
+                }
+                2, 9, 16 -> {
+                    repeat(7) { i ->
+                        val x = size.width * (0.12f + i * 0.13f) + base * drift * (i % 2)
+                        val y = size.height * ((i * 31 % 83) / 100f) + (pulse - 0.9f) * base
+                        drawLine(Color(0xFFFFD68A), Offset(x, y), Offset(x - base * 0.10f, y + base * 0.17f), strokeWidth = (1.2f + i % 3).dp.toPx())
+                        drawCircle(Color(0xFFFFF0C8), base * 0.018f, Offset(x, y))
+                    }
+                }
+                3, 13 -> {
+                    repeat(5) { i ->
+                        val x = center.x + (i - 2) * base * 0.13f
+                        drawCircle(Color(0x88FFFFFF), base * (0.12f + (i % 2) * 0.035f) * pulse, Offset(x, center.y + base * 0.04f * (i % 2)))
+                    }
+                    drawCircle(Color(0x66FF9CCB), base * 0.28f, center, style = Stroke(width = 2.dp.toPx()))
+                }
+                4, 17 -> {
+                    drawCircle(Color(0xFFE8D9FF), base * 0.22f * pulse, center)
+                    drawCircle(Color(0xFF241235), base * 0.19f, Offset(center.x + base * 0.11f, center.y - base * 0.08f))
+                    repeat(12) { i -> drawCircle(Color(0xFFFFD68A), base * 0.012f, Offset(center.x + kotlin.math.cos(i * 0.52f) * base * 0.38f, center.y + kotlin.math.sin(i * 0.52f) * base * 0.38f)) }
+                }
+                6, 17 -> {
+                    repeat(8) { i ->
+                        val angle = i * (Math.PI / 4.0)
+                        val p = Offset(center.x + kotlin.math.cos(angle).toFloat() * base * 0.19f * pulse, center.y + kotlin.math.sin(angle).toFloat() * base * 0.19f * pulse)
+                        drawCircle(if (i % 2 == 0) Color(0xFFFF9CCB) else Color(0xFFFFD68A), base * 0.09f, p)
+                    }
+                    drawCircle(Color.White, base * 0.035f, center)
+                }
+                7, 14 -> {
+                    drawLine(Color(0xFFFF9CCB), Offset(center.x - base * 0.3f, center.y), Offset(center.x + base * 0.3f, center.y), strokeWidth = 3.dp.toPx())
+                    drawLine(Color(0xFFFFD68A), Offset(center.x, center.y - base * 0.3f), Offset(center.x, center.y + base * 0.3f), strokeWidth = 3.dp.toPx())
+                    repeat(4) { i -> drawCircle(Color(0xFFFFD68A), base * 0.045f, Offset(center.x + (i - 1.5f) * base * 0.15f, center.y + kotlin.math.sin(i + pulse) * base * 0.08f)) }
+                }
+                8, 18 -> {
+                    drawRoundRect(Color(0xAAFFF0D0), Offset(center.x - base * 0.22f, center.y - base * 0.15f), androidx.compose.ui.geometry.Size(base * 0.44f, base * 0.30f), cornerRadius = androidx.compose.ui.geometry.CornerRadius(base * 0.035f))
+                    drawLine(Color(0xFFFF9CCB), Offset(center.x - base * 0.22f, center.y - base * 0.15f), Offset(center.x, center.y + base * 0.02f), strokeWidth = 2.dp.toPx())
+                    drawLine(Color(0xFFFF9CCB), Offset(center.x + base * 0.22f, center.y - base * 0.15f), Offset(center.x, center.y + base * 0.02f), strokeWidth = 2.dp.toPx())
+                }
+                10, 15 -> {
+                    repeat(3) { i -> drawCircle(Color(0x66FFD68A), base * (0.16f + i * 0.11f), center, style = Stroke(width = (2 - i * 0.3f).dp.toPx())) }
+                    drawCircle(Color(0xFFFF9CCB), base * 0.065f * pulse, center)
+                    repeat(3) { i -> drawCircle(Color(0xFFFFD68A), base * 0.035f, Offset(center.x + kotlin.math.cos(i * 2.1f + pulse) * base * 0.32f, center.y + kotlin.math.sin(i * 2.1f + pulse) * base * 0.32f)) }
+                }
+                11 -> {
+                    repeat(6) { i -> drawLine(Color(0xFF7FD9C4), Offset(center.x, center.y + base * 0.24f), Offset(center.x + (i - 2.5f) * base * 0.12f, center.y - base * (0.12f + (i % 3) * 0.11f) * pulse), strokeWidth = 3.dp.toPx()) }
+                    drawCircle(Color(0xFFFFD68A), base * 0.06f, center)
+                }
+                12 -> {
+                    repeat(24) { i ->
+                        val x = ((i * 41) % 97) / 100f * size.width
+                        val y = ((i * 23) % 91) / 100f * size.height
+                        drawLine(Color(0x887FD9FF), Offset(x, y), Offset(x - base * 0.015f, y + base * 0.08f), strokeWidth = 1.5.dp.toPx())
+                    }
+                }
+                19 -> {
+                    drawRect(Brush.verticalGradient(listOf(Color(0xFFFFB36B), Color(0xFFFFE6A8), Color(0xFF5D477E))), Offset.Zero, androidx.compose.ui.geometry.Size(size.width, size.height))
+                    drawCircle(Color(0xFFFFF0B0), base * 0.16f * pulse, Offset(center.x, center.y + base * 0.1f))
+                    drawLine(Color(0xFF8A6A9F), Offset(0f, center.y + base * 0.3f), Offset(size.width, center.y + base * 0.3f), strokeWidth = 2.dp.toPx())
+                }
+                else -> {
+                    drawCircle(Color(0x44FF9CCB), base * 0.31f * pulse, center)
+                    drawCircle(Color(0x33FFD68A), base * 0.22f * pulse, center)
+                    drawCircle(Color(0x88FFD68A), base * 0.31f, center, style = Stroke(width = 1.5.dp.toPx()))
+                    drawCircle(Color(0x66FF9CCB), base * 0.42f, center, style = Stroke(width = 1.dp.toPx()))
+                }
+            }
             for (i in 0 until 42) {
                 val x = ((i * 73 + number * 29) % 997) / 997f * size.width
                 val y = ((i * 137 + number * 61) % 991) / 991f * size.height
