@@ -669,6 +669,30 @@ fun SoulWorldApp() {
                                     }
                                 },
                                 onClosePreview = { mediaPreview = null },
+                                onDeleteMedia = { item ->
+                                    val current = world
+                                    if (current != null && cloudAuthenticated && worldKeyReady) {
+                                        mediaStatus = "جارٍ حذف الصورة من التخزين المشترك..."
+                                        scope.launch {
+                                            try {
+                                                val session = authClient.ensureAuthenticatedSession()
+                                                mediaStorage.delete(
+                                                    session,
+                                                    java.util.UUID.fromString(current.cloudWorldId),
+                                                    java.util.UUID.fromString(item.id)
+                                                )
+                                                val latest = world
+                                                if (latest != null && latest.cloudWorldId == current.cloudWorldId) {
+                                                    persist(latest.copy(media = latest.media.filterNot { it.id == item.id }))
+                                                    mediaPreview = null
+                                                    mediaStatus = "حُذفت الصورة من التخزين المشترك."
+                                                }
+                                            } catch (_: Exception) {
+                                                mediaStatus = "تعذر حذف الصورة من التخزين؛ بقيت بياناتها في الألبوم."
+                                            }
+                                        }
+                                    }
+                                },
                                 preview = mediaPreview
                             )
                             "رسائلنا" -> MessagesSection(
