@@ -1469,7 +1469,13 @@ private fun GardenSection(flowers: Int, onPlant: () -> Unit) {
 }
 
 @Composable
-private fun DailyQuestionSection(answer: String, onAnswer: (String) -> Unit) {
+private fun DailyQuestionSection(
+    answer: String,
+    onAnswer: (String) -> Unit,
+    dailyAnswers: List<DailyAnswerEntry>,
+    currentAuthorCode: String,
+    memberNames: Map<String, String>
+) {
     val questions = listOf(
         "ما التفصيل الصغير الذي جعل يومك أكثر لطفاً؟",
         "لو أُتيحت لنا إعادة لحظة واحدة من هذا الأسبوع، فأيّ لحظة ستختار؟",
@@ -1480,14 +1486,16 @@ private fun DailyQuestionSection(answer: String, onAnswer: (String) -> Unit) {
         "ما الشيء الذي يجعلك تشعر بأن صوتك مسموع؟"
     )
     val today = java.time.LocalDate.now()
+    val todayText = today.toString()
     val question = questions[(today.toEpochDay() % questions.size).toInt()]
+    val responses = dailyAnswers.filter { it.date == todayText }.sortedBy { it.createdAtEpochMs }
     var draft by remember(today, answer) { mutableStateOf(answer) }
     Column(
         Modifier.fillMaxSize().verticalScroll(androidx.compose.foundation.rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(14.dp)
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Text("سؤال اليوم", color = Gold, fontSize = 23.sp, fontWeight = FontWeight.Bold)
-        Text(today.toString(), color = Rose.copy(alpha = .75f), fontSize = 11.sp)
+        Text(todayText, color = Rose.copy(alpha = .75f), fontSize = 11.sp)
         Card(colors = CardDefaults.cardColors(containerColor = CardTone), shape = RoundedCornerShape(22.dp)) {
             Column(Modifier.fillMaxWidth().padding(18.dp)) {
                 Text("✧  مساحة للحوار", color = Rose, fontSize = 12.sp)
@@ -1505,11 +1513,30 @@ private fun DailyQuestionSection(answer: String, onAnswer: (String) -> Unit) {
                     onClick = { onAnswer(draft.trim()) },
                     enabled = draft.isNotBlank(),
                     modifier = Modifier.align(Alignment.End).padding(top = 10.dp)
-                ) { Text("حفظ إجابتي") }
+                ) { Text(if (answer.isBlank()) "حفظ إجابتي" else "تحديث إجابتي") }
+            }
+        }
+        Text("إجاباتكما", color = Gold, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+        if (responses.isEmpty()) {
+            Text("لم تُحفظ إجابة لهذا اليوم بعد. يمكن لكل طرف إضافة إجابته الخاصة.", color = Color.LightGray, fontSize = 12.sp)
+        } else {
+            responses.forEach { entry ->
+                val author = memberNames[entry.authorCode]
+                    ?: if (entry.authorCode == currentAuthorCode) "إجابتك" else "إجابة الطرف الآخر"
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = CardTone),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Column(Modifier.fillMaxWidth().padding(13.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                        Text(author, color = Rose, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+                        Text(entry.answer, color = Color.White, fontSize = 14.sp)
+                    }
+                }
             }
         }
         Text(
-            "يتغير السؤال بحسب اليوم، وتُزامَن الإجابة المشفّرة مع بقية أجهزة العالم عند توفر الاتصال.",
+            "يحتفظ كل طرف بإجابته المستقلة، وتظهر الإجابتان معاً بعد المزامنة المشفّرة.",
             color = Color.LightGray, fontSize = 11.sp
         )
     }
