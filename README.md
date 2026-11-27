@@ -18,6 +18,7 @@ The target design is cloud-first and offline-capable:
 - Stable local nine-digit device code plus a random per-installation UUID; code collisions are detected by the server and retried without changing the installation identity.
 - Pairing challenge/HMAC primitives and JVM tests.
 - Transport-neutral encrypted sync-event model and cursor validation tests.
+- Decrypted-event validation for message, capsule, drawing, memory, daily-answer, garden, and settings payloads, with JVM unit tests for malformed and oversized data.
 - Room sync outbox, downloaded-event cache, retry metadata, and monotonic cursor storage.
 - AES-GCM world-content envelope bound to world/event/type/key-version metadata, with tamper and nonce tests.
 - Android Keystore-wrapped per-world key vault; installation-specific RSA-OAEP public keys and owner-controlled encrypted key envelopes support delivery to approved member devices.
@@ -39,7 +40,7 @@ The target design is cloud-first and offline-capable:
 - Device public keys are registered per installation and the owner can distribute per-device encrypted world-key envelopes after approval. Key recovery and rotation remain incomplete.
 - Join-request delivery and owner approval UI are implemented but remain unusable until the backend migrations are deployed and tested. Cross-device synchronization is implemented in source but has not yet been verified against a live Supabase project or two physical devices.
 - No media upload/download or shared photo album yet. The drawing board and future-capsule synchronization exist in source, but still need live-backend and two-device validation.
-- The latest confirmed Android CI success is run #275 (including the shared drawing board). Later relationship-counter and conversation-flow commits are awaiting their own CI results.
+- Confirmed Android CI successes: run #275 (shared drawing board), #277 (relationship-day counter), #278 (guided conversation flow), and #279 (README update). Runs #280–#283 add strict decrypted-event validation and unit tests; their CI results are pending at the time of this update.
 - No final physical-device, offline/reconnect, abuse, and authorization test pass.
 
 The nine-digit code is not a password. A device must authenticate, receive a fresh invitation/request, and be approved by the world owner. A visible success state must wait for a real server acknowledgement.
