@@ -1143,7 +1143,7 @@ private fun ConnectionSection(
                         ) {
                             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                                 Text(member.displayName, color = Color.White, fontWeight = FontWeight.SemiBold)
-                                Text("عضو معتمد في العالم", color = Rose, fontSize = 11.sp)
+                                Text("عضو معتمد • ${member.userId.takeLast(6)}", color = Rose, fontSize = 11.sp)
                             }
                             OutlinedButton(onClick = { memberToRevoke = member }) {
                                 Text("إلغاء العضوية")
