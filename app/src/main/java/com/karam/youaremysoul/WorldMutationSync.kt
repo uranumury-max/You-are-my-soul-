@@ -142,7 +142,7 @@ internal class WorldEventReducer(
                                     senderName = payload.optString("senderName", "مشارك"),
                                     text = payload.optString("text"),
                                     createdAtEpochMs = payload.optLong("createdAtEpochMs")
-                                )).takeLast(500)
+                                )).takeLast(200)
                             )
                         }
                     }
