@@ -72,6 +72,28 @@ class WorldMediaImporter(
         }
     }
 
+    private fun validateImageBytes(bytes: ByteArray) {
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
+        require(
+            bounds.outWidth in 1..MAX_DIMENSION &&
+                bounds.outHeight in 1..MAX_DIMENSION &&
+                bounds.outWidth.toLong() * bounds.outHeight.toLong() <= MAX_PIXEL_COUNT
+        ) { "media_invalid_dimensions" }
+
+        var sample = 1
+        while (maxOf(bounds.outWidth, bounds.outHeight) / sample > PREVIEW_DECODE_DIMENSION) {
+            sample *= 2
+        }
+        val options = BitmapFactory.Options().apply {
+            inSampleSize = sample
+            inPreferredConfig = Bitmap.Config.RGB_565
+        }
+        val decoded = BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options)
+            ?: throw IllegalArgumentException("media_invalid_image")
+        decoded.recycle()
+    }
+
     companion object {
         const val MAX_BYTES = 20 * 1024 * 1024
         private const val MAX_DIMENSION = 12_000
