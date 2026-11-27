@@ -26,7 +26,7 @@ internal object WorldEventValidation {
             senderName.isNotBlank() && senderName.length <= 40 &&
             senderName.none(Char::isISOControl) &&
             text.isNotBlank() && text.length <= 1000 &&
-            text.none { it.isISOControl() && it !in '\\n' && it !in '\\r' && it !in '\\t' } &&
+            text.none { it.isISOControl() && it !in '\n' && it !in '\r' && it !in '\t' } &&
             createdAtEpochMs > 0L
 
     fun capsule(
