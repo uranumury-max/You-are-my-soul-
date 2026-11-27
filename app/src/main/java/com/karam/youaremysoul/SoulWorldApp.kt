@@ -1929,7 +1929,7 @@ private fun DrawingSection(
             AlertDialog(
                 onDismissRequest = { confirmClear = false },
                 title = { Text("مسح اللوحة؟") },
-                text = { Text("سيُحذف الرسم الحالي من العالم المشترك. لا يمكن استعادته بعد المزامنة.") },
+                text = { Text("سيُحذف الرسم الحالي من العالم المشترك؛ يمكنكم استعادة نسخة محفوظة من سجل اللوحة.") },
                 confirmButton = {
                     TextButton(onClick = {
                         confirmClear = false
