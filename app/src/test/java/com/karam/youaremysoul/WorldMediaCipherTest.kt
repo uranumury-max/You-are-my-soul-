@@ -14,11 +14,13 @@ class WorldMediaCipherTest {
 
     @Test
     fun encryptedMediaRoundTripsAndDoesNotContainPlaintext() {
-        val plaintext = ByteArray(8192) { (it % 251).toByte() }
+        val plaintext = "private media payload that must never be uploaded as plain text".toByteArray()
         val encrypted = WorldMediaCipher.encrypt(worldId, mediaId, 1, key, plaintext)
 
-        assertFalse(encrypted.toList().windowed(plaintext.size.coerceAtMost(64))
-            .any { it.toByteArrayOrEmpty().contentEquals(plaintext.take(64).toByteArray()) })
+        assertFalse(
+            encrypted.toString(Charsets.ISO_8859_1)
+                .contains(String(plaintext, Charsets.ISO_8859_1))
+        )
         assertArrayEquals(plaintext, WorldMediaCipher.decrypt(worldId, mediaId, 1, key, encrypted))
     }
 
