@@ -79,6 +79,8 @@ fun SoulWorldApp() {
     val cloudBootstrapMutex = remember { Mutex() }
     var pendingJoinRequests by remember { mutableStateOf(emptyList<PendingWorldJoinRequest>()) }
     var pendingRequestsLoadFailed by remember { mutableStateOf(false) }
+    var activeWorldMembers by remember { mutableStateOf(emptyList<ActiveWorldMember>()) }
+    var activeMembersLoadFailed by remember { mutableStateOf(false) }
     var cloudStatus by remember { mutableStateOf("") }
     var mediaStatus by remember { mutableStateOf("") }
     var mediaBusy by remember { mutableStateOf(false) }
