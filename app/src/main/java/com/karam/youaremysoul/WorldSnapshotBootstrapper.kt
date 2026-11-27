@@ -1,6 +1,8 @@
 package com.karam.youaremysoul
 
 import android.content.Context
+import org.json.JSONArray
+import org.json.JSONObject
 import java.util.UUID
 
 /**
@@ -19,7 +21,7 @@ class WorldSnapshotBootstrapper(context: Context) {
         require(world.localIsOwner)
         val worldId = UUID.fromString(world.cloudWorldId)
         val eventId = UUID.randomUUID()
-        val payload = localStore.encodeForSync(world)
+        val payload = localStore.encodeForSync(world.copy(drawingVersions = emptyList()))
         val ciphertext = try {
             worldKeyVault.encrypt(
                 worldId = worldId,
@@ -40,6 +42,60 @@ class WorldSnapshotBootstrapper(context: Context) {
             clientCreatedAtEpochMs = System.currentTimeMillis()
         )
         transport.append(session, event)
+
+        // Keep the initial checkpoint within the event cipher's 700 KiB cap.
+        // Saved canvas versions follow as independently encrypted replay events.
+        world.drawingVersions.takeLast(WorldLimits.MAX_DRAWING_VERSIONS).forEach { version ->
+            if (!WorldEventValidation.drawingVersion(version)) return@forEach
+            val plaintext = JSONObject()
+                .put("action", "save_version")
+                .put("id", version.id)
+                .put("title", version.title)
+                .put("createdAtEpochMs", version.createdAtEpochMs)
+                .put("strokes", JSONArray().apply {
+                    version.strokes.take(DrawingHistory.MAX_STROKES).forEach { stroke ->
+                        put(JSONObject()
+                            .put("id", stroke.id)
+                            .put("colorArgb", stroke.colorArgb)
+                            .put("widthFraction", stroke.widthFraction.toDouble())
+                            .put("points", JSONArray().apply {
+                                stroke.points.take(150).forEach { point ->
+                                    put(JSONArray().put(
+                                        (kotlin.math.round(point.x * 10_000f).toInt() / 10_000.0)
+                                    ).put(
+                                        (kotlin.math.round(point.y * 10_000f).toInt() / 10_000.0)
+                                    ))
+                                }
+                            })
+                        )
+                    }
+                })
+                .toString()
+                .toByteArray(Charsets.UTF_8)
+            val versionEventId = UUID.randomUUID()
+            val encryptedVersion = try {
+                worldKeyVault.encrypt(
+                    worldId = worldId,
+                    eventId = versionEventId,
+                    eventType = SyncEventType.DRAWING_UPDATE,
+                    plaintext = plaintext,
+                    keyVersion = 1
+                )
+            } finally {
+                plaintext.fill(0)
+            }
+            transport.append(
+                session,
+                WorldSyncEvent(
+                    eventId = versionEventId,
+                    worldId = worldId,
+                    actorUserId = UUID.fromString(session.userId),
+                    type = SyncEventType.DRAWING_UPDATE,
+                    ciphertextBase64 = encryptedVersion,
+                    clientCreatedAtEpochMs = System.currentTimeMillis()
+                )
+            )
+        }
     }
 
     suspend fun restoreMemberSnapshot(
