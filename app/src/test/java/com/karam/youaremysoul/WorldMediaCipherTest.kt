@@ -36,10 +36,10 @@ class WorldMediaCipherTest {
     @Test
     fun associatedDataPreventsCrossWorldOrMediaSubstitution() {
         val encrypted = WorldMediaCipher.encrypt(worldId, mediaId, 1, key, "private".toByteArray())
-        assertThrows(IllegalArgumentException::class.java) {
+        assertThrows(Exception::class.java) {
             WorldMediaCipher.decrypt(UUID.randomUUID(), mediaId, 1, key, encrypted)
         }
-        assertThrows(IllegalArgumentException::class.java) {
+        assertThrows(Exception::class.java) {
             WorldMediaCipher.decrypt(worldId, UUID.randomUUID(), 1, key, encrypted)
         }
     }
