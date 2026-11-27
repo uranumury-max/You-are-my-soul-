@@ -1621,6 +1621,14 @@ private fun DrawingSection(
     var activeStroke by remember { mutableStateOf<DrawingStroke?>(null) }
     var showScene by remember { mutableStateOf(false) }
     var confirmClear by remember { mutableStateOf(false) }
+    var selectedColorArgb by remember { mutableLongStateOf(Color(0xFFFF9CCB).value.toLong()) }
+    val drawingPalette = listOf(
+        "وردي" to Color(0xFFFF9CCB),
+        "ذهبي" to Color(0xFFFFD68A),
+        "سماوي" to Color(0xFF8FE7FF),
+        "بنفسجي" to Color(0xFFC7A6FF),
+        "أبيض" to Color(0xFFFFFFFF)
+    )
     if (showScene) {
         DrawingSceneSection(strokes, onBack = { showScene = false })
     } else Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -1628,7 +1636,7 @@ private fun DrawingSection(
             .fillMaxWidth()
             .weight(1f)
             .background(Color(0xFF170F23), RoundedCornerShape(20.dp))
-            .pointerInput(strokes, onAddStroke) {
+            .pointerInput(strokes, onAddStroke, selectedColorArgb) {
                 fun normalizedPoint(position: Offset) = WorldPoint(
                     x = (position.x / size.width).coerceIn(0f, 1f),
                     y = (position.y / size.height).coerceIn(0f, 1f)
@@ -1637,7 +1645,7 @@ private fun DrawingSection(
                     onDragStart = { position ->
                         activeStroke = DrawingStroke(
                             id = java.util.UUID.randomUUID().toString(),
-                            colorArgb = Color(0xFFFF9CCB).value.toLong(),
+                            colorArgb = selectedColorArgb,
                             widthFraction = 0.006f,
                             points = listOf(normalizedPoint(position))
                         )
@@ -1658,6 +1666,19 @@ private fun DrawingSection(
             }
         Text("لوحتنا المشتركة", color = Gold, fontSize = 23.sp, fontWeight = FontWeight.Bold)
         Text("ارسموا معاً؛ تُحفَظ الخطوط وتصل إلى الجهاز الآخر مشفّرة.", color = Rose, fontSize = 12.sp)
+        Row(
+            Modifier.fillMaxWidth().horizontalScroll(androidx.compose.foundation.rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            drawingPalette.forEach { (label, color) ->
+                FilterChip(
+                    selected = selectedColorArgb == color.value.toLong(),
+                    onClick = { selectedColorArgb = color.value.toLong() },
+                    label = { Text(label) }
+                )
+            }
+        }
         Canvas(canvasModifier) {
             (strokes + listOfNotNull(activeStroke)).forEach { stroke ->
                 val color = Color(stroke.colorArgb.toULong())
