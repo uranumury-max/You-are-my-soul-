@@ -53,7 +53,8 @@ class WorldMediaImporter(
         try {
             require(plaintext.isNotEmpty()) { "media_empty" }
             val mediaId = UUID.randomUUID()
-            val path = storage.upload(session, worldId, mediaId, plaintext, keyVault)
+            val keyVersion = keyVault.activeKeyVersion(worldId)
+            val path = storage.upload(session, worldId, mediaId, plaintext, keyVault, keyVersion)
             return WorldMediaItem(
                 id = mediaId.toString(),
                 displayName = displayName,
@@ -61,7 +62,7 @@ class WorldMediaImporter(
                 sizeBytes = plaintext.size.toLong(),
                 createdAtEpochMs = System.currentTimeMillis(),
                 objectPath = path,
-                keyVersion = 1
+                keyVersion = keyVersion
             )
         } finally {
             plaintext.fill(0)
