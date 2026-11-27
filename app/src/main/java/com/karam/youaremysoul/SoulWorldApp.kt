@@ -274,6 +274,23 @@ fun SoulWorldApp() {
         }
     }
 
+    LaunchedEffect(cloudAuthenticated, world?.cloudWorldId, networkRevision) {
+        val current = world
+        if (!cloudAuthenticated || current == null || current.cloudWorldId.isBlank()) {
+            ownerMasterState = OwnerMasterState()
+            return@LaunchedEffect
+        }
+        try {
+            val session = authClient.ensureAuthenticatedSession()
+            ownerMasterState = ownerMasterRepository.loadState(
+                session,
+                java.util.UUID.fromString(current.cloudWorldId)
+            )
+        } catch (_: Exception) {
+            ownerMasterState = OwnerMasterState()
+        }
+    }
+
     fun persist(next: WorldSnapshot) {
         if (storageWarning.isNotBlank()) return
         world = next
