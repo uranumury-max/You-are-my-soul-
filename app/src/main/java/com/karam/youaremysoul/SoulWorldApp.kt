@@ -1830,11 +1830,11 @@ private fun DrawingSection(
             }
         }
         Row(
-            Modifier.fillMaxWidth(),
+            Modifier.fillMaxWidth().horizontalScroll(androidx.compose.foundation.rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("${strokes.size} خطاً محفوظاً", color = Color.LightGray, fontSize = 11.sp, modifier = Modifier.weight(1f))
+            Text("${strokes.size} خطاً محفوظاً", color = Color.LightGray, fontSize = 11.sp)
             OutlinedButton(onClick = onUndo, enabled = strokes.isNotEmpty()) {
                 Text("تراجع عن آخر خط")
             }
