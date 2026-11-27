@@ -44,13 +44,13 @@ class DeviceKeyVault {
         }
     }
 
-    private fun loadOrCreateKeyPair(): KeyPair {
+    private fun loadOrCreateKeyPair(): KeyPair = synchronized(KEYSTORE_LOCK) {
         val store = KeyStore.getInstance(ANDROID_KEY_STORE).apply { load(null) }
         val existing = store.getCertificate(KEY_ALIAS)
         if (existing != null) {
             val privateKey = store.getKey(KEY_ALIAS, null) as? java.security.PrivateKey
                 ?: throw IllegalStateException("Device private key is unavailable")
-            return KeyPair(existing.publicKey, privateKey)
+            return@synchronized KeyPair(existing.publicKey, privateKey)
         }
         val generator = KeyPairGenerator.getInstance(KeyProperties.KEY_ALGORITHM_RSA, ANDROID_KEY_STORE)
         generator.initialize(
@@ -64,10 +64,11 @@ class DeviceKeyVault {
                 .setRandomizedEncryptionRequired(true)
                 .build()
         )
-        return generator.generateKeyPair()
+        generator.generateKeyPair()
     }
 
     private companion object {
+        val KEYSTORE_LOCK = Any()
         const val ANDROID_KEY_STORE = "AndroidKeyStore"
         const val KEY_ALIAS = "you_are_my_soul_device_exchange_v1"
         const val RSA_TRANSFORMATION = "RSA/ECB/OAEPPadding"
