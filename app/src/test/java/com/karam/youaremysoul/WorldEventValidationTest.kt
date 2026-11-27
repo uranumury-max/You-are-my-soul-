@@ -13,8 +13,8 @@ class WorldEventValidationTest {
         assertFalse(WorldEventValidation.message("id", "مشارك", "ن".repeat(1001), 1L))
         assertFalse(WorldEventValidation.message("id", "مشارك\nمزيف", "مرحباً", 1L))
         assertFalse(WorldEventValidation.message("id\u0000bad", "مشارك", "مرحباً", 1L))
-        assertFalse(WorldEventValidation.message("id", "مشارك", "مرحباً\\u0000", 1L))
-        assertTrue(WorldEventValidation.message("id", "مشارك", "السطر الأول\\nالسطر الثاني", 1L))
+        assertFalse(WorldEventValidation.message("id", "مشارك", "مرحباً\u0000", 1L))
+        assertTrue(WorldEventValidation.message("id", "مشارك", "السطر الأول\nالسطر الثاني", 1L))
         assertFalse(WorldEventValidation.message("id", "مشارك", "مرحباً", 0L))
     }
 
