@@ -1298,7 +1298,7 @@ private fun MomentsHub(
             Modifier.fillMaxWidth().horizontalScroll(androidx.compose.foundation.rememberScrollState()).padding(bottom = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            listOf("الحديقة", "سؤال اليوم", "الرحلة", "كبسولة المستقبل", "لوحتنا", "مساحة التفاهم").forEach { item ->
+            listOf("الحديقة", "سؤال اليوم", "مفاجأة اليوم", "الرحلة", "كبسولة المستقبل", "لوحتنا", "مساحة التفاهم").forEach { item ->
                 FilterChip(
                     selected = selected == item,
                     onClick = { selected = item },
@@ -1312,6 +1312,7 @@ private fun MomentsHub(
                 "سؤال اليوم" -> DailyQuestionSection(
                     answer, onAnswer, dailyAnswers, currentAuthorCode, memberNames
                 )
+                "مفاجأة اليوم" -> DailySurpriseSection()
                 "كبسولة المستقبل" -> CapsuleSection(capsules, onCreateCapsule, onOpenCapsule)
                 "لوحتنا" -> DrawingSection(drawings, onAddStroke, onClearDrawing)
                 "مساحة التفاهم" -> ReconciliationSection()
@@ -1464,6 +1465,56 @@ private fun GardenSection(flowers: Int, onPlant: () -> Unit) {
         Text(
             "تُحفظ تغييرات الحديقة محلياً وتنتقل إلى بقية الأجهزة عند توفر الاتصال.",
             color = Color.LightGray, fontSize = 11.sp
+        )
+    }
+}
+
+@Composable
+private fun DailySurpriseSection() {
+    val surprises = listOf(
+        "رسالة بلا مناسبة" to "اكتبوا لبعضكما رسالة قصيرة تذكران فيها تفصيلاً صغيراً تقدّرانه في الطرف الآخر.",
+        "صورة تحكي قصة" to "اختارا صورة قديمة من ألبومكما، ثم احكيا القصة التي لا تظهر داخل الصورة.",
+        "عشر دقائق من الإصغاء" to "خصصا عشر دقائق يتحدث فيها أحدكما بينما يستمع الآخر دون مقاطعة، ثم تبادلا الدور.",
+        "ثلاثة أشياء جميلة" to "اذكرا ثلاثة أشياء بسيطة جعلت وجودكما في حياة بعضكما أفضل.",
+        "موعد من المنزل" to "اختارا مشروباً أو وجبة بسيطة، واجعلا لها موعداً مشتركاً ولو عن بُعد.",
+        "ذكرى جديدة" to "اتفقا على تجربة صغيرة لم تخوضاها من قبل، وحددا موعداً مناسباً لها.",
+        "سؤال غير متوقع" to "اسألا بعضكما: ما الشيء الذي تتمنى أن أفهمه عنك بصورة أفضل؟"
+    )
+    val today = java.time.LocalDate.now(java.time.ZoneOffset.UTC)
+    val surprise = surprises[(today.toEpochDay() % surprises.size).toInt()]
+    val transition = rememberInfiniteTransition(label = "daily_surprise_glow")
+    val glow by transition.animateFloat(
+        initialValue = 0.62f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(1600), repeatMode = RepeatMode.Reverse),
+        label = "daily_surprise_alpha"
+    )
+    Column(
+        Modifier.fillMaxSize().verticalScroll(androidx.compose.foundation.rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Text("مفاجأة اليوم", color = Gold, fontSize = 23.sp, fontWeight = FontWeight.Bold)
+        Text(today.toString(), color = Rose.copy(alpha = .75f), fontSize = 11.sp)
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = CardTone),
+            shape = RoundedCornerShape(24.dp)
+        ) {
+            Column(
+                Modifier.fillMaxWidth().padding(22.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                Text("✧", color = Gold.copy(alpha = glow), fontSize = 46.sp)
+                Text(surprise.first, color = Gold, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                Text(surprise.second, color = Color.White, fontSize = 15.sp)
+                Text("مفاجأة صغيرة، وذكرى تبقى.", color = Rose, fontSize = 11.sp)
+            }
+        }
+        Text(
+            "تتغير المفاجأة يومياً وفق التاريخ الموحد بتوقيت UTC، لتظهر الفكرة نفسها على الجهازين.",
+            color = Color.LightGray,
+            fontSize = 11.sp
         )
     }
 }
