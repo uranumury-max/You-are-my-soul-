@@ -18,6 +18,7 @@ Run the checked-in SQL files in the Supabase SQL Editor, one at a time, in this 
 4. `supabase/migrations/202611270004_device_public_key_registration.sql`
 5. `supabase/migrations/202611270005_world_key_envelopes.sql`
 6. `supabase/migrations/202611270006_server_clock.sql`
+7. `supabase/migrations/202611270007_immutable_device_public_key.sql`
 
 Do not skip a migration or reorder them. The private `world-media` bucket and its member-scoped read, insert, and delete policies are created by migration 001. The upload policy enforces a per-world limit of 100 objects.
 
@@ -46,3 +47,7 @@ Never put a database password, `service_role` key, or any other administrative s
 - Confirm no secret or service-role key is present in the generated APK.
 
 A successful Android build or SQL parser run does not replace these live integration checks.
+
+## Device-key safety note
+
+Migration 007 makes each registered installation's RSA public key immutable through ordinary registration. This prevents a repeated registration call from silently replacing a key that already has world-key envelopes. A future explicit key-rotation/recovery flow must be designed and tested before replacing a registered key; do not manually edit device-key rows to work around a rejected registration.
