@@ -27,7 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import java.time.Instant
 import java.time.LocalDate
-import java.time.ZoneId
+import java.time.ZoneOffset
 
 private data class SoulScene(val title: String, val symbol: String, val caption: String)
 private val soulScenes = listOf(
@@ -58,12 +58,12 @@ SoulScene("عالمنا الأبدي","💖","مشهد ختامي يجمع رم�
 internal fun AnimationGallerySection(relationshipStartDate: String = "", names: List<String> = emptyList()) {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("soul_animation_gallery", Context.MODE_PRIVATE) }
-    val today = LocalDate.now()
+    val today = LocalDate.now(ZoneOffset.UTC)
     val journeyStart = remember(relationshipStartDate) {
         runCatching { LocalDate.parse(relationshipStartDate) }.getOrNull()
             ?: run {
                 val saved = prefs.getLong("started_at", 0L)
-                if (saved > 0L) Instant.ofEpochMilli(saved).atZone(ZoneId.systemDefault()).toLocalDate()
+                if (saved > 0L) Instant.ofEpochMilli(saved).atZone(ZoneOffset.UTC).toLocalDate()
                 else today.also { prefs.edit().putLong("started_at", System.currentTimeMillis()).apply() }
             }
     }
