@@ -55,7 +55,7 @@ SoulScene("عالمنا الأبدي","💖","مشهد ختامي يجمع رم�
 )
 
 @Composable
-internal fun AnimationGallerySection(relationshipStartDate: String = "", names: List<String> = emptyList()) {
+internal fun AnimationGallerySection(\n    relationshipStartDate: String = "",\n    names: List<String> = emptyList(),\n    ownerMasterUnlocked: Boolean = false,\n    grantedScenes: Set<Int> = emptySet()\n) {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("soul_animation_gallery", Context.MODE_PRIVATE) }
     val today = LocalDate.now(ZoneOffset.UTC)
@@ -100,12 +100,12 @@ internal fun AnimationGallerySection(relationshipStartDate: String = "", names: 
                             val index = rowIndex * 2 + col
                             if (index < soulScenes.size) {
                                 val scene = soulScenes[index]
-                                val open = index < unlocked
+                                val open = ownerMasterUnlocked || index < unlocked || (index + 1) in grantedScenes
                                 Surface(modifier = Modifier.weight(1f).clickable(enabled = open) { selected = index }, color = Color(0xAA28172F), shape = RoundedCornerShape(18.dp), border = androidx.compose.foundation.BorderStroke(1.dp, if (open) Color(0x77FF9CCB) else Color(0x334D4058))) {
                                     Column(Modifier.padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                                         Text(if (open) scene.symbol else "🔒", fontSize = 30.sp)
                                         Text(scene.title, color = if (open) Color(0xFFFFD68A) else Color.Gray, fontSize = 12.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
-                                        Text(if (open) "المشهد ${index + 1}" else "يفتح في اليوم ${index + 1}", color = Color.LightGray, fontSize = 10.sp)
+                                        Text(when { ownerMasterUnlocked -> "مفتوح بصلاحية المالك"; (index + 1) in grantedScenes -> "منحكما المالك هذا المشهد"; open -> "المشهد ${index + 1}"; else -> "يفتح في اليوم ${index + 1}" }, color = Color.LightGray, fontSize = 10.sp)
                                     }
                                 }
                             } else Spacer(Modifier.weight(1f))
