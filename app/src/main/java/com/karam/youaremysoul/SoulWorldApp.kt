@@ -1018,21 +1018,125 @@ private fun ConnectionSection(
 }
 
 @Composable
-private fun MemoriesSection(memories: List<String>, text: String, onText: (String) -> Unit, onAdd: () -> Unit, onDelete: (Int) -> Unit) {
+private fun MemoriesSection(
+    memories: List<String>,
+    media: List<WorldMediaItem>,
+    text: String,
+    mediaStatus: String,
+    mediaEnabled: Boolean,
+    onText: (String) -> Unit,
+    onAdd: () -> Unit,
+    onDelete: (Int) -> Unit,
+    onUploadImage: (Uri) -> Unit,
+    onOpenMedia: (WorldMediaItem) -> Unit,
+    onClosePreview: () -> Unit,
+    preview: Bitmap?
+) {
+    val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        uri?.let(onUploadImage)
+    }
     Column(Modifier.fillMaxSize()) {
         Text("ذكرياتنا", color = Gold, fontSize = 23.sp, fontWeight = FontWeight.Bold)
-        Text("تبقى الذكريات محفوظة على هذا الجهاز حتى بعد إغلاق التطبيق.", color = Rose, fontSize = 12.sp)
-        OutlinedTextField(value = text, onValueChange = { onText(it.take(400)) }, label = { Text("اكتب ذكرى أو رسالة قصيرة") }, modifier = Modifier.fillMaxWidth(), minLines = 2)
-        Button(onClick = onAdd, enabled = text.isNotBlank(), modifier = Modifier.align(Alignment.End)) { Text("حفظ الذكرى") }
-        if (memories.isEmpty()) Text("لم تُحفظ ذكريات بعد.", color = Color.LightGray)
-        LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(memories.indices.toList()) { index ->
-                Card(colors = CardDefaults.cardColors(containerColor = CardTone)) {
-                    Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Text(memories[index], color = Color.White, modifier = Modifier.weight(1f))
-                        TextButton(onClick = { onDelete(index) }) { Text("حذف", color = Rose) }
+        Text("احفظوا الكلمات والصور في مساحة خاصة مشفّرة بين الجهازين.", color = Rose, fontSize = 12.sp)
+        OutlinedTextField(
+            value = text,
+            onValueChange = { onText(it.take(400)) },
+            label = { Text("اكتب ذكرى أو رسالة قصيرة") },
+            modifier = Modifier.fillMaxWidth(),
+            minLines = 2
+        )
+        Button(onClick = onAdd, enabled = text.isNotBlank(), modifier = Modifier.align(Alignment.End)) {
+            Text("حفظ الذكرى")
+        }
+        Divider(color = Rose.copy(alpha = .25f))
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text("ألبومنا المشترك", color = Gold, fontWeight = FontWeight.Bold)
+                Text("تُشفّر الصور قبل رفعها. الحد الأقصى 20 ميغابايت للصورة.", color = Color.LightGray, fontSize = 10.sp)
+            }
+            Button(
+                onClick = { imagePicker.launch(arrayOf("image/jpeg", "image/png", "image/webp", "image/heic")) },
+                enabled = mediaEnabled
+            ) { Text("إضافة صورة") }
+        }
+        if (!mediaEnabled) {
+            Text("يتاح الألبوم بعد إعداد الاتصال السحابي ومفتاح العالم.", color = Color.LightGray, fontSize = 10.sp)
+        }
+        if (mediaStatus.isNotBlank()) Text(mediaStatus, color = Rose, fontSize = 11.sp)
+        if (preview != null) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = CardTone)
+            ) {
+                Column(Modifier.fillMaxWidth().padding(8.dp)) {
+                    Image(
+                        bitmap = preview.asImageBitmap(),
+                        contentDescription = "صورة من الألبوم المشترك",
+                        modifier = Modifier.fillMaxWidth().heightIn(max = 260.dp),
+                        contentScale = ContentScale.Fit
+                    )
+                    TextButton(onClick = onClosePreview, modifier = Modifier.align(Alignment.End)) {
+                        Text("إغلاق الصورة")
                     }
                 }
+            }
+        }
+        LazyColumn(
+            Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(7.dp)
+        ) {
+            if (media.isNotEmpty()) {
+                item { Text("الصور المحفوظة", color = Gold, fontWeight = FontWeight.Bold) }
+                items(media, key = { "media-" + it.id }) { item ->
+                    Card(
+                        modifier = Modifier.fillMaxWidth().clickable { onOpenMedia(item) },
+                        colors = CardDefaults.cardColors(containerColor = CardTone),
+                        shape = RoundedCornerShape(15.dp)
+                    ) {
+                        Row(
+                            Modifier.fillMaxWidth().padding(11.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("▧", color = Gold, fontSize = 23.sp)
+                            Spacer(Modifier.width(10.dp))
+                            Column(Modifier.weight(1f)) {
+                                Text(item.displayName, color = Color.White, fontWeight = FontWeight.SemiBold)
+                                Text(
+                                    "\${item.sizeBytes / 1024} كيلوبايت",
+                                    color = Color.LightGray,
+                                    fontSize = 10.sp
+                                )
+                            }
+                            Text("عرض", color = Rose, fontSize = 12.sp)
+                        }
+                    }
+                }
+            } else {
+                item { Text("لم تُضف صور إلى الألبوم بعد.", color = Color.LightGray, fontSize = 11.sp) }
+            }
+            if (memories.isNotEmpty()) {
+                item { Text("الذكريات المكتوبة", color = Gold, fontWeight = FontWeight.Bold) }
+                items(memories.indices.toList(), key = { "memory-" + it }) { index ->
+                    Card(colors = CardDefaults.cardColors(containerColor = CardTone)) {
+                        Row(
+                            Modifier.fillMaxWidth().padding(10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(memories[index], color = Color.White, modifier = Modifier.weight(1f))
+                            TextButton(onClick = { onDelete(index) }) { Text("حذف", color = Rose) }
+                        }
+                    }
+                }
+            } else {
+                item { Text("لم تُحفظ ذكريات مكتوبة بعد.", color = Color.LightGray, fontSize = 11.sp) }
+            }
+            item {
+                Text(
+                    "برمجة وتطوير: \"كرم أكرم محمد الشيخ\"",
+                    color = Gold.copy(alpha = .65f),
+                    fontSize = 9.sp,
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp)
+                )
             }
         }
     }
