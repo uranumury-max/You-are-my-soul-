@@ -41,7 +41,7 @@ An Arabic privacy-policy draft is available at [`docs/PRIVACY_POLICY_DRAFT.md`](
 
 ## Product requirement still awaiting implementation
 
-- A discreet owner-only master-code capability is now represented in migration 013: the owner sets one world-wide code, only a salted bcrypt verifier is stored server-side, attempts are rate-limited, successful verification unlocks all scenes for that account, and authorized users can grant an individual scene to the active partner. Android source includes a concealed entry point and RPC flow; CI and live Supabase/two-device acceptance are still required before treating it as released.
+- A discreet owner-only master-code capability is now represented in migration 013: the owner sets one world-wide code, only a salted bcrypt verifier is stored server-side, attempts are rate-limited, successful verification unlocks all scenes for that account, and authorized users can grant an individual scene to the active partner. Android source includes a concealed entry point and RPC flow; CI run #617 passed, while live Supabase deployment and two-device acceptance remain required before treating it as released.
 
 ## Not yet complete — do not treat as a working connected app
 
