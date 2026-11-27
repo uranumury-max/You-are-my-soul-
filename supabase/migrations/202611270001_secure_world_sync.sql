@@ -328,7 +328,7 @@ create policy world_media_read_member on storage.objects
 for select to authenticated
 using (
     bucket_id = 'world-media'
-    and public.can_upload_world_media((storage.foldername(name))[1]::uuid)
+    and public.is_active_world_member((storage.foldername(name))[1]::uuid)
 );
 
 drop policy if exists world_media_insert_member on storage.objects;
@@ -336,7 +336,7 @@ create policy world_media_insert_member on storage.objects
 for insert to authenticated
 with check (
     bucket_id = 'world-media'
-    and public.is_active_world_member((storage.foldername(name))[1]::uuid)
+    and public.can_upload_world_media((storage.foldername(name))[1]::uuid)
 );
 
 -- Active world members may delete objects only inside their own private world-media
