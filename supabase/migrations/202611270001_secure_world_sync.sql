@@ -764,7 +764,7 @@ exception
         -- Handles two installations racing to claim the same code.
         return false;
 end;
-$device_registration$;
+$$;
 
 create or replace function public.request_join_by_device_code(p_device_code text)
 returns uuid
@@ -1107,7 +1107,7 @@ exception
         -- Handles two installations racing to claim the same code.
         return false;
 end;
-$device_registration$;
+$$;
 
 create or replace function public.request_join_by_device_code(p_device_code text)
 returns uuid
@@ -1450,7 +1450,7 @@ exception
         -- Handles two installations racing to claim the same code.
         return false;
 end;
-$device_registration$;
+$$;
 
 create or replace function public.request_join_by_device_code(p_device_code text)
 returns uuid
