@@ -6,5 +6,5 @@ object WorldLimits {
     const val MAX_DRAWING_VERSIONS = 8
     const val DEVICE_CODE_DIGITS = 9
     val journeyMilestones = listOf(7, 10, 12, 15, 20)
-    const val DEVELOPER_CREDIT = "برمجة وتطوير: \"كرم أكرم محمد الشيخ\""
+    const val DEVELOPER_CREDIT = "برمجة وتطوير: كرم محمد الشيخ"
 }
