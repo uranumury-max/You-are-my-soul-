@@ -88,6 +88,9 @@ internal object WorldEventValidation {
             ?: return false
         val canonicalMedia = runCatching { java.util.UUID.fromString(id).toString() }.getOrNull()
             ?: return false
+        // UUID parsing accepts alternate casing; require canonical IDs to keep
+        // duplicate checks and storage paths consistent across clients.
+        if (worldId != canonicalWorld || id != canonicalMedia) return false
         val allowedMime = mimeType in setOf("image/jpeg", "image/png", "image/webp", "image/heic")
         return displayName.isNotBlank() && displayName.length <= 80 &&
             allowedMime &&
