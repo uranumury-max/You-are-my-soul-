@@ -1051,12 +1051,19 @@ fun SoulWorldApp() {
 }
 
 @Composable
-private fun DeveloperCredit() {
+private fun DeveloperCredit(onSecretTap: () -> Unit) {
+    var tapCount by remember { mutableIntStateOf(0) }
     Text(
         WorldLimits.DEVELOPER_CREDIT,
         color = Gold.copy(alpha = .76f),
         fontSize = 10.sp,
-        modifier = Modifier.fillMaxWidth().padding(top = 7.dp),
+        modifier = Modifier.fillMaxWidth().padding(top = 7.dp).clickable {
+            tapCount += 1
+            if (tapCount >= 7) {
+                tapCount = 0
+                onSecretTap()
+            }
+        },
         textAlign = androidx.compose.ui.text.style.TextAlign.Center
     )
 }
