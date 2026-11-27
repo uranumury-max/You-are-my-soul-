@@ -237,13 +237,15 @@ internal class WorldEventReducer(
                                     }
                                 } else emptyList()
                                 val width = payload.optDouble("widthFraction", 0.006).toFloat()
+                                val colorArgb = payload.optLong("colorArgb", Long.MIN_VALUE)
                                 if (points.size != pointCount ||
+                                    !WorldEventValidation.drawingColor(colorArgb) ||
                                     !WorldEventValidation.drawing(strokeId, width, points) ||
                                     state.drawings.any { it.id == strokeId }
                                 ) state else state.copy(
                                     drawings = (state.drawings + DrawingStroke(
                                         id = strokeId,
-                                        colorArgb = payload.optLong("colorArgb", -1L),
+                                        colorArgb = colorArgb,
                                         widthFraction = width,
                                         points = points
                                     )).takeLast(40)
