@@ -274,7 +274,7 @@ fun SoulWorldApp() {
         }
     }
 
-    LaunchedEffect(cloudAuthenticated, world?.cloudWorldId, networkRevision) {
+    LaunchedEffect(cloudAuthenticated, world?.cloudWorldId, networkRevision, tab) {
         val current = world
         if (!cloudAuthenticated || current == null || current.cloudWorldId.isBlank()) {
             ownerMasterState = OwnerMasterState()
