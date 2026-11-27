@@ -89,10 +89,7 @@ class SupabaseWorldMediaStorage {
             if (body != null) connection.outputStream.use { it.write(body) }
             val status = connection.responseCode
             if (status !in 200..299) {
-                val error = connection.errorStream?.use { stream ->
-                    val bytes = stream.readNBytes(MAX_ERROR_BYTES)
-                    bytes.fill(0)
-                }
+                connection.errorStream?.close()
                 throw SupabaseAuthException(
                     when {
                         status == 401 || status == 403 -> "media_authorization_failed"
@@ -141,6 +138,5 @@ class SupabaseWorldMediaStorage {
         const val CONNECT_TIMEOUT_MS = 10_000
         const val READ_TIMEOUT_MS = 45_000
         const val MAX_ENCRYPTED_BYTES = WorldMediaCipher.MAX_PLAINTEXT_BYTES + 64
-        const val MAX_ERROR_BYTES = 2048
     }
 }
