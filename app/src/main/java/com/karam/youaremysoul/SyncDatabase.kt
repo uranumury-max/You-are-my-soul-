@@ -163,6 +163,9 @@ interface SyncDao {
     @Query("SELECT * FROM sync_events WHERE worldId = :worldId ORDER BY serverSequence ASC LIMIT :limit")
     suspend fun loadAllRemoteEvents(worldId: String, limit: Int): List<SyncedEventEntity>
 
+    @Query("SELECT * FROM sync_events WHERE worldId = :worldId AND eventType = 'world_update' ORDER BY serverSequence DESC LIMIT 1")
+    suspend fun latestCheckpoint(worldId: String): SyncedEventEntity?
+
     @Transaction
     suspend fun applyRemotePage(
         worldId: String,
@@ -321,12 +324,25 @@ class RoomSyncStore(context: Context) {
     suspend fun cursor(worldId: java.util.UUID): SyncCursor =
         SyncCursor(dao.getCursor(worldId.toString())?.serverSequence ?: 0L)
 
-    suspend fun allRemoteEvents(
-        worldId: java.util.UUID,
-        limit: Int = 10_000
-    ): List<SequencedWorldEvent> {
-        require(limit in 1..10_000)
-        return dao.loadAllRemoteEvents(worldId.toString(), limit).map { row ->
+    suspend fun allRemoteEvents(worldId: java.util.UUID): List<SequencedWorldEvent> {
+        val checkpoint = dao.latestCheckpoint(worldId.toString()) ?: return emptyList()
+        val rows = mutableListOf(checkpoint)
+        var cursor = checkpoint.serverSequence - 1L
+        while (rows.size < MAX_REPLAY_EVENTS) {
+            val page = dao.loadRemoteEvents(
+                worldId = worldId.toString(),
+                afterSequence = cursor,
+                limit = minOf(REPLAY_PAGE_SIZE, MAX_REPLAY_EVENTS - rows.size)
+            )
+            if (page.isEmpty()) break
+            rows += page
+            cursor = page.last().serverSequence
+            if (page.size < REPLAY_PAGE_SIZE) break
+        }
+        check(
+            dao.loadRemoteEvents(worldId.toString(), cursor, 1).isEmpty()
+        ) { "World event history exceeds the safe replay limit" }
+        return rows.distinctBy { it.eventId }.sortedBy { it.serverSequence }.map { row ->
             val type = requireNotNull(SyncEventType.fromWire(row.eventType)) {
                 "Unknown persisted remote event type"
             }
@@ -379,6 +395,8 @@ class RoomSyncStore(context: Context) {
     }
 
     private companion object {
+        const val MAX_REPLAY_EVENTS = 10_000
+        const val REPLAY_PAGE_SIZE = 500
         const val MAX_RETRY_DELAY_MS = 6 * 60 * 60 * 1000L
     }
 }
