@@ -30,23 +30,24 @@ internal class WorldMutationSync(
         added.forEach { changes += SyncEventType.MEMORY_CREATE to JSONObject().put("value", it) }
         removed.forEach { changes += SyncEventType.MEMORY_DELETE to JSONObject().put("value", it) }
 
-        if (previous.drawings.isNotEmpty() && next.drawings.isEmpty()) {
+        val previousStrokeIds = previous.drawings.mapTo(mutableSetOf()) { it.id }
+        val nextStrokeIds = next.drawings.mapTo(mutableSetOf()) { it.id }
+        val boardWasCleared = previous.drawings.any { it.id !in nextStrokeIds }
+        if (boardWasCleared) {
             changes += SyncEventType.DRAWING_UPDATE to JSONObject().put("action", "clear")
-        } else {
-            val previousStrokeIds = previous.drawings.mapTo(mutableSetOf()) { it.id }
-            next.drawings.filter { it.id !in previousStrokeIds }.forEach { stroke ->
-                val points = JSONArray().apply {
-                    stroke.points.take(200).forEach { point ->
-                        put(JSONArray().put(point.x.toDouble()).put(point.y.toDouble()))
-                    }
+        }
+        next.drawings.filter { boardWasCleared || it.id !in previousStrokeIds }.forEach { stroke ->
+            val points = JSONArray().apply {
+                stroke.points.take(200).forEach { point ->
+                    put(JSONArray().put(point.x.toDouble()).put(point.y.toDouble()))
                 }
-                changes += SyncEventType.DRAWING_UPDATE to JSONObject()
-                    .put("action", "add")
-                    .put("id", stroke.id)
-                    .put("colorArgb", stroke.colorArgb)
-                    .put("widthFraction", stroke.widthFraction.toDouble())
-                    .put("points", points)
             }
+            changes += SyncEventType.DRAWING_UPDATE to JSONObject()
+                .put("action", "add")
+                .put("id", stroke.id)
+                .put("colorArgb", stroke.colorArgb)
+                .put("widthFraction", stroke.widthFraction.toDouble())
+                .put("points", points)
         }
 
         val previousCapsules = previous.capsules.associateBy { it.id }
