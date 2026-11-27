@@ -850,8 +850,7 @@ fun SoulWorldApp() {
                                             )
                                             if (WorldEventValidation.drawingVersion(version)) {
                                                 persist(current.copy(
-                                                    drawingVersions = (current.drawingVersions + version)
-                                                        .takeLast(WorldLimits.MAX_DRAWING_VERSIONS)
+                                                    drawingVersions = DrawingVersionHistory.append(current.drawingVersions, version)
                                                 ))
                                             }
                                         }
