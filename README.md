@@ -8,7 +8,7 @@ The target design is cloud-first and offline-capable:
 - A managed Supabase backend coordinates authenticated membership and synchronization.
 - Each Android installation keeps local data so the app remains useful without a connection.
 - A durable Room database contains the encrypted local snapshot, encrypted last-queued sync baseline, sync outbox, downloaded-event cache, and server cursor tables.
-- Twelve checked-in SQL migrations (001–012) define world membership, owner-approved join requests, per-account/per-world rate-limited device-code discovery, append-only events, private media storage, device public-key registration, owner-controlled recipient key envelopes, and restrictive RLS.
+- Twelve checked-in SQL migrations (001–012) define world membership, owner-approved join requests, per-account rate-limited device-code discovery, append-only events, private media storage, device public-key registration, owner-controlled recipient key envelopes, and restrictive RLS.
 - Local snapshots use AES-256-GCM with Android Keystore protection. World content uses authenticated AES-GCM envelopes; installation-specific RSA-OAEP keys support owner-to-device world-key delivery. An approved member receives an encrypted initial snapshot, and field-level memory, garden, daily-answer, and settings changes are queued, encrypted, uploaded, downloaded, and deterministically replayed from the latest checkpoint in source. Settings events are explicit patches: concurrent edits to separate fields compose, while the same field follows server-sequence replay order (last accepted event wins); unit tests cover both cases.
 
 ## Privacy and release documentation
