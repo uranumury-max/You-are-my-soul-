@@ -56,7 +56,7 @@ SoulScene("عالمنا الأبدي","💖","مشهد ختامي يجمع رم�
 )
 
 @Composable
-internal fun AnimationGallerySection(relationshipStartDate: String = "") {
+internal fun AnimationGallerySection(relationshipStartDate: String = "", names: List<String> = emptyList()) {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("soul_animation_gallery", Context.MODE_PRIVATE) }
     val today = LocalDate.now()
@@ -77,7 +77,7 @@ internal fun AnimationGallerySection(relationshipStartDate: String = "") {
     var selected by remember { mutableIntStateOf(-1) }
     Column(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFF100B1B), Color(0xFF241235), Color(0xFF100B1B)))).padding(horizontal = 14.dp, vertical = 8.dp)) {
         Text("مجرة الأنيميشن", color = Color(0xFFFF9CCB), fontSize = 23.sp, fontWeight = FontWeight.Bold)
-        Text("21 مشهداً صغيراً لعالمكما", color = Color(0xFFFFD68A), fontSize = 12.sp)
+        Text(if (names.isNotEmpty()) "21 مشهداً لـ ${names.take(2).joinToString(" و")}" else "21 مشهداً صغيراً لعالمكما", color = Color(0xFFFFD68A), fontSize = 12.sp)
         Spacer(Modifier.height(8.dp))
         Surface(color = Color(0xFF30203F), shape = RoundedCornerShape(18.dp)) {
             Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
