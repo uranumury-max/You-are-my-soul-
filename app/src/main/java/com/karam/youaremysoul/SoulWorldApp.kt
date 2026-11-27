@@ -584,7 +584,12 @@ fun SoulWorldApp() {
                                 }
                             )
                             "الذكريات" -> MemoriesSection(
-                                memories = world?.memories.orEmpty(), text = memoryText, onText = { memoryText = it },
+                                memories = world?.memories.orEmpty(),
+                                media = world?.media.orEmpty(),
+                                text = memoryText,
+                                mediaStatus = mediaStatus,
+                                mediaEnabled = world != null && cloudAuthenticated && worldKeyReady,
+                                onText = { memoryText = it },
                                 onAdd = {
                                     val value = memoryText.trim()
                                     if (value.isNotEmpty()) {
@@ -596,7 +601,74 @@ fun SoulWorldApp() {
                                 },
                                 onDelete = { index ->
                                     world?.let { current -> persist(current.copy(memories = current.memories.filterIndexed { i, _ -> i != index })) }
-                                }
+                                },
+                                onUploadImage = { uri ->
+                                    val current = world
+                                    if (current == null || !cloudAuthenticated || !worldKeyReady) {
+                                        mediaStatus = "أنشئوا العالم وأكملوا الاتصال الآمن قبل رفع الصور."
+                                    } else {
+                                        mediaStatus = "جارٍ تشفير الصورة ورفعها..."
+                                        scope.launch {
+                                            try {
+                                                val session = authClient.ensureAuthenticatedSession()
+                                                val item = withContext(Dispatchers.IO) {
+                                                    mediaImporter.import(uri, session, java.util.UUID.fromString(current.cloudWorldId))
+                                                }
+                                                val latest = world
+                                                if (latest != null && latest.cloudWorldId == current.cloudWorldId) {
+                                                    persist(latest.copy(media = (latest.media + item).takeLast(100)))
+                                                    mediaStatus = "أُضيفت الصورة إلى الألبوم المشترك بأمان."
+                                                } else {
+                                                    mediaStatus = "رُفعت الصورة، لكن العالم تغيّر قبل حفظ بياناتها."
+                                                }
+                                            } catch (error: IllegalArgumentException) {
+                                                mediaStatus = when (error.message) {
+                                                    "media_type_unknown", "media_type_not_supported" -> "نوع الصورة غير مدعوم. اختروا JPEG أو PNG أو WebP أو HEIC."
+                                                    "media_too_large" -> "تجاوزت الصورة الحد الأقصى البالغ 20 ميغابايت."
+                                                    "media_empty" -> "الملف المحدد فارغ."
+                                                    else -> "تعذرت قراءة الصورة المحددة."
+                                                }
+                                            } catch (error: Exception) {
+                                                mediaStatus = when ((error as? SupabaseAuthException)?.safeCode) {
+                                                    "media_authorization_failed" -> "لا يملك هذا الجهاز صلاحية رفع الصورة إلى العالم."
+                                                    "media_rate_limited" -> "طلبات التخزين كثيرة حالياً؛ حاولوا لاحقاً."
+                                                    "media_service_unavailable", "media_network_unavailable" -> "تعذر الاتصال بالتخزين؛ لم تُضف بيانات الصورة إلى الألبوم."
+                                                    else -> "تعذر رفع الصورة بأمان؛ لم تُضف إلى الألبوم."
+                                                }
+                                            }
+                                        }
+                                    }
+                                },
+                                onOpenMedia = { item ->
+                                    val current = world
+                                    if (current != null && cloudAuthenticated && worldKeyReady) {
+                                        mediaStatus = "جارٍ تنزيل الصورة والتحقق من تشفيرها..."
+                                        scope.launch {
+                                            try {
+                                                val session = authClient.ensureAuthenticatedSession()
+                                                val bytes = withContext(Dispatchers.IO) {
+                                                    mediaStorage.download(
+                                                        session,
+                                                        java.util.UUID.fromString(current.cloudWorldId),
+                                                        java.util.UUID.fromString(item.id),
+                                                        worldKeyVault,
+                                                        item.keyVersion
+                                                    )
+                                                }
+                                                try {
+                                                    mediaPreview = decodeMediaPreview(bytes)
+                                                    mediaStatus = if (mediaPreview == null) "تعذر عرض الصورة بعد فك تشفيرها." else "عُرضت الصورة بعد التحقق من سلامتها."
+                                                } finally {
+                                                    bytes.fill(0)
+                                                }
+                                            } catch (_: Exception) {
+                                                mediaStatus = "تعذر تنزيل الصورة أو التحقق من سلامتها."
+                                            }
+                                        }
+                                    }
+                                },
+                                onClosePreview = { mediaPreview = null },
+                                preview = mediaPreview
                             )
                             "رسائلنا" -> MessagesSection(
                                 messages = world?.messages.orEmpty(),
