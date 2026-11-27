@@ -103,13 +103,15 @@ interface SyncDao {
     @Query(
         """
         SELECT * FROM sync_outbox
-        WHERE nextAttemptAtEpochMs <= :nowEpochMs
+        WHERE worldId = :worldId
+          AND nextAttemptAtEpochMs <= :nowEpochMs
           AND attemptCount < :maxAttempts
         ORDER BY queuedAtEpochMs ASC
         LIMIT :limit
         """
     )
     suspend fun loadDueOutbox(
+        worldId: String,
         nowEpochMs: Long,
         maxAttempts: Int,
         limit: Int
@@ -356,11 +358,13 @@ class RoomSyncStore(context: Context) {
     }
 
     suspend fun dueEvents(
+        worldId: java.util.UUID,
         nowEpochMs: Long = System.currentTimeMillis(),
         limit: Int = SyncProtocolRules.MAX_EVENTS_PER_PAGE
     ): List<PendingSyncEvent> {
         require(limit in 1..SyncProtocolRules.MAX_EVENTS_PER_PAGE)
         return dao.loadDueOutbox(
+            worldId = worldId.toString(),
             nowEpochMs = nowEpochMs,
             maxAttempts = SyncProtocolRules.MAX_PENDING_ATTEMPTS,
             limit = limit
