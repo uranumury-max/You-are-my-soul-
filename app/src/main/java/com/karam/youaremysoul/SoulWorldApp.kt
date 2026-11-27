@@ -606,6 +606,8 @@ fun SoulWorldApp() {
                                     val current = world
                                     if (current == null || !cloudAuthenticated || !worldKeyReady) {
                                         mediaStatus = "أنشئوا العالم وأكملوا الاتصال الآمن قبل رفع الصور."
+                                    } else if (current.media.size >= WorldLimits.MAX_MEDIA_ITEMS) {
+                                        mediaStatus = "اكتمل الألبوم؛ احذفوا صورة قبل إضافة صورة جديدة."
                                     } else {
                                         mediaStatus = "جارٍ تشفير الصورة ورفعها..."
                                         scope.launch {
@@ -616,7 +618,7 @@ fun SoulWorldApp() {
                                                 }
                                                 val latest = world
                                                 if (latest != null && latest.cloudWorldId == current.cloudWorldId) {
-                                                    persist(latest.copy(media = (latest.media + item).takeLast(100)))
+                                                    persist(latest.copy(media = (latest.media + item).takeLast(WorldLimits.MAX_MEDIA_ITEMS)))
                                                     mediaStatus = "أُضيفت الصورة إلى الألبوم المشترك بأمان."
                                                 } else {
                                                     mediaStatus = "رُفعت الصورة، لكن العالم تغيّر قبل حفظ بياناتها."
