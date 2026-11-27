@@ -28,6 +28,17 @@ class WorldEventValidationTest {
         assertFalse(WorldEventValidation.drawing("stroke-1", 0.5f, listOf(WorldPoint(0.2f, 0.8f))))
         assertFalse(WorldEventValidation.drawing("stroke-1", 0.006f, listOf(WorldPoint(1.1f, 0.8f))))
         assertFalse(WorldEventValidation.drawing("stroke-1", 0.006f, emptyList()))
+        assertFalse(
+            WorldEventValidation.drawing(
+                "stroke-1", 0.006f, List(151) { WorldPoint(0.5f, 0.5f) }
+            )
+        )
+        assertFalse(
+            WorldEventValidation.drawing("stroke-1", Float.NaN, listOf(WorldPoint(0.5f, 0.5f)))
+        )
+        assertFalse(
+            WorldEventValidation.drawing("stroke-1", 0.006f, listOf(WorldPoint(Float.POSITIVE_INFINITY, 0.5f)))
+        )
     }
 
     @Test
