@@ -21,6 +21,12 @@ data class DrawingStroke(
     val widthFraction: Float,
     val points: List<WorldPoint>
 )
+data class DailyAnswerEntry(
+    val date: String,
+    val authorCode: String,
+    val answer: String,
+    val createdAtEpochMs: Long
+)
 data class WorldMediaItem(
     val id: String,
     val displayName: String,
@@ -40,6 +46,7 @@ data class WorldSnapshot(
     val gardenLastWateredAt: Long = 0L,
     val dailyAnswerDate: String = "",
     val dailyAnswer: String = "",
+    val dailyAnswers: List<DailyAnswerEntry> = emptyList(),
     val relationshipStartDate: String = "",
     /** Stable cloud world UUID; blank until assigned for legacy local worlds. */
     val cloudWorldId: String = "",
