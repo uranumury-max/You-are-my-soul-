@@ -29,6 +29,15 @@ internal class WorldMutationSync(
         added.forEach { changes += SyncEventType.MEMORY_CREATE to JSONObject().put("value", it) }
         removed.forEach { changes += SyncEventType.MEMORY_DELETE to JSONObject().put("value", it) }
 
+        val previousMessageIds = previous.messages.mapTo(mutableSetOf()) { it.id }
+        next.messages.filter { it.id !in previousMessageIds }.forEach { message ->
+            changes += SyncEventType.MESSAGE_CREATE to JSONObject()
+                .put("id", message.id)
+                .put("senderName", message.senderName)
+                .put("text", message.text)
+                .put("createdAtEpochMs", message.createdAtEpochMs)
+        }
+
         val flowerDelta = next.gardenFlowers - previous.gardenFlowers
         if (flowerDelta != 0 || next.gardenLastWateredAt != previous.gardenLastWateredAt) {
             changes += SyncEventType.GARDEN_UPDATE to JSONObject()
@@ -121,6 +130,21 @@ internal class WorldEventReducer(
                         val index = memories.indexOf(payload.getString("value"))
                         if (index >= 0) memories.removeAt(index)
                         state.copy(memories = memories)
+                    }
+                    SyncEventType.MESSAGE_CREATE -> {
+                        val messageId = payload.optString("id")
+                        if (messageId.isBlank() || state.messages.any { it.id == messageId }) {
+                            state
+                        } else {
+                            state.copy(
+                                messages = (state.messages + WorldMessage(
+                                    id = messageId,
+                                    senderName = payload.optString("senderName", "مشارك"),
+                                    text = payload.optString("text"),
+                                    createdAtEpochMs = payload.optLong("createdAtEpochMs")
+                                )).takeLast(500)
+                            )
+                        }
                     }
                     SyncEventType.GARDEN_UPDATE -> state.copy(
                         gardenFlowers = (state.gardenFlowers + payload.optInt("delta")).coerceAtLeast(0),
