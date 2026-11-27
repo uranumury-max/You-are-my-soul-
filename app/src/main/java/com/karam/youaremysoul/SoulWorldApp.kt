@@ -84,6 +84,8 @@ fun SoulWorldApp() {
     var pendingRequestsLoadFailed by remember { mutableStateOf(false) }
     var activeWorldMembers by remember { mutableStateOf(emptyList<ActiveWorldMember>()) }
     var activeMembersLoadFailed by remember { mutableStateOf(false) }
+    var keyRotationBusy by remember { mutableStateOf(false) }
+    var keyRotationStatus by remember { mutableStateOf("") }
     var cloudStatus by remember { mutableStateOf("") }
     var mediaStatus by remember { mutableStateOf("") }
     var mediaBusy by remember { mutableStateOf(false) }
@@ -228,6 +230,7 @@ fun SoulWorldApp() {
                 if (current.localIsOwner && !worldKeyVault.hasWorldKey(id, 1)) {
                     worldKeyVault.createWorldKey(id, 1)
                 }
+                if (worldKeyVault.hasWorldKey(id, 1)) worldKeyVault.setActiveKeyVersion(id, worldKeyVault.activeKeyVersion(id))
                 worldKeyVault.hasWorldKey(id, 1)
             }
             if (!worldKeyReady && !current.localIsOwner) {
@@ -465,8 +468,9 @@ fun SoulWorldApp() {
                                             requestStatus = when (status?.status) {
                                                 "pending" -> "طلبك ما زال بانتظار موافقة صاحب العالم."
                                                 "approved" -> {
+                                                    val activeVersion = worldKeyExchangeRepository.currentWorldKeyVersion(session, status.worldId)
                                                     val envelope = worldKeyExchangeRepository.fetchOwnEnvelope(
-                                                        session, status.worldId, 1
+                                                        session, status.worldId, activeVersion
                                                     )
                                                     if (envelope == null) {
                                                         "تمت الموافقة، لكن مفتاح التشفير لم يصل بعد. حاول تحديث الحالة لاحقاً."
@@ -614,6 +618,44 @@ fun SoulWorldApp() {
                                                 }
                                             } catch (_: Exception) {
                                                 requestStatus = "تعذر إرسال الطلب؛ تحقق من الاتصال وحاول لاحقاً."
+                                            }
+                                        }
+                                    }
+                                },
+                                keyRotationBusy = keyRotationBusy,
+                                keyRotationStatus = keyRotationStatus,
+                                onRotateKey = {
+                                    if (!keyRotationBusy && world?.localIsOwner == true && cloudAuthenticated) {
+                                        keyRotationBusy = true
+                                        keyRotationStatus = "جارٍ تجهيز إصدار تشفير جديد..."
+                                        scope.launch {
+                                            try {
+                                                syncMutex.withLock {
+                                                    val current = requireNotNull(world)
+                                                    val session = authClient.ensureAuthenticatedSession()
+                                                    val newVersion = worldKeyExchangeRepository.rotateOwnerWorldKey(
+                                                        session, current.cloudWorldId, worldKeyVault, deviceKeyVault
+                                                    )
+                                                    snapshotBootstrapper.publishOwnerSnapshot(
+                                                        session, current, worldKeyVault
+                                                    )
+                                                    val (_, applied) = syncCoordinator.syncAndApply(
+                                                        session, java.util.UUID.fromString(current.cloudWorldId), worldKeyVault
+                                                    )
+                                                    if (applied != null) {
+                                                        world = applied
+                                                        lastPersistedWorld = applied
+                                                        savedCloudWorldId = applied.cloudWorldId
+                                                        savedWorldName = applied.worldName
+                                                    }
+                                                    keyRotationStatus = "تم تفعيل إصدار التشفير $newVersion. ستستلم الأجهزة الأخرى المفتاح عند مزامنتها."
+                                                    cloudStatus = "تم تدوير مفتاح العالم وتحديث اللقطة المشفّرة."
+                                                    networkRevision += 1
+                                                }
+                                            } catch (_: Exception) {
+                                                keyRotationStatus = "لم يكتمل التدوير أو تأكيده. حدّث الاتصال وأعد المحاولة؛ لن يُفعّل الخادم إصداراً قبل تسليم أغلفته."
+                                            } finally {
+                                                keyRotationBusy = false
                                             }
                                         }
                                     }
@@ -1087,6 +1129,9 @@ private fun ConnectionSection(
     onRefreshRequests: () -> Unit,
     onDecideRequest: (String, Boolean) -> Unit,
     onRevokeMember: (String) -> Unit,
+    keyRotationBusy: Boolean,
+    keyRotationStatus: String,
+    onRotateKey: () -> Unit,
     onRequest: () -> Unit,
     onCreate: () -> Unit
 ) {
@@ -1149,6 +1194,19 @@ private fun ConnectionSection(
                     }
                 }
             }
+        }
+        if (isOwner) {
+            Divider(color = Rose.copy(alpha = .25f))
+            Text("حماية العالم", color = Gold, fontSize = 17.sp, fontWeight = FontWeight.Bold)
+            Text("تدوير مفتاح التشفير يحدّث مفتاح المحتوى للأجهزة النشطة. لا تُحذف المفاتيح القديمة من هذا الجهاز.", color = Color.LightGray, fontSize = 11.sp)
+            OutlinedButton(
+                onClick = onRotateKey,
+                enabled = canManageRequests && !keyRotationBusy,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(if (keyRotationBusy) "جارٍ تدوير المفتاح..." else "تدوير مفتاح التشفير")
+            }
+            if (keyRotationStatus.isNotBlank()) Text(keyRotationStatus, color = Rose, fontSize = 12.sp)
         }
         if (isOwner) {
             Divider(color = Rose.copy(alpha = .25f))
