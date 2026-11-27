@@ -56,6 +56,7 @@ fun SoulWorldApp() {
     val snapshotBootstrapper = remember { WorldSnapshotBootstrapper(context) }
     val deviceKeyVault = remember { DeviceKeyVault() }
     val worldKeyVault = remember { WorldKeyVault(context) }
+    val serverClock = remember { SupabaseServerClock() }
     val syncCoordinator = remember { WorldSyncCoordinator(context) }
     val mutationSync = remember { WorldMutationSync(RoomSyncStore(context), worldKeyVault) }
     val syncMutex = remember { Mutex() }
@@ -618,13 +619,30 @@ fun SoulWorldApp() {
                                     persist(current.copy(capsules = (current.capsules + capsule).takeLast(100)))
                                 },
                                 onOpenCapsule = { capsuleId ->
-                                    world?.let { current ->
-                                        val now = System.currentTimeMillis()
-                                        persist(current.copy(capsules = current.capsules.map { capsule ->
-                                            if (capsule.id == capsuleId && capsule.openedAtEpochMs == null &&
-                                                now >= capsule.unlockAtEpochMs
-                                            ) capsule.copy(openedAtEpochMs = now) else capsule
-                                        }))
+                                    scope.launch {
+                                        try {
+                                            val session = authClient.ensureAuthenticatedSession()
+                                            val trustedNow = withContext(Dispatchers.IO) {
+                                                serverClock.nowEpochMillis(session)
+                                            }
+                                            val current = world
+                                            val capsule = current?.capsules?.firstOrNull { it.id == capsuleId }
+                                            if (current != null && capsule != null &&
+                                                capsule.openedAtEpochMs == null &&
+                                                trustedNow >= capsule.unlockAtEpochMs
+                                            ) {
+                                                persist(current.copy(capsules = current.capsules.map {
+                                                    if (it.id == capsuleId && it.openedAtEpochMs == null) {
+                                                        it.copy(openedAtEpochMs = trustedNow)
+                                                    } else it
+                                                }))
+                                                cloudStatus = "تم التحقق من موعد الكبسولة وفتحها."
+                                            } else if (capsule != null) {
+                                                cloudStatus = "لم يحِن موعد فتح هذه الكبسولة وفق توقيت الخادم."
+                                            }
+                                        } catch (_: Exception) {
+                                            cloudStatus = "تعذر التحقق من توقيت الخادم؛ بقيت الكبسولة مغلقة."
+                                        }
                                     }
                                 },
                                 stage = calculateJourneyStage(world?.relationshipStartDate.orEmpty())
