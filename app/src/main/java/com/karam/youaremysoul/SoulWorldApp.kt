@@ -845,7 +845,7 @@ private fun ConnectionSection(
     val context = androidx.compose.ui.platform.LocalContext.current
     val code = DeviceIdentity(context).code
     Column(Modifier.fillMaxWidth().verticalScroll(androidx.compose.foundation.rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Text("هوية هذا الموبايل", color = Gold, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+        Text("هوية هذا الجهاز", color = Gold, fontSize = 20.sp, fontWeight = FontWeight.Bold)
         Card(colors = CardDefaults.cardColors(containerColor = CardTone)) {
             Column(Modifier.fillMaxWidth().padding(14.dp)) {
                 Text("رمزك الثابت (9 أرقام)", color = Rose)
@@ -1161,12 +1161,12 @@ private fun GardenSection(flowers: Int, onPlant: () -> Unit) {
 @Composable
 private fun DailyQuestionSection(answer: String, onAnswer: (String) -> Unit) {
     val questions = listOf(
-        "ما التفصيل الصغير الذي جعل يومك ألطف؟",
-        "لو نقدر نعيد لحظة واحدة من هذا الأسبوع، أي لحظة تختار؟",
+        "ما التفصيل الصغير الذي جعل يومك أكثر لطفاً؟",
+        "لو أُتيحت لنا إعادة لحظة واحدة من هذا الأسبوع، فأيّ لحظة ستختار؟",
         "ما الشيء الذي تتمنى أن نتعلمه معاً؟",
-        "ما مكان تتمنى أن نزوره يوماً؟",
+        "ما المكان الذي تتمنى أن نزوره يوماً؟",
         "ما صفة في تعاوننا تحب أن نحافظ عليها؟",
-        "ما فكرة بسيطة ممكن نحولها إلى ذكرى؟",
+        "ما الفكرة البسيطة التي يمكن أن نحوّلها إلى ذكرى؟",
         "ما الشيء الذي يجعلك تشعر بأن صوتك مسموع؟"
     )
     val today = java.time.LocalDate.now()
