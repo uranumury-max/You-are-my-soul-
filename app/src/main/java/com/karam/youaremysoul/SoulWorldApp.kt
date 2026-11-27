@@ -730,14 +730,35 @@ fun SoulWorldApp() {
                                     )
                                     persist(current.copy(gardenFlowers = current.gardenFlowers + 1, gardenLastWateredAt = System.currentTimeMillis()))
                                 },
-                                answer = world?.takeIf { it.dailyAnswerDate == java.time.LocalDate.now().toString() }?.dailyAnswer.orEmpty(),
+                                answer = world?.let { current ->
+                                    val today = java.time.LocalDate.now().toString()
+                                    val own = current.dailyAnswers.firstOrNull {
+                                        it.date == today && it.authorCode == DeviceIdentity(context).code
+                                    }?.answer
+                                    own ?: if (current.dailyAnswers.none { it.date == today } &&
+                                        current.dailyAnswerDate == today
+                                    ) current.dailyAnswer else ""
+                                }.orEmpty(),
+                                dailyAnswers = world?.dailyAnswers.orEmpty(),
+                                currentAuthorCode = DeviceIdentity(context).code,
+                                memberNames = world?.members?.associate { it.localCode to it.displayName }.orEmpty(),
                                 onAnswer = { value ->
                                     val current = world ?: WorldSnapshot(
                                         "عالمنا الخاص", DeviceIdentity(context).code,
                                         listOf(WorldMember(DeviceIdentity(context).code, "صاحب العالم", true)),
                                         cloudWorldId = java.util.UUID.randomUUID().toString()
                                     )
-                                    persist(current.copy(dailyAnswerDate = java.time.LocalDate.now().toString(), dailyAnswer = value))
+                                    val today = java.time.LocalDate.now().toString()
+                                    val authorCode = DeviceIdentity(context).code
+                                    val entry = DailyAnswerEntry(today, authorCode, value, System.currentTimeMillis())
+                                    val answers = current.dailyAnswers.filterNot {
+                                        it.date == today && it.authorCode == authorCode
+                                    } + entry
+                                    persist(current.copy(
+                                        dailyAnswerDate = today,
+                                        dailyAnswer = value,
+                                        dailyAnswers = answers.takeLast(100)
+                                    ))
                                 },
                                 drawings = world?.drawings.orEmpty(),
                                 onAddStroke = { stroke ->
