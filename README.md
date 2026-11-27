@@ -40,7 +40,7 @@ The target design is cloud-first and offline-capable:
 - Device public keys are registered per installation and the owner can distribute per-device encrypted world-key envelopes after approval. Key recovery and rotation remain incomplete.
 - Join-request delivery and owner approval UI are implemented but remain unusable until the backend migrations are deployed and tested. Cross-device synchronization is implemented in source but has not yet been verified against a live Supabase project or two physical devices.
 - No media upload/download or shared photo album yet. The drawing board and future-capsule synchronization exist in source, but still need live-backend and two-device validation.
-- Confirmed Android CI successes: run #275 (shared drawing board), #277 (relationship-day counter), #278 (guided conversation flow), and #279 (README update). Runs #280–#283 add strict decrypted-event validation and unit tests; their CI results are pending at the time of this update.
+- Confirmed Android CI successes: run #275 (shared drawing board), #277 (relationship-day counter), #278 (guided conversation flow), and #279 (README update). Runs #280–#284 passed, including strict decrypted-event validation and unit tests. Runs #285–#287 cover snapshot-restoration bounds, Arabic copy polishing, and the animated moon-and-stars garden scene; those results are pending.
 - No final physical-device, offline/reconnect, abuse, and authorization test pass.
 
 The nine-digit code is not a password. A device must authenticate, receive a fresh invitation/request, and be approved by the world owner. A visible success state must wait for a real server acknowledgement.
