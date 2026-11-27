@@ -291,7 +291,7 @@ returns boolean
 language plpgsql
 security definer
 set search_path = ''
-as $
+as $$
 declare
     v_object_count bigint;
 begin
@@ -310,7 +310,7 @@ begin
 
     return v_object_count < 100;
 end;
-$;
+$$;
 
 revoke all on function public.can_upload_world_media(uuid) from public;
 grant execute on function public.can_upload_world_media(uuid) to authenticated;
