@@ -50,6 +50,28 @@ class PairingSecurityTest {
     }
 
     @Test
+    fun challengeExpiresAtExactDeadline() {
+        var now = 40_000L
+        val verifier = PairingChallengeVerifier { now }
+        val secret = PairingSecurity.newPairingSecret()
+        val challenge = verifier.issue("request-id-exact-expiry", "123456789", "987654321")
+        val proof = PairingSecurity.createProof(challenge, secret)
+
+        now = challenge.expiresAtEpochMs
+        assertFalse(verifier.verify(challenge, proof, secret))
+    }
+
+    @Test
+    fun requestIdAndExpiryOverflowAreRejected() {
+        assertTrue(runCatching {
+            PairingSecurity.newChallenge("invalid request id!", "123456789", "987654321", 100L)
+        }.isFailure)
+        assertTrue(runCatching {
+            PairingSecurity.newChallenge("request-id-overflow", "123456789", "987654321", Long.MAX_VALUE - 5L)
+        }.isFailure)
+    }
+
+    @Test
     fun wrongSecretIsRejectedAndChallengeConsumed() {
         val verifier = PairingChallengeVerifier { 50_000L }
         val challenge = verifier.issue("request-id-wrong-secret", "123456789", "987654321")
