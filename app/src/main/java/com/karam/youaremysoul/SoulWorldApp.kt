@@ -1695,7 +1695,7 @@ private fun DailyQuestionSection(
     )
     val today = java.time.LocalDate.now(java.time.ZoneOffset.UTC)
     val todayText = today.toString()
-    val question = questions[(today.toEpochDay() % questions.size).toInt()]
+    val question = questions[DailyQuestionSelector.indexForEpochDay(today.toEpochDay(), questions.size)]
     val responses = dailyAnswers.filter { it.date == todayText }.sortedBy { it.createdAtEpochMs }
     var draft by remember(today, answer) { mutableStateOf(answer) }
     Column(
