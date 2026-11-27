@@ -1734,13 +1734,20 @@ private fun DailyQuestionSection(
 @Composable
 private fun DrawingSection(
     strokes: List<DrawingStroke>,
+    versions: List<DrawingVersion>,
     onAddStroke: (DrawingStroke) -> Unit,
     onClear: () -> Unit,
-    onUndo: () -> Unit
+    onUndo: () -> Unit,
+    onSaveVersion: (String) -> Unit,
+    onRestoreVersion: (String) -> Unit
 ) {
     var activeStroke by remember { mutableStateOf<DrawingStroke?>(null) }
     var showScene by remember { mutableStateOf(false) }
     var confirmClear by remember { mutableStateOf(false) }
+    var showSaveVersion by remember { mutableStateOf(false) }
+    var showVersionHistory by remember { mutableStateOf(false) }
+    var versionTitle by remember { mutableStateOf("") }
+    var restoreVersionPending by remember { mutableStateOf<DrawingVersion?>(null) }
     var selectedColorArgb by remember { mutableLongStateOf(Color(0xFFFF9CCB).value.toLong()) }
     val drawingPalette = listOf(
         "وردي" to Color(0xFFFF9CCB),
@@ -1831,9 +1838,92 @@ private fun DrawingSection(
             OutlinedButton(onClick = onUndo, enabled = strokes.isNotEmpty()) {
                 Text("تراجع عن آخر خط")
             }
+            OutlinedButton(
+                onClick = { versionTitle = ""; showSaveVersion = true },
+                enabled = strokes.isNotEmpty()
+            ) { Text("حفظ نسخة") }
+            OutlinedButton(
+                onClick = { showVersionHistory = !showVersionHistory },
+                enabled = versions.isNotEmpty()
+            ) { Text(if (showVersionHistory) "إخفاء السجل" else "سجل النسخ (${versions.size})") }
             OutlinedButton(onClick = { confirmClear = true }, enabled = strokes.isNotEmpty()) {
                 Text("مسح اللوحة")
             }
+        }
+        if (showVersionHistory && versions.isNotEmpty()) {
+            Card(
+                modifier = Modifier.fillMaxWidth().heightIn(max = 150.dp),
+                colors = CardDefaults.cardColors(containerColor = CardTone),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                LazyColumn(contentPadding = PaddingValues(8.dp)) {
+                    items(versions.reversed(), key = { it.id }) { version ->
+                        Row(
+                            Modifier.fillMaxWidth().padding(vertical = 3.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(Modifier.weight(1f)) {
+                                Text(version.title, color = Gold, fontWeight = FontWeight.SemiBold)
+                                Text(
+                                    "${version.strokes.size} خطاً • " +
+                                        java.time.Instant.ofEpochMilli(version.createdAtEpochMs)
+                                            .atZone(java.time.ZoneOffset.UTC).toLocalDate().toString(),
+                                    color = Color.LightGray,
+                                    fontSize = 10.sp
+                                )
+                            }
+                            TextButton(onClick = { restoreVersionPending = version }) {
+                                Text("استعادة")
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        if (showSaveVersion) {
+            AlertDialog(
+                onDismissRequest = { showSaveVersion = false },
+                title = { Text("حفظ نسخة من اللوحة") },
+                text = {
+                    OutlinedTextField(
+                        value = versionTitle,
+                        onValueChange = { versionTitle = it.take(40) },
+                        label = { Text("اسم النسخة") },
+                        singleLine = true
+                    )
+                },
+                confirmButton = {
+                    TextButton(onClick = {
+                        onSaveVersion(versionTitle.trim().ifBlank { "نسخة ${versions.size + 1}" })
+                        showSaveVersion = false
+                    }) { Text("حفظ") }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showSaveVersion = false }) { Text("إلغاء") }
+                },
+                containerColor = CardTone,
+                titleContentColor = Gold,
+                textContentColor = Color.White
+            )
+        }
+        restoreVersionPending?.let { version ->
+            AlertDialog(
+                onDismissRequest = { restoreVersionPending = null },
+                title = { Text("استعادة نسخة اللوحة؟") },
+                text = { Text("سيحل الرسم المحفوظ محل الرسم الحالي، وستبقى النسخة في سجل الاستعادة.") },
+                confirmButton = {
+                    TextButton(onClick = {
+                        onRestoreVersion(version.id)
+                        restoreVersionPending = null
+                    }) { Text("استعادة") }
+                },
+                dismissButton = {
+                    TextButton(onClick = { restoreVersionPending = null }) { Text("إلغاء") }
+                },
+                containerColor = CardTone,
+                titleContentColor = Gold,
+                textContentColor = Color.White
+            )
         }
         if (confirmClear) {
             AlertDialog(
