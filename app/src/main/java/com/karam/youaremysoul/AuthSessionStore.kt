@@ -50,14 +50,20 @@ internal class AuthSessionStore(context: Context) {
             expiresAtEpochSeconds = json.getLong("expires_at")
         ).also { session ->
             require(session.accessToken.isNotBlank() && session.refreshToken.isNotBlank())
+            require(session.accessToken.length <= MAX_TOKEN_CHARS &&
+                session.refreshToken.length <= MAX_TOKEN_CHARS)
             require(session.userId.isNotBlank() && session.expiresAtEpochSeconds > 0L)
+            require(java.util.UUID.fromString(session.userId).toString() == session.userId)
         }
     }
 
     @Synchronized
     fun save(session: StoredAuthSession) {
         require(session.accessToken.isNotBlank() && session.refreshToken.isNotBlank())
+        require(session.accessToken.length <= MAX_TOKEN_CHARS &&
+            session.refreshToken.length <= MAX_TOKEN_CHARS)
         require(session.userId.isNotBlank() && session.expiresAtEpochSeconds > 0L)
+        require(java.util.UUID.fromString(session.userId).toString() == session.userId)
         val json = JSONObject()
             .put("access_token", session.accessToken)
             .put("refresh_token", session.refreshToken)
@@ -112,6 +118,7 @@ internal class AuthSessionStore(context: Context) {
         const val TRANSFORMATION = "AES/GCM/NoPadding"
         const val IV_BYTES = 12
         const val TAG_BYTES = 16
+        const val MAX_TOKEN_CHARS = 8 * 1024
         const val MAX_PLAINTEXT_BYTES = 16 * 1024
         const val MAX_PAYLOAD_BYTES = MAX_PLAINTEXT_BYTES + IV_BYTES + TAG_BYTES
         const val MAX_ENCODED_LENGTH = ((MAX_PAYLOAD_BYTES + 2) / 3) * 4
