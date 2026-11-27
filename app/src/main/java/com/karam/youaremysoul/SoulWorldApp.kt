@@ -253,6 +253,14 @@ fun SoulWorldApp() {
                             }
                         }
                     }
+                    if (revision == saveRevision.get() && previousPersisted == null &&
+                        next.cloudWorldId.isNotBlank()
+                    ) {
+                        withContext(Dispatchers.IO) {
+                            store.saveSyncBaselineIfMissing(next, roomSyncStore)
+                        }
+                        lastPersistedWorld = next
+                    }
                     if (revision == saveRevision.get() &&
                         cloudAuthenticated && worldKeyReady &&
                         previousPersisted != null && previousPersisted.cloudWorldId == next.cloudWorldId &&
