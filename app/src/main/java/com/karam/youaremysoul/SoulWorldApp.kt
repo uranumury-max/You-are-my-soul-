@@ -660,7 +660,8 @@ fun SoulWorldApp() {
                                         }
                                     }
                                 },
-                                stage = calculateJourneyStage(world?.relationshipStartDate.orEmpty())
+                                stage = calculateJourneyStage(world?.relationshipStartDate.orEmpty()),
+                                relationshipStartDate = world?.relationshipStartDate.orEmpty()
                             )
                             "الإعدادات" -> SettingsSection(
                                 world = world,
@@ -1001,7 +1002,8 @@ private fun MomentsHub(
     drawings: List<DrawingStroke>,
     onAddStroke: (DrawingStroke) -> Unit,
     onClearDrawing: () -> Unit,
-    stage: Int
+    stage: Int,
+    relationshipStartDate: String
 ) {
     var selected by remember { mutableStateOf("الحديقة") }
     Column(Modifier.fillMaxSize()) {
@@ -1023,7 +1025,7 @@ private fun MomentsHub(
                 "سؤال اليوم" -> DailyQuestionSection(answer, onAnswer)
                 "كبسولة المستقبل" -> CapsuleSection(capsules, onCreateCapsule, onOpenCapsule)
                 "لوحتنا" -> DrawingSection(drawings, onAddStroke, onClearDrawing)
-                else -> JourneySection(stage, world?.relationshipStartDate.orEmpty())
+                else -> JourneySection(stage, relationshipStartDate)
             }
         }
     }
