@@ -392,7 +392,7 @@ begin
     if auth.uid() is null then
         raise exception 'authentication required' using errcode = '28000';
     end if;
-    if p_device_id is null or p_device_code is null or p_device_code !~ '^[0-9]{9}
+    if p_device_id is null or p_device_code is null or p_device_code !~ '^[0-9]{9}$' then
     end if;
 
     -- A code collision is recoverable: the client will generate another
