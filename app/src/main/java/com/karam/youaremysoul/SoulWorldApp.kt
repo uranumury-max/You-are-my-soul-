@@ -1,7 +1,16 @@
 package com.karam.youaremysoul
 
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.animation.togetherWith
@@ -54,11 +63,13 @@ fun SoulWorldApp() {
     val authClient = remember { SupabaseAuthClient(context) }
     val deviceRegistrar = remember { SupabaseDeviceRegistrar(context) }
     val worldRepository = remember { SupabaseWorldRepository() }
+    val mediaStorage = remember { SupabaseWorldMediaStorage() }
     val pairingRepository = remember { SupabasePairingRepository() }
     val worldKeyExchangeRepository = remember { SupabaseWorldKeyExchangeRepository(context) }
     val snapshotBootstrapper = remember { WorldSnapshotBootstrapper(context) }
     val deviceKeyVault = remember { DeviceKeyVault() }
     val worldKeyVault = remember { WorldKeyVault(context) }
+    val mediaImporter = remember { WorldMediaImporter(context, mediaStorage, worldKeyVault) }
     val serverClock = remember { SupabaseServerClock() }
     val syncCoordinator = remember { WorldSyncCoordinator(context) }
     val roomSyncStore = remember { RoomSyncStore(context) }
@@ -69,6 +80,8 @@ fun SoulWorldApp() {
     var pendingJoinRequests by remember { mutableStateOf(emptyList<PendingWorldJoinRequest>()) }
     var pendingRequestsLoadFailed by remember { mutableStateOf(false) }
     var cloudStatus by remember { mutableStateOf("") }
+    var mediaStatus by remember { mutableStateOf("") }
+    var mediaPreview by remember { mutableStateOf<Bitmap?>(null) }
     var cloudAuthenticated by remember { mutableStateOf(false) }
     var networkRevision by remember { mutableStateOf(0) }
     DisposableEffect(context) {
@@ -160,6 +173,7 @@ fun SoulWorldApp() {
     }
     var tab by remember { mutableStateOf("العالم") }
     val tabs = listOf("العالم", "الربط", "الذكريات", "رسائلنا", "لحظاتنا", "الإعدادات")
+    LaunchedEffect(tab) { if (tab != "الذكريات") mediaPreview = null }
     val symbols = listOf("✧", "⌁", "♡", "✉", "✦", "⚙")
     var worldName by remember { mutableStateOf("عالمنا الخاص") }
     var memoryText by remember { mutableStateOf("") }
