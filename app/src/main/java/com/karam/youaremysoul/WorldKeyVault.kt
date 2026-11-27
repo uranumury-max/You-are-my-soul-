@@ -80,6 +80,34 @@ class WorldKeyVault(context: Context) {
     fun hasWorldKey(worldId: UUID, keyVersion: Int = 1): Boolean =
         prefs.contains(storageKey(worldId, keyVersion))
 
+    fun encryptMedia(
+        worldId: UUID,
+        mediaId: UUID,
+        plaintext: ByteArray,
+        keyVersion: Int = 1
+    ): ByteArray {
+        val rawKey = loadWorldKey(worldId, keyVersion)
+        return try {
+            WorldMediaCipher.encrypt(worldId, mediaId, keyVersion, rawKey, plaintext)
+        } finally {
+            rawKey.fill(0)
+        }
+    }
+
+    fun decryptMedia(
+        worldId: UUID,
+        mediaId: UUID,
+        encrypted: ByteArray,
+        keyVersion: Int = 1
+    ): ByteArray {
+        val rawKey = loadWorldKey(worldId, keyVersion)
+        return try {
+            WorldMediaCipher.decrypt(worldId, mediaId, keyVersion, rawKey, encrypted)
+        } finally {
+            rawKey.fill(0)
+        }
+    }
+
     fun encrypt(
         worldId: UUID,
         eventId: UUID,
