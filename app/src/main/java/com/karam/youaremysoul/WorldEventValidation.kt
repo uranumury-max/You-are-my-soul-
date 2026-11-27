@@ -93,7 +93,7 @@ internal object WorldEventValidation {
         // UUID parsing accepts alternate casing; require canonical IDs to keep
         // duplicate checks and storage paths consistent across clients.
         if (worldId != canonicalWorld || id != canonicalMedia) return false
-        val allowedMime = mimeType in setOf("image/jpeg", "image/png", "image/webp", "image/heic")
+        val allowedMime = mimeType in setOf("image/jpeg", "image/png", "image/webp")
         return displayName.isNotBlank() && displayName.length <= 80 &&
             allowedMime &&
             sizeBytes in 1L..(20L * 1024L * 1024L) &&
