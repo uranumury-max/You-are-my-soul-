@@ -132,7 +132,7 @@ begin
            end,
            attempts = case
                when public.owner_master_attempt_limits.window_started_at < now() - interval '15 minutes'
-               then 1 else public.owner_master_attempt_limits.attempts + 1
+               then 1 else least(public.owner_master_attempt_limits.attempts + 1, 6)
            end
     returning attempts into v_attempts;
 
