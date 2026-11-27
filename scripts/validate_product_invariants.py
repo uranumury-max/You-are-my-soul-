@@ -14,13 +14,13 @@ def fail(message: str) -> None:
 
 def main() -> int:
     migrations = sorted((ROOT / "supabase" / "migrations").glob("*.sql"))
-    numbers = [re.search(r"_(\\d{3})_", path.name).group(1) for path in migrations]
+    numbers = [re.search(r"_(\d{3})_", path.name).group(1) for path in migrations]
     if numbers != [f"{n:03d}" for n in range(1, 13)]:
         fail(f"expected ordered migrations 001–012, found {numbers}")
 
     gallery = (ROOT / "app/src/main/java/com/karam/youaremysoul/AnimationGallerySection.kt").read_text(encoding="utf-8")
-    scene_metadata = len(re.findall(r'SoulScene\\("', gallery))
-    scene_branches = {int(value) for value in re.findall(r"^\\s+(\\d+) -> \\{", gallery, re.MULTILINE)}
+    scene_metadata = len(re.findall(r'SoulScene\("', gallery))
+    scene_branches = {int(value) for value in re.findall(r"^\s+(\d+) -> \{", gallery, re.MULTILINE)}
     if scene_metadata != 21 or scene_branches != set(range(1, 22)):
         fail(f"gallery must contain 21 scene definitions and 21 render branches; found {scene_metadata}, {sorted(scene_branches)}")
 
@@ -28,9 +28,9 @@ def main() -> int:
     validator = (ROOT / "app/src/main/java/com/karam/youaremysoul/WorldEventValidation.kt").read_text(encoding="utf-8")
     expected_mimes = {"image/jpeg", "image/png", "image/webp"}
     for source, label in ((importer, "importer"), (validator, "event validator")):
-        match = re.search(r"ALLOWED_MIME_TYPES\\s*=\\s*setOf\\(([^)]*)\\)", source)
+        match = re.search(r"ALLOWED_MIME_TYPES\s*=\s*setOf\(([^)]*)\)", source)
         if label == "event validator":
-            match = re.search(r"val allowedMime = mimeType in setOf\\(([^)]*)\\)", source)
+            match = re.search(r"val allowedMime = mimeType in setOf\(([^)]*)\)", source)
         if not match:
             fail(f"could not find MIME allowlist in {label}")
         found = set(re.findall(r'"(image/[^"]+)"', match.group(1)))
