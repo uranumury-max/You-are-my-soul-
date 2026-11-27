@@ -146,10 +146,11 @@ fun SoulWorldApp() {
         }
     }
     var tab by remember { mutableStateOf("العالم") }
-    val tabs = listOf("العالم", "الربط", "الذكريات", "لحظاتنا", "الإعدادات")
-    val symbols = listOf("✧", "⌁", "♡", "✦", "⚙")
+    val tabs = listOf("العالم", "الربط", "الذكريات", "رسائلنا", "لحظاتنا", "الإعدادات")
+    val symbols = listOf("✧", "⌁", "♡", "✉", "✦", "⚙")
     var worldName by remember { mutableStateOf("عالمنا الخاص") }
     var memoryText by remember { mutableStateOf("") }
+    var messageText by remember { mutableStateOf("") }
     var displayName by remember { mutableStateOf("") }
     var enteredCode by remember { mutableStateOf("") }
     var requestStatus by remember { mutableStateOf("") }
@@ -354,6 +355,7 @@ fun SoulWorldApp() {
                         "العالم" -> "مساحتكم التي تكبر معكم"
                         "الربط" -> "لكل شخص هويته الخاصة"
                         "الذكريات" -> "تفاصيل صغيرة تستحق البقاء"
+                        "رسائلنا" -> "مساحة خاصة للكلمات بينكما"
                         "لحظاتنا" -> "تجارب صغيرة تصنع عالمكم"
                         else -> "رتّبوا عالمكم كما تحبّون"
                     },
@@ -553,6 +555,31 @@ fun SoulWorldApp() {
                                 },
                                 onDelete = { index ->
                                     world?.let { current -> persist(current.copy(memories = current.memories.filterIndexed { i, _ -> i != index })) }
+                                }
+                            )
+                            "رسائلنا" -> MessagesSection(
+                                messages = world?.messages.orEmpty(),
+                                text = messageText,
+                                onText = { messageText = it },
+                                enabled = world != null,
+                                onSend = {
+                                    val current = world
+                                    val value = messageText.trim()
+                                    if (current != null && value.isNotEmpty()) {
+                                        val deviceCode = DeviceIdentity(context).code
+                                        val sender = displayName.trim().ifBlank {
+                                            current.members.firstOrNull { it.localCode == deviceCode }?.displayName
+                                                ?: "مشارك"
+                                        }
+                                        val message = WorldMessage(
+                                            id = java.util.UUID.randomUUID().toString(),
+                                            senderName = sender,
+                                            text = value,
+                                            createdAtEpochMs = System.currentTimeMillis()
+                                        )
+                                        persist(current.copy(messages = (current.messages + message).takeLast(500)))
+                                        messageText = ""
+                                    }
                                 }
                             )
                             "لحظاتنا" -> MomentsHub(
@@ -839,6 +866,69 @@ private fun MemoriesSection(memories: List<String>, text: String, onText: (Strin
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun MessagesSection(
+    messages: List<WorldMessage>,
+    text: String,
+    onText: (String) -> Unit,
+    enabled: Boolean,
+    onSend: () -> Unit
+) {
+    Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Text("رسائلنا", color = Gold, fontSize = 23.sp, fontWeight = FontWeight.Bold)
+        Text("كل رسالة تُحفظ مشفّرة وتصل إلى الجهاز الآخر عند توفر الاتصال.", color = Rose, fontSize = 12.sp)
+        if (messages.isEmpty()) {
+            Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                Text(
+                    if (enabled) "لم تُكتب رسائل بعد. ابدأوا أول محادثة هنا."
+                    else "أنشئوا عالمكم أولاً لبدء تبادل الرسائل.",
+                    color = Color.LightGray
+                )
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier.weight(1f).fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(messages, key = { it.id }) { message ->
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = CardTone),
+                        shape = RoundedCornerShape(18.dp)
+                    ) {
+                        Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(message.senderName, color = Rose, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                                Text(
+                                    java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
+                                        .format(java.util.Date(message.createdAtEpochMs)),
+                                    color = Color.LightGray,
+                                    fontSize = 10.sp
+                                )
+                            }
+                            Text(message.text, color = Color.White, fontSize = 14.sp)
+                        }
+                    }
+                }
+            }
+        }
+        OutlinedTextField(
+            value = text,
+            onValueChange = { onText(it.take(2000)) },
+            enabled = enabled,
+            modifier = Modifier.fillMaxWidth(),
+            minLines = 1,
+            maxLines = 4,
+            label = { Text("اكتب رسالة") }
+        )
+        Button(
+            onClick = onSend,
+            enabled = enabled && text.isNotBlank(),
+            modifier = Modifier.align(Alignment.End)
+        ) { Text("إرسال الرسالة") }
     }
 }
 
