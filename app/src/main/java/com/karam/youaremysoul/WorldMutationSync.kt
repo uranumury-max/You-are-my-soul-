@@ -161,14 +161,19 @@ internal class WorldEventReducer(
                 val payload = JSONObject(bytes.toString(Charsets.UTF_8))
                 state = when (event.type) {
                     SyncEventType.WORLD_UPDATE -> state
-                    SyncEventType.MEMORY_CREATE -> state.copy(
-                        memories = (state.memories + payload.getString("value")).takeLast(100)
-                    )
+                    SyncEventType.MEMORY_CREATE -> {
+                        val value = payload.optString("value")
+                        if (!WorldEventValidation.memory(value)) state
+                        else state.copy(memories = (state.memories + value).takeLast(100))
+                    }
                     SyncEventType.MEMORY_DELETE -> {
-                        val memories = state.memories.toMutableList()
-                        val index = memories.indexOf(payload.getString("value"))
-                        if (index >= 0) memories.removeAt(index)
-                        state.copy(memories = memories)
+                        val value = payload.optString("value")
+                        if (!WorldEventValidation.memory(value)) state else {
+                            val memories = state.memories.toMutableList()
+                            val index = memories.indexOf(value)
+                            if (index >= 0) memories.removeAt(index)
+                            state.copy(memories = memories)
+                        }
                     }
                     SyncEventType.DRAWING_UPDATE -> {
                         when (payload.optString("action")) {
@@ -184,8 +189,8 @@ internal class WorldEventReducer(
                                     if (x !in 0f..1f || y !in 0f..1f) null else WorldPoint(x, y)
                                 }.take(150)
                                 val width = payload.optDouble("widthFraction", 0.006).toFloat()
-                                if (strokeId.isBlank() || points.isEmpty() ||
-                                    width !in 0.001f..0.03f || state.drawings.any { it.id == strokeId }
+                                if (!WorldEventValidation.drawing(strokeId, width, points) ||
+                                    state.drawings.any { it.id == strokeId }
                                 ) state else state.copy(
                                     drawings = (state.drawings + DrawingStroke(
                                         id = strokeId,
@@ -205,8 +210,8 @@ internal class WorldEventReducer(
                                 val unlockAt = payload.optLong("unlockAtEpochMs")
                                 val createdAt = payload.optLong("createdAtEpochMs")
                                 val message = payload.optString("message")
-                                if (capsuleId.isBlank() || message.isBlank() ||
-                                    unlockAt <= createdAt || state.capsules.any { it.id == capsuleId }
+                                if (!WorldEventValidation.capsule(capsuleId, message, createdAt, unlockAt) ||
+                                    state.capsules.any { it.id == capsuleId }
                                 ) state else state.copy(
                                     capsules = (state.capsules + FutureCapsule(
                                         id = capsuleId,
@@ -230,35 +235,49 @@ internal class WorldEventReducer(
                     }
                     SyncEventType.MESSAGE_CREATE -> {
                         val messageId = payload.optString("id")
-                        if (messageId.isBlank() || state.messages.any { it.id == messageId }) {
+                        val senderName = payload.optString("senderName", "مشارك")
+                        val text = payload.optString("text")
+                        val createdAt = payload.optLong("createdAtEpochMs")
+                        if (!WorldEventValidation.message(messageId, senderName, text, createdAt) ||
+                            state.messages.any { it.id == messageId }
+                        ) {
                             state
                         } else {
                             state.copy(
                                 messages = (state.messages + WorldMessage(
                                     id = messageId,
-                                    senderName = payload.optString("senderName", "مشارك"),
-                                    text = payload.optString("text"),
-                                    createdAtEpochMs = payload.optLong("createdAtEpochMs")
+                                    senderName = senderName,
+                                    text = text,
+                                    createdAtEpochMs = createdAt
                                 )).takeLast(100)
                             )
                         }
                     }
-                    SyncEventType.GARDEN_UPDATE -> state.copy(
-                        gardenFlowers = (state.gardenFlowers + payload.optInt("delta")).coerceAtLeast(0),
-                        gardenLastWateredAt = maxOf(
-                            state.gardenLastWateredAt, payload.optLong("lastWateredAt")
+                    SyncEventType.GARDEN_UPDATE -> {
+                        val delta = payload.optInt("delta")
+                        val wateredAt = payload.optLong("lastWateredAt")
+                        if (!WorldEventValidation.garden(delta, wateredAt)) state else state.copy(
+                            gardenFlowers = (state.gardenFlowers + delta).coerceAtLeast(0),
+                            gardenLastWateredAt = maxOf(state.gardenLastWateredAt, wateredAt)
                         )
-                    )
-                    SyncEventType.DAILY_ANSWER -> state.copy(
-                        dailyAnswerDate = payload.optString("date"),
-                        dailyAnswer = payload.optString("answer")
-                    )
-                    SyncEventType.SETTINGS_UPDATE -> state.copy(
-                        worldName = payload.optString("worldName", state.worldName),
-                        relationshipStartDate = payload.optString(
-                            "relationshipStartDate", state.relationshipStartDate
+                    }
+                    SyncEventType.DAILY_ANSWER -> {
+                        val date = payload.optString("date")
+                        val answer = payload.optString("answer")
+                        if (!WorldEventValidation.dailyAnswer(date, answer)) state
+                        else state.copy(dailyAnswerDate = date, dailyAnswer = answer)
+                    }
+                    SyncEventType.SETTINGS_UPDATE -> {
+                        val worldName = if (payload.has("worldName")) payload.optString("worldName") else null
+                        val relationshipDate = if (payload.has("relationshipStartDate")) {
+                            payload.optString("relationshipStartDate")
+                        } else null
+                        if (!WorldEventValidation.settings(worldName, relationshipDate)) state
+                        else state.copy(
+                            worldName = worldName ?: state.worldName,
+                            relationshipStartDate = relationshipDate ?: state.relationshipStartDate
                         )
-                    )
+                    }
                     else -> state
                 }
             } finally {
