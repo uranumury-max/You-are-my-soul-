@@ -560,6 +560,29 @@ fun SoulWorldApp() {
                                         }
                                     }
                                 },
+                                onRevokeMember = { memberUserId ->
+                                    scope.launch {
+                                        try {
+                                            val current = world
+                                            if (!cloudAuthenticated || current == null || current.cloudWorldId.isBlank() || !current.localIsOwner) {
+                                                requestStatus = "لا يمكن إدارة العضوية قبل تأكيد مالك العالم والاتصال."
+                                            } else {
+                                                val session = authClient.ensureAuthenticatedSession()
+                                                val revoked = pairingRepository.revokeMember(session, current.cloudWorldId, memberUserId)
+                                                if (revoked) {
+                                                    activeWorldMembers = pairingRepository.activeMembers(session, current.cloudWorldId)
+                                                    activeMembersLoadFailed = false
+                                                    requestStatus = "أُلغيت العضوية. سيُمنع الجهاز من الوصول السحابي الجديد؛ وقد تبقى نسخة سبق تنزيلها على ذلك الجهاز."
+                                                } else {
+                                                    requestStatus = "لم يؤكد الخادم إلغاء العضوية؛ حدّث القائمة للتحقق."
+                                                }
+                                            }
+                                        } catch (_: Exception) {
+                                            activeMembersLoadFailed = true
+                                            requestStatus = "تعذر إلغاء العضوية الآن؛ لم نعرض العملية على أنها نجحت."
+                                        }
+                                    }
+                                },
                                 onRequest = {
                                     val fromCode = DeviceIdentity(context).code
                                     val name = displayName.trim().ifBlank { "مشارك" }
