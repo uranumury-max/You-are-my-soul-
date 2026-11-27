@@ -196,6 +196,29 @@ class LocalWorldStore(context: Context) {
                 )
             }
         })
+        put("drawingVersions", JSONArray().apply {
+            world.drawingVersions.takeLast(WorldLimits.MAX_DRAWING_VERSIONS).forEach { version ->
+                put(JSONObject()
+                    .put("id", version.id)
+                    .put("title", version.title)
+                    .put("createdAtEpochMs", version.createdAtEpochMs)
+                    .put("strokes", JSONArray().apply {
+                        version.strokes.takeLast(DrawingHistory.MAX_STROKES).forEach { stroke ->
+                            put(JSONObject()
+                                .put("id", stroke.id)
+                                .put("colorArgb", stroke.colorArgb)
+                                .put("widthFraction", stroke.widthFraction.toDouble())
+                                .put("points", JSONArray().apply {
+                                    stroke.points.take(150).forEach { point ->
+                                        put(JSONArray().put(point.x.toDouble()).put(point.y.toDouble()))
+                                    }
+                                })
+                            )
+                        }
+                    })
+                )
+            }
+        })
         put("media", JSONArray().apply {
             world.media.takeLast(WorldLimits.MAX_MEDIA_ITEMS).forEach { item ->
                 put(
@@ -230,6 +253,7 @@ class LocalWorldStore(context: Context) {
         val messagesJson = json.optJSONArray("messages") ?: JSONArray()
         val capsulesJson = json.optJSONArray("capsules") ?: JSONArray()
         val drawingsJson = json.optJSONArray("drawings") ?: JSONArray()
+        val drawingVersionsJson = json.optJSONArray("drawingVersions") ?: JSONArray()
         val mediaJson = json.optJSONArray("media") ?: JSONArray()
         val dailyAnswersJson = json.optJSONArray("dailyAnswers") ?: JSONArray()
         val worldId = json.optString("cloudWorldId", "")
@@ -308,6 +332,36 @@ class LocalWorldStore(context: Context) {
                 if (!WorldEventValidation.drawing(id, width, points)) null
                 else DrawingStroke(id, stroke.optLong("colorArgb", -1L), width, points)
             }.takeLast(40),
+            drawingVersions = (maxOf(0, drawingVersionsJson.length() - WorldLimits.MAX_DRAWING_VERSIONS) until drawingVersionsJson.length()).mapNotNull { index ->
+                val version = drawingVersionsJson.optJSONObject(index) ?: return@mapNotNull null
+                val versionStrokesJson = version.optJSONArray("strokes") ?: JSONArray()
+                if (versionStrokesJson.length() > DrawingHistory.MAX_STROKES) return@mapNotNull null
+                val versionStrokes = (0 until versionStrokesJson.length()).mapNotNull { strokeIndex ->
+                    val stroke = versionStrokesJson.optJSONObject(strokeIndex) ?: return@mapNotNull null
+                    val pointsJson = stroke.optJSONArray("points") ?: JSONArray()
+                    if (pointsJson.length() !in 1..150) return@mapNotNull null
+                    val points = (0 until pointsJson.length()).mapNotNull { pointIndex ->
+                        val pair = pointsJson.optJSONArray(pointIndex) ?: return@mapNotNull null
+                        if (pair.length() != 2) return@mapNotNull null
+                        val x = pair.optDouble(0, -1.0).toFloat()
+                        val y = pair.optDouble(1, -1.0).toFloat()
+                        if (x !in 0f..1f || y !in 0f..1f) null else WorldPoint(x, y)
+                    }
+                    val id = stroke.optString("id")
+                    val width = stroke.optDouble("widthFraction", 0.006).toFloat()
+                    val color = stroke.optLong("colorArgb", -1L)
+                    if (points.size != pointsJson.length() ||
+                        !WorldEventValidation.drawing(id, width, points) ||
+                        !WorldEventValidation.drawingColor(color)
+                    ) null else DrawingStroke(id, color, width, points)
+                }
+                DrawingVersion(
+                    id = version.optString("id"),
+                    title = version.optString("title"),
+                    createdAtEpochMs = version.optLong("createdAtEpochMs"),
+                    strokes = versionStrokes
+                ).takeIf(WorldEventValidation::drawingVersion)
+            }.takeLast(WorldLimits.MAX_DRAWING_VERSIONS),
             media = (0 until mediaJson.length()).mapNotNull { index ->
                 val item = mediaJson.optJSONObject(index) ?: return@mapNotNull null
                 WorldMediaItem(
