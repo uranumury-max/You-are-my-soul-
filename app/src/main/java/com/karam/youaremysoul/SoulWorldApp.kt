@@ -1096,6 +1096,7 @@ fun SoulWorldApp() {
                             ownerMasterStatus = when (error.safeCode) {
                                 "owner_master_authorization_failed" -> "لا يملك هذا الحساب صلاحية إعداد الرمز."
                                 "owner_master_rate_limited" -> "تجاوزت محاولات التحقق المسموحة؛ انتظر ثم أعد المحاولة."
+                                "owner_master_request_rejected" -> "يجب أن يحتوي الرمز على حرف ورقم ورمز، وأن يكون بطول 12 إلى 72 محرفاً بلا مسافات."
                                 else -> "تعذر إعداد الرمز (${error.safeCode})."
                             }
                         } catch (_: Exception) {
