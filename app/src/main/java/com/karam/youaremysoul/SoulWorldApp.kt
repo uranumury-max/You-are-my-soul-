@@ -577,7 +577,7 @@ fun SoulWorldApp() {
                                             text = value,
                                             createdAtEpochMs = System.currentTimeMillis()
                                         )
-                                        persist(current.copy(messages = (current.messages + message).takeLast(500)))
+                                        persist(current.copy(messages = (current.messages + message).takeLast(200)))
                                         messageText = ""
                                     }
                                 }
