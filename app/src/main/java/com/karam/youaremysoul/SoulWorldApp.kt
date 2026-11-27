@@ -1724,8 +1724,7 @@ private fun DailyQuestionSection(
                 ) { Text(if (answer.isBlank()) "حفظ إجابتي" else "تحديث إجابتي") }
             }
         }
-        val distinctAuthors = responses.map { it.authorCode }.distinct().size
-        val revealTogether = distinctAuthors >= 2
+        val revealTogether = DailyAnswerReveal.isReady(responses.map { it.authorCode })
         val ownAnswerSaved = responses.any { it.authorCode == currentAuthorCode } || answer.isNotBlank()
         Text("إجاباتكما", color = Gold, fontWeight = FontWeight.Bold, fontSize = 16.sp)
         if (responses.isEmpty()) {
