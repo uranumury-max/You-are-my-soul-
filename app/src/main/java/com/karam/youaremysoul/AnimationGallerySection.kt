@@ -28,7 +28,6 @@ import androidx.compose.ui.unit.sp
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
-import java.time.temporal.ChronoUnit
 
 private data class SoulScene(val title: String, val symbol: String, val caption: String)
 private val soulScenes = listOf(
@@ -68,7 +67,7 @@ internal fun AnimationGallerySection(relationshipStartDate: String = "", names: 
                 else today.also { prefs.edit().putLong("started_at", System.currentTimeMillis()).apply() }
             }
     }
-    val dayNumber = (ChronoUnit.DAYS.between(journeyStart, today) + 1L).coerceAtLeast(1L).coerceAtMost(21L).toInt()
+    val dayNumber = calculateUnlockedAnimationCount(journeyStart, today)
     val earned = dayNumber
     var unlocked by remember { mutableIntStateOf(maxOf(1, prefs.getInt("unlocked_count", 1), earned)) }
     LaunchedEffect(earned) {
