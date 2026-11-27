@@ -48,7 +48,7 @@ internal object WorldEventValidation {
         version.id.length in 1..64 &&
             version.title.isNotBlank() && version.title.length <= 40 &&
             version.createdAtEpochMs > 0L &&
-            version.strokes.size <= DrawingHistory.MAX_STROKES &&
+            version.strokes.size in 1..DrawingHistory.MAX_STROKES &&
             version.strokes.all { drawingColor(it.colorArgb) && drawing(it.id, it.widthFraction, it.points) }
 
     fun dailyAnswer(date: String, answer: String): Boolean =
