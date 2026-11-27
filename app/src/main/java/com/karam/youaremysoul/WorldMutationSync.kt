@@ -274,6 +274,22 @@ internal class WorldEventReducer(
                             )
                         }
                     }
+                    SyncEventType.MEDIA_ADD -> {
+                        val media = WorldMediaItem(
+                            id = payload.optString("id"),
+                            displayName = payload.optString("displayName"),
+                            mimeType = payload.optString("mimeType"),
+                            sizeBytes = payload.optLong("sizeBytes"),
+                            createdAtEpochMs = payload.optLong("createdAtEpochMs"),
+                            objectPath = payload.optString("objectPath"),
+                            keyVersion = payload.optInt("keyVersion", 1)
+                        )
+                        if (!WorldEventValidation.media(
+                                state.cloudWorldId, media.id, media.displayName, media.mimeType,
+                                media.sizeBytes, media.createdAtEpochMs, media.objectPath, media.keyVersion
+                            ) || state.media.any { it.id == media.id }
+                        ) state else state.copy(media = (state.media + media).takeLast(100))
+                    }
                     SyncEventType.GARDEN_UPDATE -> {
                         val delta = payload.optInt("delta")
                         val wateredAt = payload.optLong("lastWateredAt")
