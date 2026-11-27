@@ -11,6 +11,7 @@ import androidx.room.PrimaryKey
 import androidx.room.Query
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.withTransaction
 import androidx.room.Transaction
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
@@ -60,6 +61,25 @@ data class LocalWorldSnapshotEntity(
     val encryptedPayload: String,
     val updatedAtEpochMs: Long
 )
+
+@Entity(tableName = "local_sync_baseline")
+data class LocalSyncBaselineEntity(
+    @PrimaryKey val id: Int = 1,
+    val encryptedPayload: String,
+    val updatedAtEpochMs: Long
+)
+
+@Dao
+interface LocalSyncBaselineDao {
+    @Query("SELECT * FROM local_sync_baseline WHERE id = 1 LIMIT 1")
+    suspend fun load(): LocalSyncBaselineEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun save(baseline: LocalSyncBaselineEntity)
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertIfMissing(baseline: LocalSyncBaselineEntity)
+}
 
 @Dao
 interface LocalWorldSnapshotDao {
@@ -191,13 +211,14 @@ interface SyncDao {
 }
 
 @Database(
-    entities = [SyncOutboxEntity::class, SyncedEventEntity::class, SyncCursorEntity::class, LocalWorldSnapshotEntity::class],
-    version = 2,
+    entities = [SyncOutboxEntity::class, SyncedEventEntity::class, SyncCursorEntity::class, LocalWorldSnapshotEntity::class, LocalSyncBaselineEntity::class],
+    version = 3,
     exportSchema = false
 )
 abstract class SyncDatabase : RoomDatabase() {
     abstract fun syncDao(): SyncDao
     abstract fun worldSnapshotDao(): LocalWorldSnapshotDao
+    abstract fun syncBaselineDao(): LocalSyncBaselineDao
 
     companion object {
         @Volatile
@@ -209,7 +230,7 @@ abstract class SyncDatabase : RoomDatabase() {
                     context.applicationContext,
                     SyncDatabase::class.java,
                     "you_are_my_soul_sync.db"
-                ).addMigrations(MIGRATION_1_2).build().also { instance = it }
+                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3).build().also { instance = it }
             }
 
         private val MIGRATION_1_2 = object : Migration(1, 2) {
@@ -223,15 +244,58 @@ abstract class SyncDatabase : RoomDatabase() {
                 )
             }
         }
+
+        private val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `local_sync_baseline` (" +
+                        "`id` INTEGER NOT NULL, " +
+                        "`encryptedPayload` TEXT NOT NULL, " +
+                        "`updatedAtEpochMs` INTEGER NOT NULL, " +
+                        "PRIMARY KEY(`id`))"
+                )
+            }
+        }
     }
 }
 
 /**
- * Durable local sync queue. It is intentionally not connected to the UI/network yet:
- * enqueueing must be wired to the same transaction that persists each user change.
+ * Durable local sync queue and atomic local checkpoint/baseline commits.
  */
 class RoomSyncStore(context: Context) {
-    private val dao = SyncDatabase.get(context).syncDao()
+    private val database = SyncDatabase.get(context)
+    private val dao = database.syncDao()
+
+    suspend fun loadBaseline(): LocalSyncBaselineEntity? =
+        database.syncBaselineDao().load()
+
+    suspend fun insertBaselineIfMissing(baseline: LocalSyncBaselineEntity) {
+        database.syncBaselineDao().insertIfMissing(baseline)
+    }
+
+    suspend fun updateBaseline(baseline: LocalSyncBaselineEntity) {
+        database.withTransaction { database.syncBaselineDao().save(baseline) }
+    }
+
+    suspend fun commitLocalChange(
+        snapshot: LocalWorldSnapshotEntity,
+        baseline: LocalSyncBaselineEntity,
+        events: List<WorldSyncEvent>,
+        queuedAtEpochMs: Long = System.currentTimeMillis()
+    ) {
+        val records = toOutboxRecords(events, queuedAtEpochMs)
+        database.withTransaction {
+            database.worldSnapshotDao().save(snapshot)
+            database.syncBaselineDao().save(baseline)
+            database.syncDao().enqueueBatch(records)
+            records.forEach { record ->
+                val stored = requireNotNull(database.syncDao().findPending(record.eventId)) {
+                    "Sync outbox insert did not persist"
+                }
+                check(stored == record) { "Sync event ID was reused with different content" }
+            }
+        }
+    }
 
     suspend fun enqueue(event: WorldSyncEvent, queuedAtEpochMs: Long = System.currentTimeMillis()) {
         enqueueAll(listOf(event), queuedAtEpochMs)
@@ -241,10 +305,30 @@ class RoomSyncStore(context: Context) {
         events: List<WorldSyncEvent>,
         queuedAtEpochMs: Long = System.currentTimeMillis()
     ) {
+        val records = toOutboxRecords(events, queuedAtEpochMs)
+        if (records.isEmpty()) return
+        dao.enqueueBatch(records)
+        records.forEach { record ->
+            val stored = requireNotNull(dao.findPending(record.eventId)) {
+                "Sync outbox insert did not persist"
+            }
+            check(
+                stored.worldId == record.worldId &&
+                    stored.actorUserId == record.actorUserId &&
+                    stored.eventType == record.eventType &&
+                    stored.ciphertextBase64 == record.ciphertextBase64 &&
+                    stored.clientCreatedAtEpochMs == record.clientCreatedAtEpochMs
+            ) { "Sync event ID was reused with different content" }
+        }
+    }
+
+    private fun toOutboxRecords(
+        events: List<WorldSyncEvent>,
+        queuedAtEpochMs: Long
+    ): List<SyncOutboxEntity> {
         require(queuedAtEpochMs > 0L)
         require(events.size <= SyncProtocolRules.MAX_EVENTS_PER_PAGE)
-        if (events.isEmpty()) return
-        val records = events.map { event ->
+        return events.map { event ->
             require(SyncProtocolRules.validate(event) == null) { "Invalid encrypted sync event" }
             SyncOutboxEntity(
                 eventId = event.eventId.toString(),
@@ -258,19 +342,6 @@ class RoomSyncStore(context: Context) {
                 nextAttemptAtEpochMs = queuedAtEpochMs,
                 lastFailureCode = null
             )
-        }
-        dao.enqueueBatch(records)
-        records.forEach { record ->
-            val stored = requireNotNull(dao.findPending(record.eventId)) {
-                "Sync outbox insert did not persist"
-            }
-            check(
-                stored.worldId == record.worldId &&
-                    stored.actorUserId == record.actorUserId &&
-                    stored.eventType == record.eventType &&
-                    stored.ciphertextBase64 == record.ciphertextBase64 &&
-                    stored.clientCreatedAtEpochMs == record.clientCreatedAtEpochMs
-            ) { "Sync event ID was reused with different content" }
         }
     }
 
