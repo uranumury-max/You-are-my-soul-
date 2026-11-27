@@ -38,6 +38,38 @@ class WorldEventValidationTest {
     }
 
     @Test
+    fun validatesSharedMediaMetadataAndStoragePath() {
+        val worldId = "2b71d49b-bef3-4e8a-9f43-79ad53d3e73d"
+        val mediaId = "8cbf47a0-92c2-40ef-9b8a-99ccf9427f5b"
+        val path = "$worldId/$mediaId.wmd"
+        assertTrue(
+            WorldEventValidation.media(
+                worldId, mediaId, "ذكرى.png", "image/png", 2048L, 100L, path, 1
+            )
+        )
+        assertFalse(
+            WorldEventValidation.media(
+                worldId, mediaId, "ذكرى.png", "image/png", 0L, 100L, path, 1
+            )
+        )
+        assertFalse(
+            WorldEventValidation.media(
+                worldId, mediaId, "ملف", "application/pdf", 2048L, 100L, path, 1
+            )
+        )
+        assertFalse(
+            WorldEventValidation.media(
+                worldId, mediaId, "ذكرى.png", "image/png", 2048L, 100L, "$worldId/other.wmd", 1
+            )
+        )
+        assertFalse(
+            WorldEventValidation.media(
+                worldId, mediaId, "ذكرى.png", "image/png", 21L * 1024L * 1024L, 100L, path, 1
+            )
+        )
+    }
+
+    @Test
     fun validatesSettingsAndGardenRanges() {
         assertTrue(WorldEventValidation.settings("عالمنا", "2026-11-27"))
         assertTrue(WorldEventValidation.settings(null, null))
