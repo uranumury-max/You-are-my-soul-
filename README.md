@@ -11,7 +11,9 @@ The target design is cloud-first and offline-capable:
 - Eight checked-in SQL migrations define world membership, owner-approved join requests, per-account/per-world rate-limited device-code discovery, append-only events, private media storage, device public-key registration, owner-controlled recipient key envelopes, and restrictive RLS.
 - Local snapshots use AES-256-GCM with Android Keystore protection. World content uses authenticated AES-GCM envelopes; installation-specific RSA-OAEP keys support owner-to-device world-key delivery. An approved member receives an encrypted initial snapshot, and field-level memory, garden, daily-answer, and settings changes are queued, encrypted, uploaded, downloaded, and deterministically replayed from the latest checkpoint in source. Settings events are explicit patches: concurrent edits to separate fields compose, while the same field follows server-sequence replay order (last accepted event wins); unit tests cover both cases.
 
-## Privacy documentation
+## Privacy and release documentation
+
+A step-by-step [release readiness checklist](docs/RELEASE_READINESS.md) separates CI success from required Supabase deployment, two-device acceptance, and release signing.
 
 An Arabic privacy-policy draft is available at [`docs/PRIVACY_POLICY_DRAFT.md`](docs/PRIVACY_POLICY_DRAFT.md). It is not publication-ready until the responsible contact, deployed backend details, account/data deletion process, and store disclosures are finalized.
 
