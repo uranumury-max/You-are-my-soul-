@@ -101,6 +101,22 @@ class SupabaseEventTransport {
         }
     }
 
+    private fun readBoundedResponse(stream: java.io.InputStream): String {
+        val output = java.io.ByteArrayOutputStream()
+        val buffer = ByteArray(8 * 1024)
+        var total = 0
+        while (true) {
+            val count = stream.read(buffer)
+            if (count < 0) break
+            total += count
+            if (total > MAX_RESPONSE_BYTES) {
+                throw IOException("Supabase response exceeded the client safety limit")
+            }
+            output.write(buffer, 0, count)
+        }
+        return output.toString(StandardCharsets.UTF_8.name())
+    }
+
     private fun request(
         path: String,
         method: String,
@@ -129,7 +145,8 @@ class SupabaseEventTransport {
             }
             val status = connection.responseCode
             val stream = if (status in 200..299) connection.inputStream else connection.errorStream
-            val response = stream?.bufferedReader(StandardCharsets.UTF_8)?.use { it.readText() }.orEmpty()
+            // Never let an unexpectedly large HTTP response exhaust device memory.
+            val response = stream?.use { readBoundedResponse(it) }.orEmpty()
             if (status !in 200..299) {
                 throw SupabaseAuthException(
                     when {
@@ -148,5 +165,8 @@ class SupabaseEventTransport {
         } finally {
             connection.disconnect()
         }
+    }
+    private companion object {
+        const val MAX_RESPONSE_BYTES = 16 * 1024 * 1024
     }
 }
