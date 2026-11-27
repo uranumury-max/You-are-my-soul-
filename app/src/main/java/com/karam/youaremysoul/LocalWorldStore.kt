@@ -98,6 +98,17 @@ class LocalWorldStore(context: Context) {
         put("relationshipStartDate", world.relationshipStartDate)
         put("cloudWorldId", world.cloudWorldId)
         put("localIsOwner", world.localIsOwner)
+        put("messages", JSONArray().apply {
+            world.messages.forEach { message ->
+                put(
+                    JSONObject()
+                        .put("id", message.id)
+                        .put("senderName", message.senderName)
+                        .put("text", message.text)
+                        .put("createdAtEpochMs", message.createdAtEpochMs)
+                )
+            }
+        })
         put("memories", JSONArray().apply { world.memories.forEach(::put) })
         put("members", JSONArray().apply {
             world.members.forEach { member ->
@@ -115,6 +126,7 @@ class LocalWorldStore(context: Context) {
         val json = JSONObject(raw)
         val membersJson = json.optJSONArray("members") ?: JSONArray()
         val memoriesJson = json.optJSONArray("memories") ?: JSONArray()
+        val messagesJson = json.optJSONArray("messages") ?: JSONArray()
         return WorldSnapshot(
             worldName = json.optString("worldName", "عالمنا الخاص"),
             hostCode = json.optString("hostCode"),
@@ -134,7 +146,17 @@ class LocalWorldStore(context: Context) {
             dailyAnswer = json.optString("dailyAnswer", ""),
             relationshipStartDate = json.optString("relationshipStartDate", ""),
             cloudWorldId = json.optString("cloudWorldId", ""),
-            localIsOwner = json.optBoolean("localIsOwner", true)
+            localIsOwner = json.optBoolean("localIsOwner", true),
+            messages = (0 until messagesJson.length()).map { index ->
+                val message = messagesJson.getJSONObject(index)
+                WorldMessage(
+                    id = message.optString("id"),
+                    senderName = message.optString("senderName", "مشارك"),
+                    text = message.optString("text"),
+                    createdAtEpochMs = message.optLong("createdAtEpochMs")
+                )
+            }.filter { it.id.isNotBlank() && it.text.isNotBlank() }
+                .takeLast(500)
         )
     }
 
