@@ -70,7 +70,7 @@ class SupabaseWorldMediaStorage {
         session: AuthenticatedSupabaseUser,
         worldId: UUID,
         mediaId: UUID
-    ) = withContext(Dispatchers.IO) {
+    ): Unit = withContext(Dispatchers.IO) {
         require(config.isConfigured) { "media_storage_not_configured" }
         val path = objectPath(worldId, mediaId)
         val body = JSONObject().put("prefixes", JSONArray().put(path))
