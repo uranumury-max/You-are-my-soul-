@@ -55,7 +55,7 @@ internal class WorldMutationSync(
             }
         }
 
-        changes.forEach { (type, payload) ->
+        val events = changes.map { (type, payload) ->
             val eventId = UUID.randomUUID()
             val plaintext = payload.toString().toByteArray(Charsets.UTF_8)
             val encrypted = try {
@@ -71,9 +71,10 @@ internal class WorldMutationSync(
                 ciphertextBase64 = encrypted,
                 clientCreatedAtEpochMs = System.currentTimeMillis()
             )
-            outbox.enqueue(event)
+            event
         }
-        return changes.size
+        outbox.enqueueAll(events)
+        return events.size
     }
 }
 
