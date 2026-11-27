@@ -228,7 +228,26 @@ class SupabaseWorldKeyExchangeRepository(context: Context) {
         }
     }
 
-    private companion object { val ENVELOPE_CACHE_LOCK = Any() }
+    private fun readBoundedResponse(stream: java.io.InputStream): String {
+        val output = java.io.ByteArrayOutputStream()
+        val buffer = ByteArray(4 * 1024)
+        var total = 0
+        while (true) {
+            val count = stream.read(buffer)
+            if (count < 0) break
+            total += count
+            if (total > MAX_RESPONSE_BYTES) {
+                throw IOException("World key exchange response exceeded the safety limit")
+            }
+            output.write(buffer, 0, count)
+        }
+        return output.toString(StandardCharsets.UTF_8.name())
+    }
+
+    private companion object {
+        val ENVELOPE_CACHE_LOCK = Any()
+        const val MAX_RESPONSE_BYTES = 1024 * 1024
+    }
 
     private fun request(
         path: String,
@@ -258,7 +277,7 @@ class SupabaseWorldKeyExchangeRepository(context: Context) {
             }
             val status = connection.responseCode
             val stream = if (status in 200..299) connection.inputStream else connection.errorStream
-            val response = stream?.bufferedReader(StandardCharsets.UTF_8)?.use { it.readText() }.orEmpty()
+            val response = stream?.use { readBoundedResponse(it) }.orEmpty()
             if (status !in 200..299) {
                 throw SupabaseAuthException(
                     when {
