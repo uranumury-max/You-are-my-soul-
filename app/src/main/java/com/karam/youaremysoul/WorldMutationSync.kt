@@ -63,6 +63,32 @@ internal class WorldMutationSync(
                 .put("points", points)
         }
 
+        val previousVersionIds = previous.drawingVersions.mapTo(mutableSetOf()) { it.id }
+        next.drawingVersions.filter { it.id !in previousVersionIds }.forEach { version ->
+            if (WorldEventValidation.drawingVersion(version)) {
+                val serializedStrokes = JSONArray().apply {
+                    version.strokes.take(DrawingHistory.MAX_STROKES).forEach { stroke ->
+                        put(JSONObject()
+                            .put("id", stroke.id)
+                            .put("colorArgb", stroke.colorArgb)
+                            .put("widthFraction", stroke.widthFraction.toDouble())
+                            .put("points", JSONArray().apply {
+                                stroke.points.take(150).forEach { point ->
+                                    put(JSONArray().put(point.x.toDouble()).put(point.y.toDouble()))
+                                }
+                            })
+                        )
+                    }
+                }
+                changes += SyncEventType.DRAWING_UPDATE to JSONObject()
+                    .put("action", "save_version")
+                    .put("id", version.id)
+                    .put("title", version.title)
+                    .put("createdAtEpochMs", version.createdAtEpochMs)
+                    .put("strokes", serializedStrokes)
+            }
+        }
+
         val previousCapsules = previous.capsules.associateBy { it.id }
         next.capsules.forEach { capsule ->
             val old = previousCapsules[capsule.id]
@@ -221,6 +247,42 @@ internal class WorldEventReducer(
                                 val removedId = payload.optString("id")
                                 if (removedId.length !in 1..64) state
                                 else state.copy(drawings = state.drawings.filterNot { it.id == removedId })
+                            }
+                            "save_version" -> {
+                                val versionId = payload.optString("id")
+                                val title = payload.optString("title")
+                                val createdAt = payload.optLong("createdAtEpochMs")
+                                val strokesJson = payload.optJSONArray("strokes") ?: JSONArray()
+                                if (strokesJson.length() !in 1..DrawingHistory.MAX_STROKES) state
+                                else {
+                                    val versionStrokes = (0 until strokesJson.length()).mapNotNull { index ->
+                                        val stroke = strokesJson.optJSONObject(index) ?: return@mapNotNull null
+                                        val pointsJson = stroke.optJSONArray("points") ?: JSONArray()
+                                        if (pointsJson.length() !in 1..150) return@mapNotNull null
+                                        val points = (0 until pointsJson.length()).mapNotNull { pointIndex ->
+                                            val pair = pointsJson.optJSONArray(pointIndex) ?: return@mapNotNull null
+                                            if (pair.length() != 2) return@mapNotNull null
+                                            val x = pair.optDouble(0, -1.0).toFloat()
+                                            val y = pair.optDouble(1, -1.0).toFloat()
+                                            if (x !in 0f..1f || y !in 0f..1f) null else WorldPoint(x, y)
+                                        }
+                                        val strokeId = stroke.optString("id")
+                                        val width = stroke.optDouble("widthFraction", 0.006).toFloat()
+                                        val color = stroke.optLong("colorArgb", Long.MIN_VALUE)
+                                        if (points.size != pointsJson.length() ||
+                                            !WorldEventValidation.drawingColor(color) ||
+                                            !WorldEventValidation.drawing(strokeId, width, points)
+                                        ) null else DrawingStroke(strokeId, color, width, points)
+                                    }
+                                    val version = DrawingVersion(versionId, title, createdAt, versionStrokes)
+                                    if (versionStrokes.size != strokesJson.length() ||
+                                        !WorldEventValidation.drawingVersion(version) ||
+                                        state.drawingVersions.any { it.id == versionId }
+                                    ) state else state.copy(
+                                        drawingVersions = (state.drawingVersions + version)
+                                            .takeLast(WorldLimits.MAX_DRAWING_VERSIONS)
+                                    )
+                                }
                             }
                             "add" -> {
                                 val strokeId = payload.optString("id")
