@@ -1,8 +1,7 @@
 package com.karam.youaremysoul
 
-import org.json.JSONObject
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
+import org.junit.Assert.assertFalse
 import org.junit.Test
 
 class WorldSettingsPatchTest {
@@ -12,15 +11,10 @@ class WorldSettingsPatchTest {
             worldName = "عالمنا",
             relationshipStartDate = "2026-01-01"
         )
-        val rename = requireNotNull(WorldSettingsPatch.fromPayload(
-            JSONObject().put("worldName", "مجرّتنا")
-        ))
-        val changeDate = requireNotNull(WorldSettingsPatch.fromPayload(
-            JSONObject().put("relationshipStartDate", "2026-02-14")
-        ))
+        val rename = WorldSettingsPatch(worldName = "مجرّتنا", relationshipStartDate = null)
+        val changeDate = WorldSettingsPatch(worldName = null, relationshipStartDate = "2026-02-14")
 
-        val afterRename = rename.applyTo(original)
-        val afterBoth = changeDate.applyTo(afterRename)
+        val afterBoth = changeDate.applyTo(rename.applyTo(original))
 
         assertEquals("مجرّتنا", afterBoth.worldName)
         assertEquals("2026-02-14", afterBoth.relationshipStartDate)
@@ -32,12 +26,8 @@ class WorldSettingsPatchTest {
             worldName = "الأول",
             relationshipStartDate = "2026-01-01"
         )
-        val first = requireNotNull(WorldSettingsPatch.fromPayload(
-            JSONObject().put("worldName", "الثاني")
-        ))
-        val later = requireNotNull(WorldSettingsPatch.fromPayload(
-            JSONObject().put("worldName", "الثالث")
-        ))
+        val first = WorldSettingsPatch(worldName = "الثاني", relationshipStartDate = null)
+        val later = WorldSettingsPatch(worldName = "الثالث", relationshipStartDate = null)
 
         val result = later.applyTo(first.applyTo(original))
 
@@ -46,9 +36,8 @@ class WorldSettingsPatchTest {
     }
 
     @Test
-    fun invalidOrEmptyPatchIsRejectedRatherThanReplacingSettings() {
-        assertNull(WorldSettingsPatch.fromPayload(JSONObject()))
-        assertNull(WorldSettingsPatch.fromPayload(JSONObject().put("worldName", "ن".repeat(41))))
-        assertNull(WorldSettingsPatch.fromPayload(JSONObject().put("relationshipStartDate", "bad-date")))
+    fun validationRejectsInvalidSettingsBeforePatchIsApplied() {
+        assertFalse(WorldEventValidation.settings("ن".repeat(41), null))
+        assertFalse(WorldEventValidation.settings(null, "bad-date"))
     }
 }
