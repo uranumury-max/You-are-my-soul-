@@ -392,7 +392,692 @@ begin
     if auth.uid() is null then
         raise exception 'authentication required' using errcode = '28000';
     end if;
-    if p_device_id is null or p_device_code is null or p_device_code !~ '^[0-9]{9}
+    if p_device_id is null or p_device_code is null or p_device_code !~ '^[0-9]{9}        raise exception 'invalid device identity' using errcode = '22023';
+    end if;
+
+    -- A code collision is recoverable: the client will generate another
+    -- random code and retry. Never transfer an existing code to another device.
+    if exists (
+        select 1 from public.device_profiles d
+        where d.device_code = p_device_code
+          and d.device_id <> p_device_id
+    ) then
+        return false;
+    end if;
+
+    insert into public.device_profiles(device_id, user_id, device_code, last_seen_at)
+    values (p_device_id, auth.uid(), p_device_code, now())
+    on conflict (device_id) do update
+        set device_code = excluded.device_code,
+            last_seen_at = now()
+        where public.device_profiles.user_id = auth.uid();
+
+    if not found then
+        raise exception 'installation identity belongs to another account' using errcode = '42501';
+    end if;
+    return true;
+exception
+    when unique_violation then
+        -- Handles two installations racing to claim the same code.
+        return false;
+end;
+$device_registration$;
+
+create or replace function public.request_join_by_device_code(p_device_code text)
+returns uuid
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+    v_attempts integer;
+    v_target_user uuid;
+    v_target_device uuid;
+    v_world_id uuid;
+    v_request_id uuid;
+    v_active_count integer;
+begin
+    if auth.uid() is null then
+        raise exception 'authentication required' using errcode = '28000';
+    end if;
+
+    -- Five lookups per ten-minute window per authenticated account.
+    insert into public.pairing_rate_limits(user_id, window_started_at, attempts)
+    values (auth.uid(), now(), 1)
+    on conflict (user_id) do update
+    set window_started_at = case
+            when public.pairing_rate_limits.window_started_at < now() - interval '10 minutes'
+            then now()
+            else public.pairing_rate_limits.window_started_at
+        end,
+        attempts = case
+            when public.pairing_rate_limits.window_started_at < now() - interval '10 minutes'
+            then 1
+            else public.pairing_rate_limits.attempts + 1
+        end
+    returning attempts into v_attempts;
+
+    if v_attempts > 5 then
+        return null;
+    end if;
+
+    if p_device_code is null or p_device_code !~ '^[0-9]{9}$' then
+        return null;
+    end if;
+
+    select d.user_id, d.device_id into v_target_user, v_target_device
+    from public.device_profiles d
+    where d.device_code = p_device_code;
+
+    if not found or v_target_user = auth.uid() then
+        return null;
+    end if;
+
+    select w.id into v_world_id
+    from public.worlds w
+    join public.world_members m
+      on m.world_id = w.id
+     and m.user_id = w.owner_id
+     and m.member_role = 'owner'
+     and m.revoked_at is null
+    where w.owner_id = v_target_user
+    order by w.created_at desc
+    limit 1;
+
+    if v_world_id is null then
+        return null;
+    end if;
+
+    perform 1 from public.worlds w where w.id = v_world_id for update;
+
+    select count(*) into v_active_count
+    from public.world_members m
+    where m.world_id = v_world_id and m.revoked_at is null;
+
+    if v_active_count >= 5 then
+        return null;
+    end if;
+
+    -- Expire stale pending rows before enforcing the one-pending-request rule.
+    update public.join_requests
+    set status = 'expired'
+    where world_id = v_world_id
+      and requester_id = auth.uid()
+      and status = 'pending'
+      and expires_at <= now();
+
+    insert into public.join_requests(world_id, requester_id, target_device_id)
+    values (v_world_id, auth.uid(), v_target_device)
+    on conflict (world_id, requester_id) where status = 'pending'
+    do update set target_device_id = excluded.target_device_id
+    returning id into v_request_id;
+
+    return v_request_id;
+end;
+$$;
+
+create or replace function public.decide_join_request(
+    p_request_id uuid,
+    p_approve boolean
+)
+returns boolean
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+    v_request public.join_requests%rowtype;
+    v_owner_id uuid;
+    v_active_count integer;
+begin
+    if auth.uid() is null then
+        raise exception 'authentication required' using errcode = '28000';
+    end if;
+
+    select * into v_request
+    from public.join_requests r
+    where r.id = p_request_id
+    for update;
+
+    if not found or v_request.status <> 'pending' or v_request.expires_at <= now() then
+        return false;
+    end if;
+
+    perform 1 from public.worlds w
+    where w.id = v_request.world_id
+    for update;
+
+    select w.owner_id into v_owner_id
+    from public.worlds w
+    where w.id = v_request.world_id;
+
+    if v_owner_id is distinct from auth.uid()
+       or not public.is_active_world_member(v_request.world_id) then
+        raise exception 'only the active world owner may decide requests' using errcode = '42501';
+    end if;
+
+    if p_approve then
+        select count(*) into v_active_count
+        from public.world_members m
+        where m.world_id = v_request.world_id and m.revoked_at is null;
+
+        if v_active_count >= 5 then
+            return false;
+        end if;
+
+        insert into public.world_members(world_id, user_id, member_role)
+        values (v_request.world_id, v_request.requester_id, 'member')
+        on conflict (world_id, user_id) do update
+            set revoked_at = null, joined_at = now(), member_role = 'member';
+
+        update public.join_requests
+        set status = 'approved', decided_at = now(), decided_by = auth.uid()
+        where id = p_request_id;
+    else
+        update public.join_requests
+        set status = 'declined', decided_at = now(), decided_by = auth.uid()
+        where id = p_request_id;
+    end if;
+
+    return true;
+end;
+$$;
+
+create or replace function public.revoke_world_member(p_world_id uuid, p_member_id uuid)
+returns boolean
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+    if auth.uid() is null then
+        raise exception 'authentication required' using errcode = '28000';
+    end if;
+    if p_member_id = auth.uid() then
+        return false;
+    end if;
+    if not exists (
+        select 1 from public.worlds w
+        where w.id = p_world_id and w.owner_id = auth.uid()
+    ) or not public.is_active_world_member(p_world_id) then
+        raise exception 'only the active world owner may revoke members' using errcode = '42501';
+    end if;
+
+    update public.world_members
+    set revoked_at = now()
+    where world_id = p_world_id
+      and user_id = p_member_id
+      and member_role = 'member'
+      and revoked_at is null;
+
+    return found;
+end;
+$$;
+
+revoke all on function public.register_device_code(uuid, text) from public;
+revoke all on function public.request_join_by_device_code(text) from public;
+revoke all on function public.decide_join_request(uuid, boolean) from public;
+revoke all on function public.revoke_world_member(uuid, uuid) from public;
+grant execute on function public.register_device_code(uuid, text) to authenticated;
+grant execute on function public.request_join_by_device_code(text) to authenticated;
+grant execute on function public.decide_join_request(uuid, boolean) to authenticated;
+grant execute on function public.revoke_world_member(uuid, uuid) to authenticated;
+
+
+-- Explicit table grants: RLS policies do not replace SQL privileges.
+revoke all on public.worlds, public.world_members, public.world_invites,
+    public.world_events, public.device_profiles, public.join_requests
+from anon, authenticated;
+
+grant select, insert, update on public.worlds to authenticated;
+grant select on public.world_members to authenticated;
+grant select on public.world_invites to authenticated;
+grant select on public.world_events to authenticated;
+grant select on public.device_profiles to authenticated;
+grant select on public.join_requests to authenticated;
+
+-- The identity sequence is used by inserts into the append-only event stream.
+grant usage, select on sequence public.world_events_server_seq_seq to authenticated;
+
+-- Realtime is a wake-up signal only; clients must still fetch by server_seq cursor.
+do $$
+begin
+    if exists (select 1 from pg_publication where pubname = 'supabase_realtime') then
+        if not exists (
+            select 1 from pg_publication_tables
+            where pubname = 'supabase_realtime'
+              and schemaname = 'public'
+              and tablename = 'world_events'
+        ) then
+            execute 'alter publication supabase_realtime add table public.world_events';
+        end if;
+        if not exists (
+            select 1 from pg_publication_tables
+            where pubname = 'supabase_realtime'
+              and schemaname = 'public'
+              and tablename = 'join_requests'
+        ) then
+            execute 'alter publication supabase_realtime add table public.join_requests';
+        end if;
+    end if;
+end;
+$$;
+
+
+-- Idempotent event append: the authenticated actor is always taken from auth.uid(),
+-- never trusted from a client-supplied actor field.
+drop policy if exists events_insert_member on public.world_events;
+revoke insert on public.world_events from anon, authenticated;
+
+create or replace function public.append_world_event(
+    p_world_id uuid,
+    p_event_id uuid,
+    p_event_type text,
+    p_ciphertext text,
+    p_client_created_at timestamptz
+)
+returns bigint
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+    v_sequence bigint;
+    v_existing public.world_events%rowtype;
+begin
+    if auth.uid() is null then
+        raise exception 'authentication required' using errcode = '28000';
+    end if;
+    if not public.is_active_world_member(p_world_id) then
+        raise exception 'active world membership required' using errcode = '42501';
+    end if;
+    if p_event_id is null
+       or p_event_type not in (
+           'world_update', 'memory_create', 'memory_delete',
+           'message_create', 'garden_update', 'daily_answer',
+           'drawing_update', 'capsule_update', 'media_add', 'settings_update'
+       )
+       or p_ciphertext is null
+       or octet_length(convert_to(p_ciphertext, 'UTF8')) not between 32 and 1048576
+       or p_client_created_at is null then
+        raise exception 'invalid event envelope' using errcode = '22023';
+    end if;
+
+    insert into public.world_events(
+        world_id, event_id, actor_id, event_type, ciphertext, client_created_at
+    )
+    values (
+        p_world_id, p_event_id, auth.uid(), p_event_type, p_ciphertext, p_client_created_at
+    )
+    on conflict (world_id, event_id) do nothing
+    returning server_seq into v_sequence;
+
+    if v_sequence is not null then
+        return v_sequence;
+    end if;
+
+    select * into v_existing
+    from public.world_events e
+    where e.world_id = p_world_id and e.event_id = p_event_id;
+
+    if not found
+       or v_existing.actor_id <> auth.uid()
+       or v_existing.event_type <> p_event_type
+       or v_existing.ciphertext <> p_ciphertext
+       or v_existing.client_created_at <> p_client_created_at then
+        raise exception 'event id collision or payload mismatch' using errcode = '23505';
+    end if;
+
+    return v_existing.server_seq;
+end;
+$$;
+
+revoke all on function public.append_world_event(uuid, uuid, text, text, timestamptz) from public;
+grant execute on function public.append_world_event(uuid, uuid, text, text, timestamptz) to authenticated;
+ then
+        raise exception 'invalid device identity' using errcode = '22023';
+    end if;
+
+    -- A code collision is recoverable: the client will generate another
+    -- random code and retry. Never transfer an existing code to another device.
+    if exists (
+        select 1 from public.device_profiles d
+        where d.device_code = p_device_code
+          and d.device_id <> p_device_id
+    ) then
+        return false;
+    end if;
+
+    insert into public.device_profiles(device_id, user_id, device_code, last_seen_at)
+    values (p_device_id, auth.uid(), p_device_code, now())
+    on conflict (device_id) do update
+        set device_code = excluded.device_code,
+            last_seen_at = now()
+        where public.device_profiles.user_id = auth.uid();
+
+    if not found then
+        raise exception 'installation identity belongs to another account' using errcode = '42501';
+    end if;
+    return true;
+exception
+    when unique_violation then
+        -- Handles two installations racing to claim the same code.
+        return false;
+end;
+$device_registration$;
+
+create or replace function public.request_join_by_device_code(p_device_code text)
+returns uuid
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+    v_attempts integer;
+    v_target_user uuid;
+    v_target_device uuid;
+    v_world_id uuid;
+    v_request_id uuid;
+    v_active_count integer;
+begin
+    if auth.uid() is null then
+        raise exception 'authentication required' using errcode = '28000';
+    end if;
+
+    -- Five lookups per ten-minute window per authenticated account.
+    insert into public.pairing_rate_limits(user_id, window_started_at, attempts)
+    values (auth.uid(), now(), 1)
+    on conflict (user_id) do update
+    set window_started_at = case
+            when public.pairing_rate_limits.window_started_at < now() - interval '10 minutes'
+            then now()
+            else public.pairing_rate_limits.window_started_at
+        end,
+        attempts = case
+            when public.pairing_rate_limits.window_started_at < now() - interval '10 minutes'
+            then 1
+            else public.pairing_rate_limits.attempts + 1
+        end
+    returning attempts into v_attempts;
+
+    if v_attempts > 5 then
+        return null;
+    end if;
+
+    if p_device_code is null or p_device_code !~ '^[0-9]{9}$' then
+        return null;
+    end if;
+
+    select d.user_id, d.device_id into v_target_user, v_target_device
+    from public.device_profiles d
+    where d.device_code = p_device_code;
+
+    if not found or v_target_user = auth.uid() then
+        return null;
+    end if;
+
+    select w.id into v_world_id
+    from public.worlds w
+    join public.world_members m
+      on m.world_id = w.id
+     and m.user_id = w.owner_id
+     and m.member_role = 'owner'
+     and m.revoked_at is null
+    where w.owner_id = v_target_user
+    order by w.created_at desc
+    limit 1;
+
+    if v_world_id is null then
+        return null;
+    end if;
+
+    perform 1 from public.worlds w where w.id = v_world_id for update;
+
+    select count(*) into v_active_count
+    from public.world_members m
+    where m.world_id = v_world_id and m.revoked_at is null;
+
+    if v_active_count >= 5 then
+        return null;
+    end if;
+
+    -- Expire stale pending rows before enforcing the one-pending-request rule.
+    update public.join_requests
+    set status = 'expired'
+    where world_id = v_world_id
+      and requester_id = auth.uid()
+      and status = 'pending'
+      and expires_at <= now();
+
+    insert into public.join_requests(world_id, requester_id, target_device_id)
+    values (v_world_id, auth.uid(), v_target_device)
+    on conflict (world_id, requester_id) where status = 'pending'
+    do update set target_device_id = excluded.target_device_id
+    returning id into v_request_id;
+
+    return v_request_id;
+end;
+$$;
+
+create or replace function public.decide_join_request(
+    p_request_id uuid,
+    p_approve boolean
+)
+returns boolean
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+    v_request public.join_requests%rowtype;
+    v_owner_id uuid;
+    v_active_count integer;
+begin
+    if auth.uid() is null then
+        raise exception 'authentication required' using errcode = '28000';
+    end if;
+
+    select * into v_request
+    from public.join_requests r
+    where r.id = p_request_id
+    for update;
+
+    if not found or v_request.status <> 'pending' or v_request.expires_at <= now() then
+        return false;
+    end if;
+
+    perform 1 from public.worlds w
+    where w.id = v_request.world_id
+    for update;
+
+    select w.owner_id into v_owner_id
+    from public.worlds w
+    where w.id = v_request.world_id;
+
+    if v_owner_id is distinct from auth.uid()
+       or not public.is_active_world_member(v_request.world_id) then
+        raise exception 'only the active world owner may decide requests' using errcode = '42501';
+    end if;
+
+    if p_approve then
+        select count(*) into v_active_count
+        from public.world_members m
+        where m.world_id = v_request.world_id and m.revoked_at is null;
+
+        if v_active_count >= 5 then
+            return false;
+        end if;
+
+        insert into public.world_members(world_id, user_id, member_role)
+        values (v_request.world_id, v_request.requester_id, 'member')
+        on conflict (world_id, user_id) do update
+            set revoked_at = null, joined_at = now(), member_role = 'member';
+
+        update public.join_requests
+        set status = 'approved', decided_at = now(), decided_by = auth.uid()
+        where id = p_request_id;
+    else
+        update public.join_requests
+        set status = 'declined', decided_at = now(), decided_by = auth.uid()
+        where id = p_request_id;
+    end if;
+
+    return true;
+end;
+$$;
+
+create or replace function public.revoke_world_member(p_world_id uuid, p_member_id uuid)
+returns boolean
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+    if auth.uid() is null then
+        raise exception 'authentication required' using errcode = '28000';
+    end if;
+    if p_member_id = auth.uid() then
+        return false;
+    end if;
+    if not exists (
+        select 1 from public.worlds w
+        where w.id = p_world_id and w.owner_id = auth.uid()
+    ) or not public.is_active_world_member(p_world_id) then
+        raise exception 'only the active world owner may revoke members' using errcode = '42501';
+    end if;
+
+    update public.world_members
+    set revoked_at = now()
+    where world_id = p_world_id
+      and user_id = p_member_id
+      and member_role = 'member'
+      and revoked_at is null;
+
+    return found;
+end;
+$$;
+
+revoke all on function public.register_device_code(uuid, text) from public;
+revoke all on function public.request_join_by_device_code(text) from public;
+revoke all on function public.decide_join_request(uuid, boolean) from public;
+revoke all on function public.revoke_world_member(uuid, uuid) from public;
+grant execute on function public.register_device_code(uuid, text) to authenticated;
+grant execute on function public.request_join_by_device_code(text) to authenticated;
+grant execute on function public.decide_join_request(uuid, boolean) to authenticated;
+grant execute on function public.revoke_world_member(uuid, uuid) to authenticated;
+
+
+-- Explicit table grants: RLS policies do not replace SQL privileges.
+revoke all on public.worlds, public.world_members, public.world_invites,
+    public.world_events, public.device_profiles, public.join_requests
+from anon, authenticated;
+
+grant select, insert, update on public.worlds to authenticated;
+grant select on public.world_members to authenticated;
+grant select on public.world_invites to authenticated;
+grant select on public.world_events to authenticated;
+grant select on public.device_profiles to authenticated;
+grant select on public.join_requests to authenticated;
+
+-- The identity sequence is used by inserts into the append-only event stream.
+grant usage, select on sequence public.world_events_server_seq_seq to authenticated;
+
+-- Realtime is a wake-up signal only; clients must still fetch by server_seq cursor.
+do $$
+begin
+    if exists (select 1 from pg_publication where pubname = 'supabase_realtime') then
+        if not exists (
+            select 1 from pg_publication_tables
+            where pubname = 'supabase_realtime'
+              and schemaname = 'public'
+              and tablename = 'world_events'
+        ) then
+            execute 'alter publication supabase_realtime add table public.world_events';
+        end if;
+        if not exists (
+            select 1 from pg_publication_tables
+            where pubname = 'supabase_realtime'
+              and schemaname = 'public'
+              and tablename = 'join_requests'
+        ) then
+            execute 'alter publication supabase_realtime add table public.join_requests';
+        end if;
+    end if;
+end;
+$$;
+
+
+-- Idempotent event append: the authenticated actor is always taken from auth.uid(),
+-- never trusted from a client-supplied actor field.
+drop policy if exists events_insert_member on public.world_events;
+revoke insert on public.world_events from anon, authenticated;
+
+create or replace function public.append_world_event(
+    p_world_id uuid,
+    p_event_id uuid,
+    p_event_type text,
+    p_ciphertext text,
+    p_client_created_at timestamptz
+)
+returns bigint
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+    v_sequence bigint;
+    v_existing public.world_events%rowtype;
+begin
+    if auth.uid() is null then
+        raise exception 'authentication required' using errcode = '28000';
+    end if;
+    if not public.is_active_world_member(p_world_id) then
+        raise exception 'active world membership required' using errcode = '42501';
+    end if;
+    if p_event_id is null
+       or p_event_type not in (
+           'world_update', 'memory_create', 'memory_delete',
+           'message_create', 'garden_update', 'daily_answer',
+           'drawing_update', 'capsule_update', 'media_add', 'settings_update'
+       )
+       or p_ciphertext is null
+       or octet_length(convert_to(p_ciphertext, 'UTF8')) not between 32 and 1048576
+       or p_client_created_at is null then
+        raise exception 'invalid event envelope' using errcode = '22023';
+    end if;
+
+    insert into public.world_events(
+        world_id, event_id, actor_id, event_type, ciphertext, client_created_at
+    )
+    values (
+        p_world_id, p_event_id, auth.uid(), p_event_type, p_ciphertext, p_client_created_at
+    )
+    on conflict (world_id, event_id) do nothing
+    returning server_seq into v_sequence;
+
+    if v_sequence is not null then
+        return v_sequence;
+    end if;
+
+    select * into v_existing
+    from public.world_events e
+    where e.world_id = p_world_id and e.event_id = p_event_id;
+
+    if not found
+       or v_existing.actor_id <> auth.uid()
+       or v_existing.event_type <> p_event_type
+       or v_existing.ciphertext <> p_ciphertext
+       or v_existing.client_created_at <> p_client_created_at then
+        raise exception 'event id collision or payload mismatch' using errcode = '23505';
+    end if;
+
+    return v_existing.server_seq;
+end;
+$$;
+
+revoke all on function public.append_world_event(uuid, uuid, text, text, timestamptz) from public;
+grant execute on function public.append_world_event(uuid, uuid, text, text, timestamptz) to authenticated;
+ then
         raise exception 'invalid device identity' using errcode = '22023';
     end if;
 
