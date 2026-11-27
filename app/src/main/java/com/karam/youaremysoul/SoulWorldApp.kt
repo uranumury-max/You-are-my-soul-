@@ -1966,6 +1966,13 @@ private fun SettingsSection(
         mutableStateOf(world?.relationshipStartDate.orEmpty())
     }
     var dateMessage by remember { mutableStateOf("") }
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val feedbackPrefs = remember(context) {
+        context.getSharedPreferences("local_feedback_preferences", android.content.Context.MODE_PRIVATE)
+    }
+    var soundEnabled by remember { mutableStateOf(feedbackPrefs.getBoolean("sound_enabled", true)) }
+    var vibrationEnabled by remember { mutableStateOf(feedbackPrefs.getBoolean("vibration_enabled", true)) }
+    var feedbackMessage by remember { mutableStateOf("") }
     Column(Modifier.fillMaxWidth().verticalScroll(androidx.compose.foundation.rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text("إعدادات العالم", color = Gold, fontSize = 23.sp, fontWeight = FontWeight.Bold)
         OutlinedTextField(value = name, onValueChange = { name = it.take(40) }, label = { Text("اسم العالم") }, modifier = Modifier.fillMaxWidth())
@@ -1996,6 +2003,63 @@ private fun SettingsSection(
             enabled = world != null && startDate.isNotBlank()
         ) { Text("حفظ تاريخ البداية") }
         if (dateMessage.isNotBlank()) Text(dateMessage, color = Rose, fontSize = 12.sp)
+        Divider(color = Rose.copy(alpha = .25f))
+        Text("التنبيهات على هذا الجهاز", color = Gold, fontWeight = FontWeight.Bold)
+        Text("هذه الخيارات محلية لهذا الهاتف، ولا تغيّر إعدادات الطرف الآخر.", color = Color.LightGray, fontSize = 12.sp)
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text("صوت التنبيه", color = Color.White, fontWeight = FontWeight.SemiBold)
+                Text("نغمة قصيرة عند اختبار التنبيه", color = Color.LightGray, fontSize = 11.sp)
+            }
+            Switch(
+                checked = soundEnabled,
+                onCheckedChange = {
+                    soundEnabled = it
+                    feedbackPrefs.edit().putBoolean("sound_enabled", it).apply()
+                    feedbackMessage = ""
+                }
+            )
+        }
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text("الاهتزاز", color = Color.White, fontWeight = FontWeight.SemiBold)
+                Text("اهتزاز خفيف عند اختبار التنبيه", color = Color.LightGray, fontSize = 11.sp)
+            }
+            Switch(
+                checked = vibrationEnabled,
+                onCheckedChange = {
+                    vibrationEnabled = it
+                    feedbackPrefs.edit().putBoolean("vibration_enabled", it).apply()
+                    feedbackMessage = ""
+                }
+            )
+        }
+        OutlinedButton(
+            onClick = {
+                var played = false
+                if (soundEnabled) {
+                    runCatching {
+                        val tone = android.media.ToneGenerator(android.media.AudioManager.STREAM_NOTIFICATION, 70)
+                        tone.startTone(android.media.ToneGenerator.TONE_PROP_BEEP, 180)
+                        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({ tone.release() }, 300)
+                        played = true
+                    }
+                }
+                if (vibrationEnabled) {
+                    runCatching {
+                        val vibrator = context.getSystemService(android.content.Context.VIBRATOR_SERVICE)
+                            as android.os.Vibrator
+                        if (vibrator.hasVibrator()) {
+                            vibrator.vibrate(android.os.VibrationEffect.createOneShot(45, android.os.VibrationEffect.DEFAULT_AMPLITUDE))
+                            played = true
+                        }
+                    }
+                }
+                feedbackMessage = if (played) "تم تشغيل التنبيه التجريبي." else "فعّل الصوت أو الاهتزاز أولاً، وتأكد من إعدادات الهاتف."
+            },
+            modifier = Modifier.fillMaxWidth()
+        ) { Text("اختبار التنبيه") }
+        if (feedbackMessage.isNotBlank()) Text(feedbackMessage, color = Rose, fontSize = 12.sp)
         Text("تُحفظ بيانات العالم مشفّرة على هذا الجهاز، وتُزامَن التغييرات مع الأجهزة المعتمدة عند توفر الاتصال.", color = Color.LightGray, fontSize = 12.sp)
     }
 }
