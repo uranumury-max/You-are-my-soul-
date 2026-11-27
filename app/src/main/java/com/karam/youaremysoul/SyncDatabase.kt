@@ -75,6 +75,11 @@ interface SyncDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun enqueue(record: SyncOutboxEntity)
 
+    @Transaction
+    suspend fun enqueueBatch(records: List<SyncOutboxEntity>) {
+        records.forEach { enqueue(it) }
+    }
+
     @Query(
         """
         SELECT * FROM sync_outbox
@@ -226,31 +231,44 @@ class RoomSyncStore(context: Context) {
     private val dao = SyncDatabase.get(context).syncDao()
 
     suspend fun enqueue(event: WorldSyncEvent, queuedAtEpochMs: Long = System.currentTimeMillis()) {
-        require(SyncProtocolRules.validate(event) == null) { "Invalid encrypted sync event" }
+        enqueueAll(listOf(event), queuedAtEpochMs)
+    }
+
+    suspend fun enqueueAll(
+        events: List<WorldSyncEvent>,
+        queuedAtEpochMs: Long = System.currentTimeMillis()
+    ) {
         require(queuedAtEpochMs > 0L)
-        val record = SyncOutboxEntity(
-            eventId = event.eventId.toString(),
-            worldId = event.worldId.toString(),
-            actorUserId = event.actorUserId.toString(),
-            eventType = event.type.wireValue,
-            ciphertextBase64 = event.ciphertextBase64,
-            clientCreatedAtEpochMs = event.clientCreatedAtEpochMs,
-            queuedAtEpochMs = queuedAtEpochMs,
-            attemptCount = 0,
-            nextAttemptAtEpochMs = queuedAtEpochMs,
-            lastFailureCode = null
-        )
-        dao.enqueue(record)
-        val stored = requireNotNull(dao.findPending(record.eventId)) {
-            "Sync outbox insert did not persist"
+        require(events.size <= SyncProtocolRules.MAX_EVENTS_PER_PAGE)
+        if (events.isEmpty()) return
+        val records = events.map { event ->
+            require(SyncProtocolRules.validate(event) == null) { "Invalid encrypted sync event" }
+            SyncOutboxEntity(
+                eventId = event.eventId.toString(),
+                worldId = event.worldId.toString(),
+                actorUserId = event.actorUserId.toString(),
+                eventType = event.type.wireValue,
+                ciphertextBase64 = event.ciphertextBase64,
+                clientCreatedAtEpochMs = event.clientCreatedAtEpochMs,
+                queuedAtEpochMs = queuedAtEpochMs,
+                attemptCount = 0,
+                nextAttemptAtEpochMs = queuedAtEpochMs,
+                lastFailureCode = null
+            )
         }
-        check(
-            stored.worldId == record.worldId &&
-                stored.actorUserId == record.actorUserId &&
-                stored.eventType == record.eventType &&
-                stored.ciphertextBase64 == record.ciphertextBase64 &&
-                stored.clientCreatedAtEpochMs == record.clientCreatedAtEpochMs
-        ) { "Sync event ID was reused with different content" }
+        dao.enqueueBatch(records)
+        records.forEach { record ->
+            val stored = requireNotNull(dao.findPending(record.eventId)) {
+                "Sync outbox insert did not persist"
+            }
+            check(
+                stored.worldId == record.worldId &&
+                    stored.actorUserId == record.actorUserId &&
+                    stored.eventType == record.eventType &&
+                    stored.ciphertextBase64 == record.ciphertextBase64 &&
+                    stored.clientCreatedAtEpochMs == record.clientCreatedAtEpochMs
+            ) { "Sync event ID was reused with different content" }
+        }
     }
 
     suspend fun dueEvents(
