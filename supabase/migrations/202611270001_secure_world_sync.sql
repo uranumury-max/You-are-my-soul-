@@ -284,6 +284,37 @@ revoke all on function public.accept_world_invite(text) from public;
 grant execute on function public.create_world_invite(uuid, text, integer) to authenticated;
 grant execute on function public.accept_world_invite(text) to authenticated;
 
+-- Serialize media object creation per world and enforce the same 100-item cap
+-- on the server, including uploads racing from two different devices.
+create or replace function public.can_upload_world_media(p_world_id uuid)
+returns boolean
+language plpgsql
+security definer
+set search_path = ''
+as $
+declare
+    v_object_count bigint;
+begin
+    if p_world_id is null or not public.is_active_world_member(p_world_id) then
+        return false;
+    end if;
+
+    perform pg_advisory_xact_lock(
+        hashtextextended('world-media:' || p_world_id::text, 0)
+    );
+
+    select count(*) into v_object_count
+    from storage.objects o
+    where o.bucket_id = 'world-media'
+      and (storage.foldername(o.name))[1] = p_world_id::text;
+
+    return v_object_count < 100;
+end;
+$;
+
+revoke all on function public.can_upload_world_media(uuid) from public;
+grant execute on function public.can_upload_world_media(uuid) to authenticated;
+
 -- Private encrypted media bucket. Object names must begin with the world UUID.
 insert into storage.buckets(id, name, public, file_size_limit, allowed_mime_types)
 values ('world-media', 'world-media', false, 52428800, array['application/octet-stream'])
@@ -297,7 +328,7 @@ create policy world_media_read_member on storage.objects
 for select to authenticated
 using (
     bucket_id = 'world-media'
-    and public.is_active_world_member((storage.foldername(name))[1]::uuid)
+    and public.can_upload_world_media((storage.foldername(name))[1]::uuid)
 );
 
 drop policy if exists world_media_insert_member on storage.objects;
