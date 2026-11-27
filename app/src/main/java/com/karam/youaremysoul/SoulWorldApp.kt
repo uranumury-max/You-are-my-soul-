@@ -61,7 +61,8 @@ fun SoulWorldApp() {
     val worldKeyVault = remember { WorldKeyVault(context) }
     val serverClock = remember { SupabaseServerClock() }
     val syncCoordinator = remember { WorldSyncCoordinator(context) }
-    val mutationSync = remember { WorldMutationSync(RoomSyncStore(context), worldKeyVault) }
+    val roomSyncStore = remember { RoomSyncStore(context) }
+    val mutationSync = remember { WorldMutationSync(roomSyncStore, worldKeyVault) }
     val syncMutex = remember { Mutex() }
     val scope = rememberCoroutineScope()
     val cloudBootstrapMutex = remember { Mutex() }
@@ -138,7 +139,15 @@ fun SoulWorldApp() {
                 loaded
             }
             world = resolved
-            lastPersistedWorld = resolved
+            val durableBaseline = withContext(Dispatchers.IO) {
+                store.loadSyncBaseline(roomSyncStore)
+            }
+            lastPersistedWorld = durableBaseline ?: resolved
+            if (durableBaseline == null && resolved != null) {
+                withContext(Dispatchers.IO) {
+                    store.saveSyncBaselineIfMissing(resolved, roomSyncStore)
+                }
+            }
             savedCloudWorldId = resolved?.cloudWorldId.orEmpty()
             savedWorldName = resolved?.worldName.orEmpty()
         } catch (cancelled: CancellationException) {
@@ -251,8 +260,11 @@ fun SoulWorldApp() {
                     ) {
                         try {
                             val session = authClient.ensureAuthenticatedSession()
+                            val events = mutationSync.buildEvents(
+                                requireNotNull(previousPersisted), next, session
+                            )
                             withContext(Dispatchers.IO) {
-                                mutationSync.enqueueChanges(requireNotNull(previousPersisted), next, session)
+                                store.saveWithOutbox(next, next, events, roomSyncStore)
                             }
                             lastPersistedWorld = next
                             val worldId = java.util.UUID.fromString(next.cloudWorldId)
@@ -295,14 +307,17 @@ fun SoulWorldApp() {
             try {
                 syncMutex.withLock {
                     val session = authClient.ensureAuthenticatedSession()
-                    val baseline = lastPersistedWorld
+                    val baseline = withContext(Dispatchers.IO) {
+                        store.loadSyncBaseline(roomSyncStore)
+                    } ?: lastPersistedWorld
                     val latest = world
                     if (baseline != null && latest != null &&
                         baseline.cloudWorldId == cloudId && latest.cloudWorldId == cloudId &&
                         baseline != latest
                     ) {
+                        val events = mutationSync.buildEvents(baseline, latest, session)
                         withContext(Dispatchers.IO) {
-                            mutationSync.enqueueChanges(baseline, latest, session)
+                            store.saveWithOutbox(latest, latest, events, roomSyncStore)
                         }
                         lastPersistedWorld = latest
                     }
@@ -311,6 +326,9 @@ fun SoulWorldApp() {
                     )
                     if (applied != null && world?.cloudWorldId == cloudId) {
                         world = applied
+                        withContext(Dispatchers.IO) {
+                            store.updateSyncBaseline(applied, roomSyncStore)
+                        }
                         lastPersistedWorld = applied
                         savedCloudWorldId = applied.cloudWorldId
                         savedWorldName = applied.worldName
