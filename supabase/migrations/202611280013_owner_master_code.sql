@@ -182,7 +182,12 @@ begin
     ) then
         raise exception 'master authorization required' using errcode = '42501';
     end if;
-    if not public.is_active_world_member_for_user(p_world_id, p_target_user_id) then
+    if not exists (
+        select 1 from public.world_members m
+         where m.world_id = p_world_id
+           and m.user_id = p_target_user_id
+           and m.revoked_at is null
+    ) then
         raise exception 'target must be an active world participant' using errcode = '42501';
     end if;
 
