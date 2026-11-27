@@ -988,7 +988,7 @@ private fun MomentsHub(
     var selected by remember { mutableStateOf("الحديقة") }
     Column(Modifier.fillMaxSize()) {
         Row(
-            Modifier.fillMaxWidth().padding(bottom = 8.dp),
+            Modifier.fillMaxWidth().horizontalScroll(androidx.compose.foundation.rememberScrollState()).padding(bottom = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             listOf("الحديقة", "سؤال اليوم", "الرحلة", "كبسولة المستقبل").forEach { item ->
