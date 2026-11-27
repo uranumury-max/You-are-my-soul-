@@ -257,7 +257,8 @@ internal class WorldEventReducer(
                         val delta = payload.optInt("delta")
                         val wateredAt = payload.optLong("lastWateredAt")
                         if (!WorldEventValidation.garden(delta, wateredAt)) state else state.copy(
-                            gardenFlowers = (state.gardenFlowers + delta).coerceAtLeast(0),
+                            gardenFlowers = (state.gardenFlowers.toLong() + delta.toLong())
+                                .coerceIn(0L, Int.MAX_VALUE.toLong()).toInt(),
                             gardenLastWateredAt = maxOf(state.gardenLastWateredAt, wateredAt)
                         )
                     }
