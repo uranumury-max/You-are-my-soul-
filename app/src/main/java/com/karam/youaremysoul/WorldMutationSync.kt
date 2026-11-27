@@ -225,15 +225,20 @@ internal class WorldEventReducer(
                             "add" -> {
                                 val strokeId = payload.optString("id")
                                 val pointsJson = payload.optJSONArray("points") ?: JSONArray()
-                                val points = (0 until pointsJson.length()).mapNotNull { index ->
-                                    val pair = pointsJson.optJSONArray(index) ?: return@mapNotNull null
-                                    if (pair.length() != 2) return@mapNotNull null
-                                    val x = pair.optDouble(0, -1.0).toFloat()
-                                    val y = pair.optDouble(1, -1.0).toFloat()
-                                    if (x !in 0f..1f || y !in 0f..1f) null else WorldPoint(x, y)
-                                }.take(150)
+                                val pointCount = pointsJson.length()
+                                // Bound parsing before allocating attacker-controlled point arrays.
+                                val points = if (pointCount in 1..150) {
+                                    (0 until pointCount).mapNotNull { index ->
+                                        val pair = pointsJson.optJSONArray(index) ?: return@mapNotNull null
+                                        if (pair.length() != 2) return@mapNotNull null
+                                        val x = pair.optDouble(0, -1.0).toFloat()
+                                        val y = pair.optDouble(1, -1.0).toFloat()
+                                        if (x !in 0f..1f || y !in 0f..1f) null else WorldPoint(x, y)
+                                    }
+                                } else emptyList()
                                 val width = payload.optDouble("widthFraction", 0.006).toFloat()
-                                if (!WorldEventValidation.drawing(strokeId, width, points) ||
+                                if (points.size != pointCount ||
+                                    !WorldEventValidation.drawing(strokeId, width, points) ||
                                     state.drawings.any { it.id == strokeId }
                                 ) state else state.copy(
                                     drawings = (state.drawings + DrawingStroke(
