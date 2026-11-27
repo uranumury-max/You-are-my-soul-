@@ -156,12 +156,25 @@ private fun SoulSceneViewer(scene: SoulScene, number: Int, onBack: () -> Unit) {
                         drawCircle(Color(0xFFFFF0C8), base * 0.018f, Offset(x, y))
                     }
                 }
-                3, 13 -> {
-                    repeat(5) { i ->
-                        val x = center.x + (i - 2) * base * 0.13f
-                        drawCircle(Color(0x88FFFFFF), base * (0.12f + (i % 2) * 0.035f) * pulse, Offset(x, center.y + base * 0.04f * (i % 2)))
+                3 -> {
+                    // Soft cloud layers drift at different speeds.
+                    repeat(4) { i ->
+                        val x = center.x + (i - 1.5f) * base * 0.13f + base * drift * (if (i % 2 == 0) 1f else -1f)
+                        val y = center.y + base * 0.035f * (i % 2)
+                        drawCircle(Color(0x88FFFFFF), base * (0.12f + (i % 2) * 0.035f) * pulse, Offset(x, y))
                     }
                     drawCircle(Color(0x66FF9CCB), base * 0.28f, center, style = Stroke(width = 2.dp.toPx()))
+                }
+                13 -> {
+                    // Rain on a luminous window: droplets descend in separate lanes.
+                    drawRoundRect(Color(0x223E8BC4), Offset(center.x - base * 0.30f, center.y - base * 0.34f), androidx.compose.ui.geometry.Size(base * 0.60f, base * 0.68f), cornerRadius = androidx.compose.ui.geometry.CornerRadius(base * 0.035f), style = Stroke(width = 2.dp.toPx()))
+                    repeat(11) { i ->
+                        val x = center.x - base * 0.25f + (i % 6) * base * 0.10f
+                        val phase = (i * 0.13f + (pulse - 0.78f) * 0.65f + 1f) % 1f
+                        val y = center.y - base * 0.28f + phase * base * 0.55f
+                        drawLine(Color(0xFF9EDCFF), Offset(x, y), Offset(x - base * 0.018f, y + base * 0.055f), strokeWidth = 1.6.dp.toPx())
+                    }
+                    drawCircle(Color(0x66A8DFFF), base * 0.38f, center, style = Stroke(width = 1.dp.toPx()))
                 }
                 4 -> {
                     drawCircle(Color(0xFFE8D9FF), base * 0.22f * pulse, center)
