@@ -103,4 +103,42 @@ class SyncProtocolTest {
         )
         assertEquals("attempt_limit_exceeded", SyncProtocolRules.validatePending(pending))
     }
+
+    @Test
+    fun rejectsNonPositiveClientTimestamp() {
+        assertEquals(
+            "invalid_client_timestamp",
+            SyncProtocolRules.validate(event().copy(clientCreatedAtEpochMs = 0L))
+        )
+        assertEquals(
+            "invalid_client_timestamp",
+            SyncProtocolRules.validate(event().copy(clientCreatedAtEpochMs = -1L))
+        )
+    }
+
+    @Test
+    fun rejectsBase64PaddingAndWhitespaceInOpaqueEnvelope() {
+        val valid = event().ciphertextBase64
+        assertEquals(
+            "invalid_ciphertext_encoding",
+            SyncProtocolRules.validate(event().copy(ciphertextBase64 = valid + "="))
+        )
+        assertEquals(
+            "invalid_ciphertext_encoding",
+            SyncProtocolRules.validate(event().copy(ciphertextBase64 = valid.replace(":", ": ")))
+        )
+    }
+
+    @Test
+    fun rejectsPageExceedingProtocolLimit() {
+        val events = (1L..(SyncProtocolRules.MAX_EVENTS_PER_PAGE + 1L)).map { sequence ->
+            SequencedWorldEvent(sequence, event().copy(eventId = UUID.randomUUID()))
+        }
+        val page = SyncPage(events, SyncCursor(events.last().serverSequence), hasMore = false)
+        assertEquals(
+            "page_too_large",
+            SyncProtocolRules.validatePage(page, SyncCursor(0L))
+        )
+    }
+
 }
