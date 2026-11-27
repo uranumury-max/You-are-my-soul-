@@ -24,6 +24,8 @@ class WorldEventValidationTest {
         assertFalse(WorldEventValidation.capsule("capsule-1", "", 100L, 200L))
         assertFalse(WorldEventValidation.capsule("capsule-1", "رسالة", 200L, 200L))
         assertFalse(WorldEventValidation.capsule("capsule-1", "ر".repeat(801), 100L, 200L))
+        assertFalse(WorldEventValidation.capsule("capsule-\\u0001", "رسالة", 100L, 200L))
+        assertFalse(WorldEventValidation.capsule("capsule-1", "رسالة\\u0000", 100L, 200L))
     }
 
     @Test
@@ -84,6 +86,7 @@ class WorldEventValidationTest {
         assertTrue(WorldEventValidation.dailyAnswer("2026-11-27", "إجابة اليوم"))
         assertFalse(WorldEventValidation.dailyAnswer("27-11-2026", "إجابة"))
         assertFalse(WorldEventValidation.dailyAnswer("2026-11-27", "ج".repeat(1001)))
+        assertFalse(WorldEventValidation.dailyAnswer("2026-11-27", "جواب\\u0000"))
     }
 
     @Test
