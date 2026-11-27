@@ -42,7 +42,16 @@ internal class AuthSessionStore(context: Context) {
             GCMParameterSpec(TAG_BYTES * 8, iv)
         )
         cipher.updateAAD(AAD)
-        val json = JSONObject(String(cipher.doFinal(encrypted), Charsets.UTF_8))
+        val plaintext = try {
+            cipher.doFinal(encrypted)
+        } finally {
+            encrypted.fill(0)
+        }
+        val json = try {
+            JSONObject(String(plaintext, Charsets.UTF_8))
+        } finally {
+            plaintext.fill(0)
+        }
         return StoredAuthSession(
             accessToken = json.getString("access_token"),
             refreshToken = json.getString("refresh_token"),
@@ -77,10 +86,18 @@ internal class AuthSessionStore(context: Context) {
         val cipher = Cipher.getInstance(TRANSFORMATION)
         cipher.init(Cipher.ENCRYPT_MODE, getOrCreateKey())
         cipher.updateAAD(AAD)
-        val payload = cipher.iv + cipher.doFinal(jsonBytes)
-        val persisted = preferences.edit()
-            .putString(SESSION_KEY, Base64.encodeToString(payload, Base64.NO_WRAP))
-            .commit()
+        val payload = try {
+            cipher.iv + cipher.doFinal(jsonBytes)
+        } finally {
+            jsonBytes.fill(0)
+        }
+        val persisted = try {
+            preferences.edit()
+                .putString(SESSION_KEY, Base64.encodeToString(payload, Base64.NO_WRAP))
+                .commit()
+        } finally {
+            payload.fill(0)
+        }
         check(persisted) { "Unable to persist authentication session" }
     }
 
