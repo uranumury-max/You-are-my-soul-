@@ -81,6 +81,7 @@ fun SoulWorldApp() {
     var pendingRequestsLoadFailed by remember { mutableStateOf(false) }
     var cloudStatus by remember { mutableStateOf("") }
     var mediaStatus by remember { mutableStateOf("") }
+    var mediaBusy by remember { mutableStateOf(false) }
     var mediaPreview by remember { mutableStateOf<Bitmap?>(null) }
     var cloudAuthenticated by remember { mutableStateOf(false) }
     var networkRevision by remember { mutableStateOf(0) }
@@ -588,7 +589,7 @@ fun SoulWorldApp() {
                                 media = world?.media.orEmpty(),
                                 text = memoryText,
                                 mediaStatus = mediaStatus,
-                                mediaEnabled = world != null && cloudAuthenticated && worldKeyReady,
+                                mediaEnabled = world != null && cloudAuthenticated && worldKeyReady && !mediaBusy,
                                 onText = { memoryText = it },
                                 onAdd = {
                                     val value = memoryText.trim()
@@ -608,7 +609,10 @@ fun SoulWorldApp() {
                                         mediaStatus = "أنشئوا العالم وأكملوا الاتصال الآمن قبل رفع الصور."
                                     } else if (current.media.size >= WorldLimits.MAX_MEDIA_ITEMS) {
                                         mediaStatus = "اكتمل الألبوم؛ احذفوا صورة قبل إضافة صورة جديدة."
+                                    } else if (mediaBusy) {
+                                        mediaStatus = "هناك عملية ألبوم قيد التنفيذ؛ انتظروا اكتمالها."
                                     } else {
+                                        mediaBusy = true
                                         mediaStatus = "جارٍ تشفير الصورة ورفعها..."
                                         scope.launch {
                                             try {
@@ -617,11 +621,18 @@ fun SoulWorldApp() {
                                                     mediaImporter.import(uri, session, java.util.UUID.fromString(current.cloudWorldId))
                                                 }
                                                 val latest = world
-                                                if (latest != null && latest.cloudWorldId == current.cloudWorldId) {
+                                                if (latest != null && latest.cloudWorldId == current.cloudWorldId &&
+                                                    latest.media.size < WorldLimits.MAX_MEDIA_ITEMS
+                                                ) {
                                                     persist(latest.copy(media = (latest.media + item).takeLast(WorldLimits.MAX_MEDIA_ITEMS)))
                                                     mediaStatus = "أُضيفت الصورة إلى الألبوم المشترك بأمان."
                                                 } else {
-                                                    mediaStatus = "رُفعت الصورة، لكن العالم تغيّر قبل حفظ بياناتها."
+                                                    mediaStorage.delete(
+                                                        session,
+                                                        java.util.UUID.fromString(current.cloudWorldId),
+                                                        java.util.UUID.fromString(item.id)
+                                                    )
+                                                    mediaStatus = "اكتمل الألبوم أو تغيّر العالم أثناء الرفع؛ أُزيل الملف الجديد ولم نتركه يتيماً."
                                                 }
                                             } catch (error: IllegalArgumentException) {
                                                 mediaStatus = when (error.message) {
@@ -637,6 +648,8 @@ fun SoulWorldApp() {
                                                     "media_service_unavailable", "media_network_unavailable" -> "تعذر الاتصال بالتخزين؛ لم تُضف بيانات الصورة إلى الألبوم."
                                                     else -> "تعذر رفع الصورة بأمان؛ لم تُضف إلى الألبوم."
                                                 }
+                                            } finally {
+                                                mediaBusy = false
                                             }
                                         }
                                     }
@@ -673,7 +686,8 @@ fun SoulWorldApp() {
                                 onClosePreview = { mediaPreview = null },
                                 onDeleteMedia = { item ->
                                     val current = world
-                                    if (current != null && cloudAuthenticated && worldKeyReady) {
+                                    if (current != null && cloudAuthenticated && worldKeyReady && !mediaBusy) {
+                                        mediaBusy = true
                                         mediaStatus = "جارٍ حذف الصورة من التخزين المشترك..."
                                         scope.launch {
                                             try {
@@ -691,6 +705,8 @@ fun SoulWorldApp() {
                                                 }
                                             } catch (_: Exception) {
                                                 mediaStatus = "تعذر حذف الصورة من التخزين؛ بقيت بياناتها في الألبوم."
+                                            } finally {
+                                                mediaBusy = false
                                             }
                                         }
                                     }
