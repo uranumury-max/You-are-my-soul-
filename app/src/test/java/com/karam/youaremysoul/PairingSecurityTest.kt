@@ -67,6 +67,9 @@ class PairingSecurityTest {
             PairingSecurity.newChallenge("invalid request id!", "123456789", "987654321", 100L)
         }.isFailure)
         assertTrue(runCatching {
+            PairingSecurity.newChallenge("request-id-عربي", "123456789", "987654321", 100L)
+        }.isFailure)
+        assertTrue(runCatching {
             PairingSecurity.newChallenge("request-id-overflow", "123456789", "987654321", Long.MAX_VALUE - 5L)
         }.isFailure)
     }
