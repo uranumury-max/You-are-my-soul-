@@ -28,7 +28,7 @@ class WorldSnapshotBootstrapper(context: Context) {
                 eventId = eventId,
                 eventType = SyncEventType.WORLD_UPDATE,
                 plaintext = payload,
-                keyVersion = 1
+                keyVersion = worldKeyVault.activeKeyVersion(worldId)
             )
         } finally {
             payload.fill(0)
