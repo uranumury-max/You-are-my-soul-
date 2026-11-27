@@ -137,7 +137,7 @@ private fun SoulSceneViewer(scene: SoulScene, number: Int, onBack: () -> Unit) {
             val base = minOf(size.width, size.height)
             // Each unlocked scene has its own animated visual motif, not a shared placeholder.
             when (number) {
-                1, 5, 20, 21 -> {
+                1, 20, 21 -> {
                     val heart = androidx.compose.ui.graphics.Path().apply {
                         moveTo(center.x, center.y + base * 0.25f * pulse)
                         cubicTo(center.x - base * 0.48f, center.y - base * 0.08f, center.x - base * 0.30f, center.y - base * 0.43f, center.x, center.y - base * 0.16f)
@@ -181,6 +181,21 @@ private fun SoulSceneViewer(scene: SoulScene, number: Int, onBack: () -> Unit) {
                     drawCircle(Color(0xFF241235), base * 0.19f, Offset(center.x + base * 0.11f, center.y - base * 0.08f))
                     repeat(12) { i -> drawCircle(Color(0xFFFFD68A), base * 0.012f, Offset(center.x + kotlin.math.cos(i * 0.52f) * base * 0.38f, center.y + kotlin.math.sin(i * 0.52f) * base * 0.38f)) }
                 }
+                5 -> {
+                    // Heart constellation: three small lights orbit a steady center.
+                    drawCircle(Color(0x88FF9CCB), base * 0.20f * pulse, center)
+                    drawCircle(Color(0xFFFF75B8), base * 0.12f, center)
+                    repeat(3) { i ->
+                        val angle = pulse * 2.1f + i * (Math.PI * 2.0 / 3.0)
+                        val orbit = Offset(
+                            center.x + kotlin.math.cos(angle).toFloat() * base * 0.30f,
+                            center.y + kotlin.math.sin(angle).toFloat() * base * 0.22f
+                        )
+                        drawCircle(Color(0x66FFD68A), base * 0.075f, orbit)
+                        drawCircle(Color(0xFFFFD68A), base * 0.025f, orbit)
+                    }
+                    drawCircle(Color(0x66FF9CCB), base * 0.39f, center, style = Stroke(width = 1.5.dp.toPx()))
+                }
                 6 -> {
                     repeat(8) { i ->
                         val angle = i * (Math.PI / 4.0)
@@ -194,7 +209,7 @@ private fun SoulSceneViewer(scene: SoulScene, number: Int, onBack: () -> Unit) {
                     drawLine(Color(0xFFFFD68A), Offset(center.x, center.y - base * 0.3f), Offset(center.x, center.y + base * 0.3f), strokeWidth = 3.dp.toPx())
                     repeat(4) { i -> drawCircle(Color(0xFFFFD68A), base * 0.045f, Offset(center.x + (i - 1.5f) * base * 0.15f, center.y + kotlin.math.sin(i + pulse) * base * 0.08f)) }
                 }
-                8, 18 -> {
+                8 -> {
                     drawRoundRect(Color(0xAAFFF0D0), Offset(center.x - base * 0.22f, center.y - base * 0.15f), androidx.compose.ui.geometry.Size(base * 0.44f, base * 0.30f), cornerRadius = androidx.compose.ui.geometry.CornerRadius(base * 0.035f))
                     drawLine(Color(0xFFFF9CCB), Offset(center.x - base * 0.22f, center.y - base * 0.15f), Offset(center.x, center.y + base * 0.02f), strokeWidth = 2.dp.toPx())
                     drawLine(Color(0xFFFF9CCB), Offset(center.x + base * 0.22f, center.y - base * 0.15f), Offset(center.x, center.y + base * 0.02f), strokeWidth = 2.dp.toPx())
