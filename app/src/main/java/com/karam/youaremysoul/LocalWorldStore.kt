@@ -144,6 +144,17 @@ class LocalWorldStore(context: Context) {
         put("gardenLastWateredAt", world.gardenLastWateredAt)
         put("dailyAnswerDate", world.dailyAnswerDate)
         put("dailyAnswer", world.dailyAnswer)
+        put("dailyAnswers", JSONArray().apply {
+            world.dailyAnswers.takeLast(100).forEach { answer ->
+                put(
+                    JSONObject()
+                        .put("date", answer.date)
+                        .put("authorCode", answer.authorCode)
+                        .put("answer", answer.answer)
+                        .put("createdAtEpochMs", answer.createdAtEpochMs)
+                )
+            }
+        })
         put("relationshipStartDate", world.relationshipStartDate)
         put("cloudWorldId", world.cloudWorldId)
         put("localIsOwner", world.localIsOwner)
@@ -220,6 +231,7 @@ class LocalWorldStore(context: Context) {
         val capsulesJson = json.optJSONArray("capsules") ?: JSONArray()
         val drawingsJson = json.optJSONArray("drawings") ?: JSONArray()
         val mediaJson = json.optJSONArray("media") ?: JSONArray()
+        val dailyAnswersJson = json.optJSONArray("dailyAnswers") ?: JSONArray()
         val worldId = json.optString("cloudWorldId", "")
         return WorldSnapshot(
             worldName = json.optString("worldName", "عالمنا الخاص").take(40).ifBlank { "عالمنا الخاص" },
@@ -239,6 +251,19 @@ class LocalWorldStore(context: Context) {
             gardenLastWateredAt = json.optLong("gardenLastWateredAt", 0L),
             dailyAnswerDate = json.optString("dailyAnswerDate", ""),
             dailyAnswer = json.optString("dailyAnswer", "").take(1000),
+            dailyAnswers = (0 until dailyAnswersJson.length()).mapNotNull { index ->
+                val answer = dailyAnswersJson.optJSONObject(index) ?: return@mapNotNull null
+                DailyAnswerEntry(
+                    date = answer.optString("date"),
+                    authorCode = answer.optString("authorCode"),
+                    answer = answer.optString("answer").take(1000),
+                    createdAtEpochMs = answer.optLong("createdAtEpochMs")
+                ).takeIf {
+                    WorldEventValidation.dailyAnswerEntry(
+                        it.date, it.authorCode, it.answer, it.createdAtEpochMs
+                    )
+                }
+            }.takeLast(100),
             relationshipStartDate = json.optString("relationshipStartDate", ""),
             cloudWorldId = json.optString("cloudWorldId", ""),
             localIsOwner = json.optBoolean("localIsOwner", true),
