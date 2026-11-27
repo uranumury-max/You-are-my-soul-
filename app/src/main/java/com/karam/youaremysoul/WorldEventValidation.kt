@@ -44,6 +44,13 @@ internal object WorldEventValidation {
             points.size in 1..150 &&
             points.all { it.x.isFinite() && it.y.isFinite() && it.x in 0f..1f && it.y in 0f..1f }
 
+    fun drawingVersion(version: DrawingVersion): Boolean =
+        version.id.length in 1..64 &&
+            version.title.isNotBlank() && version.title.length <= 40 &&
+            version.createdAtEpochMs > 0L &&
+            version.strokes.size <= DrawingHistory.MAX_STROKES &&
+            version.strokes.all { drawingColor(it.colorArgb) && drawing(it.id, it.widthFraction, it.points) }
+
     fun dailyAnswer(date: String, answer: String): Boolean =
         answer.length <= 1000 &&
             runCatching { LocalDate.parse(date) }.isSuccess
