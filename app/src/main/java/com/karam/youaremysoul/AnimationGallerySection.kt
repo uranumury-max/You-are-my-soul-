@@ -22,7 +22,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import java.time.Duration
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
+import java.time.temporal.ChronoUnit
 
 private data class SoulScene(val title: String, val symbol: String, val caption: String)
 private val soulScenes = listOf(
@@ -50,15 +53,20 @@ SoulScene("عالمنا الأبدي","💖","مشهد ختامي يجمع رم�
 )
 
 @Composable
-internal fun AnimationGallerySection() {
+internal fun AnimationGallerySection(relationshipStartDate: String = "") {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("soul_animation_gallery", Context.MODE_PRIVATE) }
-    val startedAt = remember {
-        val saved = prefs.getLong("started_at", 0L)
-        if (saved > 0L) saved else System.currentTimeMillis().also { prefs.edit().putLong("started_at", it).apply() }
+    val today = LocalDate.now()
+    val journeyStart = remember(relationshipStartDate) {
+        runCatching { LocalDate.parse(relationshipStartDate) }.getOrNull()
+            ?: run {
+                val saved = prefs.getLong("started_at", 0L)
+                if (saved > 0L) Instant.ofEpochMilli(saved).atZone(ZoneId.systemDefault()).toLocalDate()
+                else today.also { prefs.edit().putLong("started_at", System.currentTimeMillis()).apply() }
+            }
     }
-    val dayNumber = ((System.currentTimeMillis() - startedAt).coerceAtLeast(0L) / Duration.ofDays(1).toMillis()).toInt() + 1
-    val earned = minOf(21, dayNumber)
+    val dayNumber = (ChronoUnit.DAYS.between(journeyStart, today) + 1L).coerceAtLeast(1L).coerceAtMost(21L).toInt()
+    val earned = dayNumber
     var unlocked by remember { mutableIntStateOf(maxOf(1, prefs.getInt("unlocked_count", 1), earned)) }
     LaunchedEffect(earned) {
         if (earned > unlocked) { unlocked = earned; prefs.edit().putInt("unlocked_count", unlocked).apply() }
