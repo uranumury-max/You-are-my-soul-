@@ -327,7 +327,7 @@ class RoomSyncStore(context: Context) {
     suspend fun allRemoteEvents(worldId: java.util.UUID): List<SequencedWorldEvent> {
         val checkpoint = dao.latestCheckpoint(worldId.toString()) ?: return emptyList()
         val rows = mutableListOf(checkpoint)
-        var cursor = checkpoint.serverSequence - 1L
+        var cursor = checkpoint.serverSequence
         while (rows.size < MAX_REPLAY_EVENTS) {
             val page = dao.loadRemoteEvents(
                 worldId = worldId.toString(),
