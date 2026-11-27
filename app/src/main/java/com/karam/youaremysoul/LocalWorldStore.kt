@@ -26,6 +26,43 @@ class LocalWorldStore(context: Context) {
         return restored
     }
 
+    fun encryptedEntity(world: WorldSnapshot): LocalWorldSnapshotEntity =
+        LocalWorldSnapshotEntity(
+            encryptedPayload = cipher.encrypt(encode(world)),
+            updatedAtEpochMs = System.currentTimeMillis()
+        )
+
+    fun encryptedBaseline(world: WorldSnapshot): LocalSyncBaselineEntity =
+        LocalSyncBaselineEntity(
+            encryptedPayload = cipher.encrypt(encode(world)),
+            updatedAtEpochMs = System.currentTimeMillis()
+        )
+
+    suspend fun loadSyncBaseline(outbox: RoomSyncStore): WorldSnapshot? =
+        outbox.loadBaseline()?.let { decode(cipher.decrypt(it.encryptedPayload)) }
+
+    suspend fun saveSyncBaselineIfMissing(world: WorldSnapshot, outbox: RoomSyncStore) {
+        outbox.insertBaselineIfMissing(encryptedBaseline(world))
+    }
+
+    suspend fun updateSyncBaseline(world: WorldSnapshot, outbox: RoomSyncStore) {
+        outbox.updateBaseline(encryptedBaseline(world))
+    }
+
+    suspend fun saveWithOutbox(
+        world: WorldSnapshot,
+        baseline: WorldSnapshot,
+        events: List<WorldSyncEvent>,
+        outbox: RoomSyncStore
+    ) {
+        outbox.commitLocalChange(
+            snapshot = encryptedEntity(world),
+            baseline = encryptedBaseline(baseline),
+            events = events
+        )
+        removeLegacyPreferences()
+    }
+
     fun save(world: WorldSnapshot) {
         val encrypted = cipher.encrypt(encode(world))
         // Room is the durable source of truth. Legacy preferences are removed
