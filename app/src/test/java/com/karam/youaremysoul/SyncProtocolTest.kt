@@ -130,6 +130,20 @@ class SyncProtocolTest {
     }
 
     @Test
+    fun rejectsNonCanonicalBase64TrailingBits() {
+        val encoded = Base64.getEncoder().withoutPadding().encodeToString(ByteArray(49) { 7 })
+        val alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+        val lastIndex = alphabet.indexOf(encoded.last())
+        // For a one-byte tail, the low four bits are unused and must be zero.
+        val alternateLast = alphabet[lastIndex xor 1]
+        val alternate = encoded.dropLast(1) + alternateLast
+        assertEquals(
+            "invalid_ciphertext_encoding",
+            SyncProtocolRules.validate(event().copy(ciphertextBase64 = "wce:v1:1:$alternate"))
+        )
+    }
+
+    @Test
     fun rejectsPageExceedingProtocolLimit() {
         val events = (1L..(SyncProtocolRules.MAX_EVENTS_PER_PAGE + 1L)).map { sequence ->
             SequencedWorldEvent(sequence, event().copy(eventId = UUID.randomUUID()))
