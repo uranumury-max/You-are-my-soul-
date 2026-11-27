@@ -958,7 +958,7 @@ fun SoulWorldApp() {
                                 world = world,
                                 onName = { value -> world?.let { persist(it.copy(worldName = value)) } },
                                 onRelationshipDate = { value -> world?.let { persist(it.copy(relationshipStartDate = value)) } }
-                            )
+                            ),
                             else -> WorldHome(world = world, canCreate = storageWarning.isBlank(), onCreate = {
                                 val code = DeviceIdentity(context).code
                                 persist(WorldSnapshot("عالمنا الخاص", code, listOf(WorldMember(code, "صاحب العالم", true)), 0, emptyList(), cloudWorldId = java.util.UUID.randomUUID().toString()))
