@@ -6,6 +6,7 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -16,7 +17,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -118,12 +121,38 @@ internal fun AnimationGallerySection(relationshipStartDate: String = "") {
 @Composable
 private fun SoulSceneViewer(scene: SoulScene, number: Int, onBack: () -> Unit) {
     val transition = rememberInfiniteTransition(label = "soul_scene_motion")
-    val pulse by transition.animateFloat(initialValue = 0.82f, targetValue = 1.16f, animationSpec = infiniteRepeatable(tween(1300), repeatMode = RepeatMode.Reverse), label = "scene_pulse")
+    val pulse by transition.animateFloat(
+        initialValue = 0.78f, targetValue = 1.12f,
+        animationSpec = infiniteRepeatable(tween(1500), repeatMode = RepeatMode.Reverse),
+        label = "scene_pulse"
+    )
+    val drift by transition.animateFloat(
+        initialValue = -0.06f, targetValue = 0.06f,
+        animationSpec = infiniteRepeatable(tween(5200), repeatMode = RepeatMode.Reverse),
+        label = "scene_drift"
+    )
     Column(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         TextButton(onClick = onBack) { Text("← العودة إلى المشاهد", color = Color(0xFFFF9CCB)) }
-        Spacer(Modifier.height(28.dp))
-        Text(scene.symbol, fontSize = (76 * pulse).sp)
-        Spacer(Modifier.height(20.dp))
+        Canvas(Modifier.fillMaxWidth().height(235.dp)) {
+            val center = Offset(size.width / 2f, size.height / 2f)
+            val base = minOf(size.width, size.height)
+            drawCircle(Color(0x44FF9CCB), radius = base * 0.31f * pulse, center = center)
+            drawCircle(Color(0x33FFD68A), radius = base * 0.22f * pulse, center = center)
+            drawCircle(Color(0x88FFD68A), radius = base * 0.31f, center = center, style = Stroke(width = 1.5.dp.toPx()))
+            drawCircle(Color(0x66FF9CCB), radius = base * 0.42f, center = center, style = Stroke(width = 1.dp.toPx()))
+            for (i in 0 until 42) {
+                val x = ((i * 73 + number * 29) % 997) / 997f * size.width
+                val y = ((i * 137 + number * 61) % 991) / 991f * size.height
+                val radius = (1.1f + (i % 4) * 0.55f) * pulse
+                drawCircle(if (i % 5 == 0) Color(0xFFFFD68A) else Color(0xCCFFFFFF), radius, Offset(x, y))
+            }
+            val orbitX = center.x + base * drift
+            drawLine(Color(0x77FFD68A), Offset(center.x - base * 0.38f, center.y + base * 0.08f), Offset(center.x + base * 0.38f, center.y - base * 0.08f), strokeWidth = 1.dp.toPx())
+            drawCircle(Color(0xFFFFD68A), radius = base * 0.035f, center = Offset(orbitX + base * 0.31f, center.y - base * 0.13f))
+            drawCircle(Color(0xFFFF9CCB), radius = base * 0.025f, center = Offset(center.x - base * 0.29f, center.y + base * 0.15f))
+        }
+        Text(scene.symbol, fontSize = (56 * pulse).sp)
+        Spacer(Modifier.height(8.dp))
         Text(scene.title, color = Color(0xFFFFD68A), fontSize = 24.sp, fontWeight = FontWeight.Bold)
         Text(scene.caption, color = Color.White, fontSize = 14.sp, textAlign = TextAlign.Center)
         Spacer(Modifier.height(20.dp))
