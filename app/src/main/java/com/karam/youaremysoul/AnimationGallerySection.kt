@@ -55,7 +55,12 @@ SoulScene("عالمنا الأبدي","💖","مشهد ختامي يجمع رم�
 )
 
 @Composable
-internal fun AnimationGallerySection(\n    relationshipStartDate: String = "",\n    names: List<String> = emptyList(),\n    ownerMasterUnlocked: Boolean = false,\n    grantedScenes: Set<Int> = emptySet()\n) {
+internal fun AnimationGallerySection(
+    relationshipStartDate: String = "",
+    names: List<String> = emptyList(),
+    ownerMasterUnlocked: Boolean = false,
+    grantedScenes: Set<Int> = emptySet()
+) {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("soul_animation_gallery", Context.MODE_PRIVATE) }
     val today = LocalDate.now(ZoneOffset.UTC)
