@@ -50,6 +50,32 @@ class WorldEventValidationTest {
     }
 
     @Test
+    fun validatesDrawingVersionIdentityTitleAndBoundedStrokes() {
+        val stroke = DrawingStroke(
+            "stroke-1",
+            androidx.compose.ui.graphics.Color(0xFFFF9CCB).value.toLong(),
+            0.006f,
+            listOf(WorldPoint(0.2f, 0.8f))
+        )
+        val version = DrawingVersion("version-1", "نسخة النجوم", 100L, listOf(stroke))
+        assertTrue(WorldEventValidation.drawingVersion(version))
+        assertFalse(WorldEventValidation.drawingVersion(version.copy(title = "")))
+        assertFalse(WorldEventValidation.drawingVersion(version.copy(title = "ن".repeat(41))))
+        assertFalse(WorldEventValidation.drawingVersion(version.copy(createdAtEpochMs = 0L)))
+        assertFalse(WorldEventValidation.drawingVersion(version.copy(strokes = emptyList())))
+        assertFalse(
+            WorldEventValidation.drawingVersion(
+                version.copy(strokes = List(DrawingHistory.MAX_STROKES + 1) { stroke.copy(id = "s-$it") })
+            )
+        )
+        assertFalse(
+            WorldEventValidation.drawingVersion(
+                version.copy(strokes = listOf(stroke.copy(colorArgb = Long.MIN_VALUE)))
+            )
+        )
+    }
+
+    @Test
     fun validatesDailyAnswerDateAndTextBounds() {
         assertTrue(WorldEventValidation.dailyAnswer("2026-11-27", "إجابة اليوم"))
         assertFalse(WorldEventValidation.dailyAnswer("27-11-2026", "إجابة"))
