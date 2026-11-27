@@ -1098,6 +1098,11 @@ private fun GardenSection(flowers: Int, onPlant: () -> Unit) {
         animationSpec = infiniteRepeatable(tween(2200), repeatMode = RepeatMode.Reverse),
         label = "flower_breeze"
     )
+    val skyPulse by sway.animateFloat(
+        initialValue = 0.35f, targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(1900), repeatMode = RepeatMode.Reverse),
+        label = "garden_star_twinkle"
+    )
     Column(
         Modifier.fillMaxSize().verticalScroll(androidx.compose.foundation.rememberScrollState()),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -1113,6 +1118,22 @@ private fun GardenSection(flowers: Int, onPlant: () -> Unit) {
             Column(Modifier.fillMaxWidth().padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 Canvas(Modifier.fillMaxWidth().height(230.dp)) {
                     val ground = size.height * .82f
+                    val moon = Offset(size.width * .82f, size.height * .17f)
+                    drawCircle(Gold.copy(alpha = .12f * skyPulse), radius = 29f, center = moon)
+                    drawCircle(Color(0xFFFFE8B5), radius = 13f, center = moon)
+                    drawCircle(CardTone, radius = 12f, center = Offset(moon.x + 7f, moon.y - 4f))
+                    val stars = listOf(
+                        Offset(.12f, .16f), Offset(.28f, .27f), Offset(.47f, .13f),
+                        Offset(.62f, .30f), Offset(.91f, .35f), Offset(.73f, .08f)
+                    )
+                    stars.forEachIndexed { index, point ->
+                        val radius = if (index % 2 == 0) 2.1f else 1.5f
+                        drawCircle(
+                            Gold.copy(alpha = (.25f + .65f * skyPulse) * (if (index % 3 == 0) .7f else 1f)),
+                            radius = radius,
+                            center = Offset(point.x * size.width, point.y * size.height)
+                        )
+                    }
                     drawLine(Color(0xFF8A6C70).copy(alpha = .8f), Offset(0f, ground), Offset(size.width, ground), 2f)
                     val count = flowers.coerceAtMost(28)
                     repeat(count) { index ->
