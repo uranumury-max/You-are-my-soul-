@@ -21,6 +21,15 @@ data class DrawingStroke(
     val widthFraction: Float,
     val points: List<WorldPoint>
 )
+data class WorldMediaItem(
+    val id: String,
+    val displayName: String,
+    val mimeType: String,
+    val sizeBytes: Long,
+    val createdAtEpochMs: Long,
+    val objectPath: String,
+    val keyVersion: Int = 1
+)
 data class WorldSnapshot(
     val worldName: String = "عالمنا الخاص",
     val hostCode: String = "",
@@ -38,5 +47,6 @@ data class WorldSnapshot(
     val localIsOwner: Boolean = true,
     val messages: List<WorldMessage> = emptyList(),
     val capsules: List<FutureCapsule> = emptyList(),
-    val drawings: List<DrawingStroke> = emptyList()
+    val drawings: List<DrawingStroke> = emptyList(),
+    val media: List<WorldMediaItem> = emptyList()
 )
