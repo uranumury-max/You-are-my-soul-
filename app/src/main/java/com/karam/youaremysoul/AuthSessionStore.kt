@@ -22,6 +22,9 @@ internal class AuthSessionStore(context: Context) {
     @Synchronized
     fun load(): StoredAuthSession? {
         val encoded = preferences.getString(SESSION_KEY, null) ?: return null
+        require(encoded.length <= MAX_ENCODED_LENGTH) {
+            "Stored authentication session exceeds the safe size limit"
+        }
         val payload = try {
             Base64.decode(encoded, Base64.NO_WRAP)
         } catch (_: IllegalArgumentException) {
@@ -61,10 +64,14 @@ internal class AuthSessionStore(context: Context) {
             .put("user_id", session.userId)
             .put("expires_at", session.expiresAtEpochSeconds)
             .toString()
+        val jsonBytes = json.toByteArray(Charsets.UTF_8)
+        require(jsonBytes.size <= MAX_PLAINTEXT_BYTES) {
+            "Authentication session exceeds the safe size limit"
+        }
         val cipher = Cipher.getInstance(TRANSFORMATION)
         cipher.init(Cipher.ENCRYPT_MODE, getOrCreateKey())
         cipher.updateAAD(AAD)
-        val payload = cipher.iv + cipher.doFinal(json.toByteArray(Charsets.UTF_8))
+        val payload = cipher.iv + cipher.doFinal(jsonBytes)
         val persisted = preferences.edit()
             .putString(SESSION_KEY, Base64.encodeToString(payload, Base64.NO_WRAP))
             .commit()
@@ -105,7 +112,9 @@ internal class AuthSessionStore(context: Context) {
         const val TRANSFORMATION = "AES/GCM/NoPadding"
         const val IV_BYTES = 12
         const val TAG_BYTES = 16
-        const val MAX_PAYLOAD_BYTES = 16 * 1024
+        const val MAX_PLAINTEXT_BYTES = 16 * 1024
+        const val MAX_PAYLOAD_BYTES = MAX_PLAINTEXT_BYTES + IV_BYTES + TAG_BYTES
+        const val MAX_ENCODED_LENGTH = ((MAX_PAYLOAD_BYTES + 2) / 3) * 4
         val AAD = "com.karam.youaremysoul/auth-session/v1".toByteArray(Charsets.UTF_8)
     }
 }
