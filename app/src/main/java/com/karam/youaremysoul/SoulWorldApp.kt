@@ -1011,7 +1011,7 @@ private fun MomentsHub(
             Modifier.fillMaxWidth().horizontalScroll(androidx.compose.foundation.rememberScrollState()).padding(bottom = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            listOf("الحديقة", "سؤال اليوم", "الرحلة", "كبسولة المستقبل", "لوحتنا").forEach { item ->
+            listOf("الحديقة", "سؤال اليوم", "الرحلة", "كبسولة المستقبل", "لوحتنا", "مساحة التفاهم").forEach { item ->
                 FilterChip(
                     selected = selected == item,
                     onClick = { selected = item },
@@ -1025,9 +1025,68 @@ private fun MomentsHub(
                 "سؤال اليوم" -> DailyQuestionSection(answer, onAnswer)
                 "كبسولة المستقبل" -> CapsuleSection(capsules, onCreateCapsule, onOpenCapsule)
                 "لوحتنا" -> DrawingSection(drawings, onAddStroke, onClearDrawing)
+                "مساحة التفاهم" -> ReconciliationSection()
                 else -> JourneySection(stage, relationshipStartDate)
             }
         }
+    }
+}
+
+@Composable
+private fun ReconciliationSection() {
+    var step by remember { mutableStateOf(0) }
+    val steps = listOf(
+        "توقّفوا قليلاً قبل متابعة النقاش. خذوا وقتاً قصيراً لتهدئة الإيقاع، واتفقوا على أن الهدف هو الفهم لا الانتصار.",
+        "ليتحدث الشخص الأول دون مقاطعة، مستخدماً عبارات تبدأ بـ «شعرتُ» أو «احتجتُ». ثم يستمع الآخر حتى النهاية.",
+        "يعيد المستمع صياغة ما فهمه بكلماته، ثم يسأل: «هل فهمتك كما قصدت؟». صحّحوا الفهم بهدوء قبل تقديم الحلول.",
+        "اختاروا خطوة صغيرة وواضحة يمكن تنفيذها الآن، واتفقوا على وقت مناسب للعودة إلى الموضوع إذا احتاج إلى متابعة."
+    )
+    val headings = listOf("هدوء قبل الحوار", "استماع بلا مقاطعة", "تأكيد الفهم", "خطوة مشتركة")
+    Column(
+        Modifier.fillMaxSize().verticalScroll(androidx.compose.foundation.rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Text("مساحة التفاهم", color = Gold, fontSize = 23.sp, fontWeight = FontWeight.Bold)
+        Text("خطوات بسيطة تساعدكما على استعادة الحوار باحترام.", color = Rose, fontSize = 12.sp)
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+            repeat(steps.size) { index ->
+                Box(
+                    Modifier.weight(1f).height(5.dp)
+                        .background(
+                            if (index <= step) Gold else Color.White.copy(alpha = .13f),
+                            RoundedCornerShape(8.dp)
+                        )
+                )
+            }
+        }
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = CardTone),
+            shape = RoundedCornerShape(22.dp)
+        ) {
+            Column(
+                Modifier.fillMaxWidth().padding(18.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text("الخطوة ${step + 1} من ${steps.size}", color = Rose, fontSize = 11.sp)
+                Text(headings[step], color = Gold, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                Text(steps[step], color = Color.White, fontSize = 15.sp, lineHeight = 25.sp)
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    OutlinedButton(onClick = { step = (step - 1).coerceAtLeast(0) }, enabled = step > 0) {
+                        Text("السابق")
+                    }
+                    Button(onClick = { step = if (step == steps.lastIndex) 0 else step + 1 }) {
+                        Text(if (step == steps.lastIndex) "إعادة الخطوات" else "التالي")
+                    }
+                }
+            }
+        }
+        Text(
+            "لا يلزم الوصول إلى اتفاق فوري. يمكن التوقف والعودة إلى الحوار لاحقاً عندما يكون الطرفان مستعدين.",
+            color = Color.LightGray,
+            fontSize = 11.sp,
+            lineHeight = 18.sp
+        )
     }
 }
 
