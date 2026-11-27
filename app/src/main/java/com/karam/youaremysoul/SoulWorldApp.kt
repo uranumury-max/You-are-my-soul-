@@ -623,7 +623,7 @@ fun SoulWorldApp() {
                                                 }
                                             } catch (error: IllegalArgumentException) {
                                                 mediaStatus = when (error.message) {
-                                                    "media_type_unknown", "media_type_not_supported" -> "نوع الصورة غير مدعوم. اختروا JPEG أو PNG أو WebP أو HEIC."
+                                                    "media_type_unknown", "media_type_not_supported" -> "نوع الصورة غير مدعوم. اختروا JPEG أو PNG أو WebP."
                                                     "media_too_large" -> "تجاوزت الصورة الحد الأقصى البالغ 20 ميغابايت."
                                                     "media_empty" -> "الملف المحدد فارغ."
                                                     else -> "تعذرت قراءة الصورة المحددة."
@@ -1059,7 +1059,7 @@ private fun MemoriesSection(
                 Text("تُشفّر الصور قبل رفعها. الحد الأقصى 20 ميغابايت للصورة.", color = Color.LightGray, fontSize = 10.sp)
             }
             Button(
-                onClick = { imagePicker.launch(arrayOf("image/jpeg", "image/png", "image/webp", "image/heic")) },
+                onClick = { imagePicker.launch(arrayOf("image/jpeg", "image/png", "image/webp")) },
                 enabled = mediaEnabled
             ) { Text("إضافة صورة") }
         }
