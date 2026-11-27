@@ -19,7 +19,7 @@ An Arabic privacy-policy draft is available at [`docs/PRIVACY_POLICY_DRAFT.md`](
 
 ## Current implementation checkpoint
 
-- Native Android/Compose scaffold with Arabic RTL UI, six destinations, animated transitions, starfield, and developer credit.
+- Native Android/Compose scaffold with Arabic RTL UI, seven destinations, animated transitions, starfield, and developer credit.
 - Dedicated animation gallery with 21 distinct animated scene entries, UTC calendar-based progressive unlocking, persistent unlock progress, and personalized scene presentation; still requires visual/device acceptance testing.
 - Local world snapshot persistence with versioned authenticated encryption and fail-closed migration.
 - Stable local nine-digit device code plus a random per-installation UUID; code collisions are detected by the server and retried without changing the installation identity.
