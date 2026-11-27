@@ -59,7 +59,11 @@ internal object WorldContentCipher {
         require(envelope.startsWith(expectedPrefix)) { "Unsupported world content envelope" }
         require(envelope.length <= SyncProtocolRules.MAX_CIPHERTEXT_BYTES)
 
-        val payload = Base64.getDecoder().decode(envelope.removePrefix(expectedPrefix))
+        val encodedPayload = envelope.removePrefix(expectedPrefix)
+        val payload = Base64.getDecoder().decode(encodedPayload)
+        require(Base64.getEncoder().withoutPadding().encodeToString(payload) == encodedPayload) {
+            "Non-canonical encrypted content encoding"
+        }
         require(payload.size in (NONCE_BYTES + TAG_BYTES)..(MAX_PLAINTEXT_BYTES + NONCE_BYTES + TAG_BYTES)) {
             "Invalid encrypted content size"
         }
