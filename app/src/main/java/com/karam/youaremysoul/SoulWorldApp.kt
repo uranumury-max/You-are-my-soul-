@@ -1036,6 +1036,9 @@ private fun MemoriesSection(
     val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         uri?.let(onUploadImage)
     }
+    DisposableEffect(preview) {
+        onDispose { preview?.recycle() }
+    }
     Column(Modifier.fillMaxSize()) {
         Text("ذكرياتنا", color = Gold, fontSize = 23.sp, fontWeight = FontWeight.Bold)
         Text("احفظوا الكلمات والصور في مساحة خاصة مشفّرة بين الجهازين.", color = Rose, fontSize = 12.sp)
