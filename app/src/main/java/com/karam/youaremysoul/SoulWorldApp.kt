@@ -1232,7 +1232,7 @@ private fun OwnerMasterDialog(
                         fontSize = 11.sp
                     )
                 }
-                if (isOwner) {
+                if (isOwner && !unlocked) {
                     Button(onClick = onConfigure, enabled = !busy && code.length >= 12) {
                         Text("إعداد الرمز لأول مرة")
                     }
