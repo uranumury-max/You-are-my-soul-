@@ -180,9 +180,9 @@ fun SoulWorldApp() {
         }
     }
     var tab by remember { mutableStateOf("العالم") }
-    val tabs = listOf("العالم", "الربط", "الذكريات", "رسائلنا", "لحظاتنا", "الإعدادات")
+    val tabs = listOf("العالم", "الربط", "الذكريات", "رسائلنا", "لحظاتنا", "الأنيميشن", "الإعدادات")
     LaunchedEffect(tab) { if (tab != "الذكريات") mediaPreview = null }
-    val symbols = listOf("✧", "⌁", "♡", "✉", "✦", "⚙")
+    val symbols = listOf("✧", "⌁", "♡", "✉", "✦", "❖", "⚙")
     var worldName by remember { mutableStateOf("عالمنا الخاص") }
     var memoryText by remember { mutableStateOf("") }
     var messageText by remember { mutableStateOf("") }
@@ -953,6 +953,7 @@ fun SoulWorldApp() {
                                 stage = calculateJourneyStage(world?.relationshipStartDate.orEmpty()),
                                 relationshipStartDate = world?.relationshipStartDate.orEmpty()
                             )
+                            "الأنيميشن" -> AnimationGallerySection(),
                             "الإعدادات" -> SettingsSection(
                                 world = world,
                                 onName = { value -> world?.let { persist(it.copy(worldName = value)) } },
