@@ -217,6 +217,11 @@ internal class WorldEventReducer(
                     SyncEventType.DRAWING_UPDATE -> {
                         when (payload.optString("action")) {
                             "clear" -> state.copy(drawings = emptyList())
+                            "remove" -> {
+                                val removedId = payload.optString("id")
+                                if (removedId.length !in 1..64) state
+                                else state.copy(drawings = state.drawings.filterNot { it.id == removedId })
+                            }
                             "add" -> {
                                 val strokeId = payload.optString("id")
                                 val pointsJson = payload.optJSONArray("points") ?: JSONArray()
