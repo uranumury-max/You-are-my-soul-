@@ -656,8 +656,9 @@ fun SoulWorldApp() {
                                                     )
                                                 }
                                                 try {
-                                                    mediaPreview = decodeMediaPreview(bytes)
-                                                    mediaStatus = if (mediaPreview == null) "تعذر عرض الصورة بعد فك تشفيرها." else "عُرضت الصورة بعد التحقق من سلامتها."
+                                                    val decoded = withContext(Dispatchers.IO) { decodeMediaPreview(bytes) }
+                                                    mediaPreview = decoded
+                                                    mediaStatus = if (decoded == null) "تعذر عرض الصورة بعد فك تشفيرها." else "عُرضت الصورة بعد التحقق من سلامتها."
                                                 } finally {
                                                     bytes.fill(0)
                                                 }
