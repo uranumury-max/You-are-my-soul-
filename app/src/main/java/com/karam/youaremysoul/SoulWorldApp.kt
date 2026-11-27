@@ -1454,9 +1454,7 @@ private fun WorldHome(world: WorldSnapshot?, canCreate: Boolean, onCreate: () ->
         Card(colors = CardDefaults.cardColors(containerColor = CardTone), shape = RoundedCornerShape(20.dp)) {
             Column(Modifier.padding(16.dp)) {
                 Text(if (world == null) "بداية عالمكم" else "مركز عالمكم", color = Gold, fontWeight = FontWeight.Bold)
-                Text(if (world == null) "يُحفَظ العالم محلياً بتشفير آمن، وتنتقل التغييرات إلى الأجهزة المعتمدة بعد إعداد الخدمة وتوفر الاتصال." else "رمز المنشئ: ${world.hostCode}
-الذكريات المحفوظة: ${world.memories.size}
-مرحلة الرحلة: ${calculateJourneyStage(world.relationshipStartDate) + 1}",
+                Text(if (world == null) "يُحفَظ العالم محلياً بتشفير آمن، وتنتقل التغييرات إلى الأجهزة المعتمدة بعد إعداد الخدمة وتوفر الاتصال." else "رمز المنشئ: ${world.hostCode}\nالذكريات المحفوظة: ${world.memories.size}\nمرحلة الرحلة: ${calculateJourneyStage(world.relationshipStartDate) + 1}",
                     color = Color.White, modifier = Modifier.padding(top = 6.dp))
                 if (world == null) Button(onClick = onCreate, enabled = canCreate, modifier = Modifier.padding(top = 8.dp)) {
                     Text(if (canCreate) "إنشاء عالمي" else "حُميت البيانات من الاستبدال")
