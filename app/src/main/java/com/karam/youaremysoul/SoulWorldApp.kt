@@ -1792,7 +1792,7 @@ private fun DrawingSection(
             }
         Text("لوحتنا المشتركة", color = Gold, fontSize = 23.sp, fontWeight = FontWeight.Bold)
         Text("ارسموا معاً؛ تُحفَظ الخطوط وتصل إلى الجهاز الآخر مشفّرة.", color = Rose, fontSize = 12.sp)
-        Text("يمكن حفظ 8 نسخ آمنة من الرسم واستعادتها لاحقاً.", color = Color.LightGray, fontSize = 11.sp)
+        Text("يحتفظ العالم بآخر 8 نسخ آمنة من الرسم؛ تُستبدل النسخة الأقدم عند إضافة نسخة جديدة.", color = Color.LightGray, fontSize = 11.sp)
         Row(
             Modifier.fillMaxWidth().horizontalScroll(androidx.compose.foundation.rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(6.dp),
