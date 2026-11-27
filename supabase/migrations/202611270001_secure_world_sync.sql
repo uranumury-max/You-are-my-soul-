@@ -51,7 +51,7 @@ create table if not exists public.world_events (
         event_type in (
             'world_update', 'memory_create', 'memory_delete',
             'message_create', 'garden_update', 'daily_answer',
-            'drawing_update', 'capsule_update', 'media_add', 'settings_update'
+            'drawing_update', 'capsule_update', 'media_add', 'media_delete', 'settings_update'
         )
     ),
     ciphertext text not null check (
