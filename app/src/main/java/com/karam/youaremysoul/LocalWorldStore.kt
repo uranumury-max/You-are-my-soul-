@@ -99,7 +99,7 @@ class LocalWorldStore(context: Context) {
         put("cloudWorldId", world.cloudWorldId)
         put("localIsOwner", world.localIsOwner)
         put("messages", JSONArray().apply {
-            world.messages.forEach { message ->
+            world.messages.takeLast(100).forEach { message ->
                 put(
                     JSONObject()
                         .put("id", message.id)
@@ -110,7 +110,7 @@ class LocalWorldStore(context: Context) {
             }
         })
         put("capsules", JSONArray().apply {
-            world.capsules.forEach { capsule ->
+            world.capsules.takeLast(30).forEach { capsule ->
                 put(
                     JSONObject()
                         .put("id", capsule.id)
@@ -122,21 +122,21 @@ class LocalWorldStore(context: Context) {
             }
         })
         put("drawings", JSONArray().apply {
-            world.drawings.takeLast(100).forEach { stroke ->
+            world.drawings.takeLast(40).forEach { stroke ->
                 put(
                     JSONObject()
                         .put("id", stroke.id)
                         .put("colorArgb", stroke.colorArgb)
                         .put("widthFraction", stroke.widthFraction.toDouble())
                         .put("points", JSONArray().apply {
-                            stroke.points.take(200).forEach { point ->
+                            stroke.points.take(150).forEach { point ->
                                 put(JSONArray().put(point.x.toDouble()).put(point.y.toDouble()))
                             }
                         })
                 )
             }
         })
-        put("memories", JSONArray().apply { world.memories.forEach(::put) })
+        put("memories", JSONArray().apply { world.memories.takeLast(100).forEach(::put) })
         put("members", JSONArray().apply {
             world.members.forEach { member ->
                 put(
@@ -185,7 +185,7 @@ class LocalWorldStore(context: Context) {
                     createdAtEpochMs = message.optLong("createdAtEpochMs")
                 )
             }.filter { it.id.isNotBlank() && it.text.isNotBlank() }
-                .takeLast(200),
+                .takeLast(100),
             capsules = (0 until capsulesJson.length()).map { index ->
                 val capsule = capsulesJson.getJSONObject(index)
                 FutureCapsule(
@@ -199,7 +199,7 @@ class LocalWorldStore(context: Context) {
             }.filter {
                 it.id.isNotBlank() && it.message.isNotBlank() &&
                     it.createdAtEpochMs > 0L && it.unlockAtEpochMs > it.createdAtEpochMs
-            }.takeLast(100),
+            }.takeLast(30),
             drawings = (0 until drawingsJson.length()).mapNotNull { index ->
                 val stroke = drawingsJson.optJSONObject(index) ?: return@mapNotNull null
                 val pointsJson = stroke.optJSONArray("points") ?: JSONArray()
@@ -209,12 +209,12 @@ class LocalWorldStore(context: Context) {
                     val x = pair.optDouble(0, -1.0).toFloat()
                     val y = pair.optDouble(1, -1.0).toFloat()
                     if (x !in 0f..1f || y !in 0f..1f) null else WorldPoint(x, y)
-                }.take(200)
+                }.take(150)
                 val id = stroke.optString("id")
                 val width = stroke.optDouble("widthFraction", 0.006).toFloat()
                 if (id.isBlank() || points.isEmpty() || width !in 0.001f..0.03f) null
                 else DrawingStroke(id, stroke.optLong("colorArgb", -1L), width, points)
-            }.takeLast(50)
+            }.takeLast(40)
         )
     }
 
