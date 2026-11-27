@@ -35,7 +35,7 @@ class WorldMediaImporter(
             ?: "صورة"
 
         val plaintext = resolver.openInputStream(uri)?.use { input ->
-            val output = ByteArrayOutputStream()
+            val output = WipingByteArrayOutputStream()
             val buffer = ByteArray(16 * 1024)
             var total = 0
             try {
@@ -75,5 +75,15 @@ class WorldMediaImporter(
     companion object {
         const val MAX_BYTES = 20 * 1024 * 1024\n        private const val MAX_DIMENSION = 12_000\n        private const val MAX_PIXEL_COUNT = 64_000_000L\n        private const val PREVIEW_DECODE_DIMENSION = 1_600
         val ALLOWED_MIME_TYPES = setOf("image/jpeg", "image/png", "image/webp")
+    }
+}
+
+/** Keeps the temporary stream's internal plaintext buffer from lingering after copy/failure. */
+private class WipingByteArrayOutputStream : ByteArrayOutputStream() {
+    fun copyAndWipe(): ByteArray = toByteArray().also { wipe() }
+
+    fun wipe() {
+        buf.fill(0)
+        reset()
     }
 }
