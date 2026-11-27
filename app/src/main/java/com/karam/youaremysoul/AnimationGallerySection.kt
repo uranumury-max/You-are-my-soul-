@@ -110,7 +110,16 @@ internal fun AnimationGallerySection(
                                     Column(Modifier.padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                                         Text(if (open) scene.symbol else "🔒", fontSize = 30.sp)
                                         Text(scene.title, color = if (open) Color(0xFFFFD68A) else Color.Gray, fontSize = 12.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
-                                        Text(when { ownerMasterUnlocked -> "مفتوح بصلاحية المالك"; (index + 1) in grantedScenes -> "منحكما المالك هذا المشهد"; open -> "المشهد ${index + 1}"; else -> "يفتح في اليوم ${index + 1}" }, color = Color.LightGray, fontSize = 10.sp)
+                                        Text(
+                                            when {
+                                                ownerMasterUnlocked -> "مفتوح بصلاحية المالك"
+                                                (index + 1) in grantedScenes -> "منحكما المالك هذا المشهد"
+                                                open -> "المشهد ${index + 1}"
+                                                else -> "يفتح في اليوم ${index + 1}"
+                                            },
+                                            color = Color.LightGray,
+                                            fontSize = 10.sp
+                                        )
                                     }
                                 }
                             } else Spacer(Modifier.weight(1f))
