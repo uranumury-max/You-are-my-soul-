@@ -74,11 +74,11 @@ internal fun AnimationGallerySection(relationshipStartDate: String = "", names: 
         if (earned > unlocked) { unlocked = earned; prefs.edit().putInt("unlocked_count", unlocked).apply() }
     }
     var selected by remember { mutableIntStateOf(-1) }
-    Column(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFF100B1B), Color(0xFF241235), Color(0xFF100B1B)))).padding(horizontal = 14.dp, vertical = 8.dp)) {
+    Column(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xCC080610), Color(0xAA241235), Color(0xCC100B1B)))).padding(horizontal = 14.dp, vertical = 8.dp)) {
         Text("مجرة الأنيميشن", color = Color(0xFFFF9CCB), fontSize = 23.sp, fontWeight = FontWeight.Bold)
         Text(if (names.isNotEmpty()) "21 مشهداً لـ ${names.take(2).joinToString(" و")}" else "21 مشهداً صغيراً لعالمكما", color = Color(0xFFFFD68A), fontSize = 12.sp)
         Spacer(Modifier.height(8.dp))
-        Surface(color = Color(0xFF30203F), shape = RoundedCornerShape(18.dp)) {
+        Surface(color = Color(0xAA30203F), shape = RoundedCornerShape(18.dp), border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x44FF9CCB)) ) {
             Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text("✦", color = Color(0xFFFFD68A), fontSize = 22.sp)
                 Spacer(Modifier.width(8.dp))
@@ -101,7 +101,7 @@ internal fun AnimationGallerySection(relationshipStartDate: String = "", names: 
                             if (index < soulScenes.size) {
                                 val scene = soulScenes[index]
                                 val open = index < unlocked
-                                Surface(modifier = Modifier.weight(1f).clickable(enabled = open) { selected = index }, color = Color(0xCC28172F), shape = RoundedCornerShape(18.dp), border = androidx.compose.foundation.BorderStroke(1.dp, if (open) Color(0x66FFFFD6) else Color(0x334D4058))) {
+                                Surface(modifier = Modifier.weight(1f).clickable(enabled = open) { selected = index }, color = Color(0xAA28172F), shape = RoundedCornerShape(18.dp), border = androidx.compose.foundation.BorderStroke(1.dp, if (open) Color(0x77FF9CCB) else Color(0x334D4058))) {
                                     Column(Modifier.padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                                         Text(if (open) scene.symbol else "🔒", fontSize = 30.sp)
                                         Text(scene.title, color = if (open) Color(0xFFFFD68A) else Color.Gray, fontSize = 12.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
