@@ -1,12 +1,23 @@
 package com.karam.youaremysoul
 
 import java.time.LocalDate
+import androidx.compose.ui.graphics.Color
 
 /**
  * Bounds and shape checks for decrypted events. Encryption authenticates the sender's
  * world key, but every event is still treated as untrusted input at the reducer boundary.
  */
 internal object WorldEventValidation {
+    private val allowedDrawingColors = setOf(
+        Color(0xFFFF9CCB).value.toLong(),
+        Color(0xFFFFD68A).value.toLong(),
+        Color(0xFF8FE7FF).value.toLong(),
+        Color(0xFFC7A6FF).value.toLong(),
+        Color(0xFFFFFFFF).value.toLong()
+    )
+
+    fun drawingColor(colorArgb: Long): Boolean = colorArgb in allowedDrawingColors
+
     fun memory(value: String): Boolean =
         value.isNotBlank() && value.length <= 400
 
