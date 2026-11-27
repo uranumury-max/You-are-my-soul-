@@ -953,7 +953,7 @@ fun SoulWorldApp() {
                                 stage = calculateJourneyStage(world?.relationshipStartDate.orEmpty()),
                                 relationshipStartDate = world?.relationshipStartDate.orEmpty()
                             ),
-                            "الأنيميشن" -> AnimationGallerySection(relationshipStartDate = world?.relationshipStartDate.orEmpty()),
+                            "الأنيميشن" -> AnimationGallerySection(relationshipStartDate = world?.relationshipStartDate.orEmpty(), names = world?.members?.map { it.displayName }?.filter { it.isNotBlank() } ?: emptyList()),
                             "الإعدادات" -> SettingsSection(
                                 world = world,
                                 onName = { value -> world?.let { persist(it.copy(worldName = value)) } },
