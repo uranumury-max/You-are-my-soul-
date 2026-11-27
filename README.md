@@ -27,6 +27,7 @@ The target design is cloud-first and offline-capable:
 - Authenticated join-request submission, owner inbox, approve/decline actions, and requester status refresh.
 - Authenticated append/fetch transport for versioned AES-GCM event envelopes, a bounded Room outbox/download coordinator, and automatic periodic synchronization with deterministic event replay.
 - UI changes to memories, messages, drawing strokes, future capsules, garden flowers, daily answers, world name, and relationship start date are converted into separate encrypted events; they are no longer uploaded as whole-snapshot replacements.
+- The Moments area includes a shared drawing board, fixed-date future capsules, a daily question, a relationship-day counter, and a guided conversation/reconciliation flow.
 - GitHub Actions workflow runs unit tests before building the debug APK.
 
 ## Not yet complete — do not treat as a working connected app
@@ -37,7 +38,8 @@ The target design is cloud-first and offline-capable:
 - The encrypted event pipeline currently covers memories, messages, drawing strokes, future capsules, garden state, daily answers, and selected settings. Media still needs its own end-to-end feature flow.
 - Device public keys are registered per installation and the owner can distribute per-device encrypted world-key envelopes after approval. Key recovery and rotation remain incomplete.
 - Join-request delivery and owner approval UI are implemented but remain unusable until the backend migrations are deployed and tested. Cross-device synchronization is implemented in source but has not yet been verified against a live Supabase project or two physical devices.
-- No media upload/download, shared album, shared drawing, or capsule synchronization.
+- No media upload/download or shared photo album yet. The drawing board and future-capsule synchronization exist in source, but still need live-backend and two-device validation.
+- The latest confirmed Android CI success is run #275 (including the shared drawing board). Later relationship-counter and conversation-flow commits are awaiting their own CI results.
 - No final physical-device, offline/reconnect, abuse, and authorization test pass.
 
 The nine-digit code is not a password. A device must authenticate, receive a fresh invitation/request, and be approved by the world owner. A visible success state must wait for a real server acknowledgement.
