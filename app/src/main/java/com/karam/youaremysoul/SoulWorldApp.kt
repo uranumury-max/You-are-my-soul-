@@ -1207,7 +1207,7 @@ private fun OwnerMasterDialog(
         title = { Text("صلاحية المالك الخاصة", color = Rose) },
         text = {
             Column(
-                modifier = Modifier.heightIn(max = 520.dp).verticalScroll(rememberScrollState()),
+                modifier = Modifier.heightIn(max = 520.dp).verticalScroll(androidx.compose.foundation.rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(9.dp)
             ) {
                 Text(
