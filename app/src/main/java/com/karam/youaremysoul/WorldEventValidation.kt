@@ -37,6 +37,17 @@ internal object WorldEventValidation {
         answer.length <= 1000 &&
             runCatching { LocalDate.parse(date) }.isSuccess
 
+    fun dailyAnswerEntry(
+        date: String,
+        authorCode: String,
+        answer: String,
+        createdAtEpochMs: Long
+    ): Boolean =
+        dailyAnswer(date, answer) &&
+            authorCode.matches(Regex("^[0-9]{9}$")) &&
+            answer.isNotBlank() &&
+            createdAtEpochMs > 0L
+
     fun settings(worldName: String?, relationshipStartDate: String?): Boolean {
         if (worldName != null && (worldName.isBlank() || worldName.length > 40)) return false
         if (relationshipStartDate != null && relationshipStartDate.isNotBlank()) {
