@@ -14,6 +14,13 @@ data class FutureCapsule(
     val unlockAtEpochMs: Long,
     val openedAtEpochMs: Long? = null
 )
+data class WorldPoint(val x: Float, val y: Float)
+data class DrawingStroke(
+    val id: String,
+    val colorArgb: Long,
+    val widthFraction: Float,
+    val points: List<WorldPoint>
+)
 data class WorldSnapshot(
     val worldName: String = "عالمنا الخاص",
     val hostCode: String = "",
@@ -30,5 +37,6 @@ data class WorldSnapshot(
     /** True only when this installation owns the local world. */
     val localIsOwner: Boolean = true,
     val messages: List<WorldMessage> = emptyList(),
-    val capsules: List<FutureCapsule> = emptyList()
+    val capsules: List<FutureCapsule> = emptyList(),
+    val drawings: List<DrawingStroke> = emptyList()
 )
