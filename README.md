@@ -1,6 +1,6 @@
 # عالمنا الخاص — You Are My Soul
 
-A native Android app built with Kotlin and Jetpack Compose. The product goal is a private, animated shared world for 2–5 participants, with an Arabic RTL interface and a stable nine-digit installation code used only for discovery—not authentication.
+A native Android app built with Kotlin and Jetpack Compose. The product goal is a private, animated shared world for two participants (one owner and one partner), with an Arabic RTL interface and a stable nine-digit installation code used only for discovery—not authentication.
 
 ## Chosen architecture
 
@@ -8,7 +8,7 @@ The target design is cloud-first and offline-capable:
 - A managed Supabase backend coordinates authenticated membership and synchronization.
 - Each Android installation keeps local data so the app remains useful without a connection.
 - A durable Room database contains the encrypted local snapshot, encrypted last-queued sync baseline, sync outbox, downloaded-event cache, and server cursor tables.
-- Eleven checked-in SQL migrations (001–011) define world membership, owner-approved join requests, per-account/per-world rate-limited device-code discovery, append-only events, private media storage, device public-key registration, owner-controlled recipient key envelopes, and restrictive RLS.
+- Twelve checked-in SQL migrations (001–012) define world membership, owner-approved join requests, per-account/per-world rate-limited device-code discovery, append-only events, private media storage, device public-key registration, owner-controlled recipient key envelopes, and restrictive RLS.
 - Local snapshots use AES-256-GCM with Android Keystore protection. World content uses authenticated AES-GCM envelopes; installation-specific RSA-OAEP keys support owner-to-device world-key delivery. An approved member receives an encrypted initial snapshot, and field-level memory, garden, daily-answer, and settings changes are queued, encrypted, uploaded, downloaded, and deterministically replayed from the latest checkpoint in source. Settings events are explicit patches: concurrent edits to separate fields compose, while the same field follows server-sequence replay order (last accepted event wins); unit tests cover both cases.
 
 ## Privacy and release documentation
@@ -29,7 +29,7 @@ An Arabic privacy-policy draft is available at [`docs/PRIVACY_POLICY_DRAFT.md`](
 - Room sync outbox, downloaded-event cache, retry metadata, and monotonic cursor storage.
 - AES-GCM world-content envelope bound to world/event/type/key-version metadata, with tamper and nonce tests.
 - Android Keystore-wrapped per-world key vault; installation-specific RSA-OAEP public keys and owner-controlled encrypted key envelopes support delivery to approved member devices.
-- Supabase SQL migrations 001–011 and backend security/deployment checklist (`docs/SUPABASE_DEPLOYMENT.md`).
+- Supabase SQL migrations 001–012 and backend security/deployment checklist (`docs/SUPABASE_DEPLOYMENT.md`).
 - Android anonymous Supabase Auth session creation/refresh with encrypted Keystore-backed session persistence.
 - Authenticated device registration, idempotent cloud-world provisioning, and local world-name metadata updates.
 - Authenticated join-request submission, owner inbox, approve/decline actions, and requester status refresh.
@@ -45,7 +45,7 @@ An Arabic privacy-policy draft is available at [`docs/PRIVACY_POLICY_DRAFT.md`](
 
 ## Not yet complete — do not treat as a working connected app
 
-- No Supabase project has been provisioned and migrations 001–011 have not been applied to a live/staging backend. Auth, device registration, cloud-world creation, and pairing clients are present in source but have not been verified against a live backend.
+- No Supabase project has been provisioned and migrations 001–012 have not been applied to a live/staging backend. Auth, device registration, cloud-world creation, and pairing clients are present in source but have not been verified against a live backend.
 - Android build configuration now accepts `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` from Gradle properties or environment variables; the GitHub Actions build reads the matching repository secrets. Missing values leave cloud connectivity unconfigured rather than fabricating a successful connection. Secret/service-role keys are rejected by the runtime config validator.
 - The encrypted world snapshot migrates safely from SharedPreferences into Room. An approved joining device receives an encrypted checkpoint, then applies ordered encrypted event updates. Local edits are persisted first and queued as encrypted field-level events; the encrypted snapshot, advanced baseline, and complete bounded outbox batch now commit in one Room transaction when connected; offline edits deliberately retain the previous encrypted baseline for recovery after process death.
 - The encrypted event pipeline covers memories, messages, drawing strokes, future capsules, garden state, independent daily answers for both participants, a UTC-aligned animated daily surprise selected from a 50-activity Arabic deck, a drawing-to-animated-scene view, selected settings, and validated media metadata add/delete events. The shared photo album now has a document picker, bounded image import, client-side encryption before private upload, on-demand decrypted previews, and synchronized deletion of private media objects.
@@ -64,3 +64,6 @@ Open the repository in Android Studio and allow Gradle to sync, or use the GitHu
 
 
 - Server event writes are designed to go through a membership-checked, idempotent, rate-limited Supabase RPC; its SQL migration is not yet deployed.
+
+
+The shared world is strictly a couple space: one owner and one partner, enforced server-side by migration 012. It is not a multi-person group world.
