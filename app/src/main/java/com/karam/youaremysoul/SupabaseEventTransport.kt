@@ -42,7 +42,10 @@ class SupabaseEventTransport {
             session = session,
             body = body
         ).trim().removeSurrounding("\"")
-        response.toLongOrNull()?.takeIf { it > 0L }
+        val sequence = response.toLongOrNull()
+            ?: throw SupabaseAuthException("event_append_invalid_sequence")
+        if (sequence == -429L) throw SupabaseAuthException("event_rate_limited")
+        sequence.takeIf { it > 0L }
             ?: throw SupabaseAuthException("event_append_invalid_sequence")
     }
 
