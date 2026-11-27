@@ -162,7 +162,7 @@ internal class WorldEventReducer(
                 state = when (event.type) {
                     SyncEventType.WORLD_UPDATE -> state
                     SyncEventType.MEMORY_CREATE -> state.copy(
-                        memories = (state.memories + payload.getString("value")).takeLast(50)
+                        memories = (state.memories + payload.getString("value")).takeLast(100)
                     )
                     SyncEventType.MEMORY_DELETE -> {
                         val memories = state.memories.toMutableList()
@@ -182,7 +182,7 @@ internal class WorldEventReducer(
                                     val x = pair.optDouble(0, -1.0).toFloat()
                                     val y = pair.optDouble(1, -1.0).toFloat()
                                     if (x !in 0f..1f || y !in 0f..1f) null else WorldPoint(x, y)
-                                }.take(200)
+                                }.take(150)
                                 val width = payload.optDouble("widthFraction", 0.006).toFloat()
                                 if (strokeId.isBlank() || points.isEmpty() ||
                                     width !in 0.001f..0.03f || state.drawings.any { it.id == strokeId }
@@ -213,7 +213,7 @@ internal class WorldEventReducer(
                                         message = message,
                                         createdAtEpochMs = createdAt,
                                         unlockAtEpochMs = unlockAt
-                                    )).takeLast(100)
+                                    )).takeLast(30)
                                 )
                             }
                             "open" -> {
