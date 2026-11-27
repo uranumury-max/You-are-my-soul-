@@ -75,14 +75,18 @@ class SupabaseWorldMediaStorage {
         val path = objectPath(worldId, mediaId)
         val body = JSONObject().put("prefixes", JSONArray().put(path))
             .toString().toByteArray(Charsets.UTF_8)
-        request(
-            path = "/storage/v1/object/world-media",
-            method = "DELETE",
-            session = session,
-            body = body,
-            maxResponseBytes = 16 * 1024,
-            contentType = "application/json"
-        )
+        try {
+            request(
+                path = "/storage/v1/object/world-media",
+                method = "DELETE",
+                session = session,
+                body = body,
+                maxResponseBytes = 16 * 1024,
+                contentType = "application/json"
+            )
+        } catch (error: SupabaseAuthException) {
+            if (error.safeCode != "media_not_found") throw error
+        }
     }
 
     private fun request(
@@ -104,7 +108,7 @@ class SupabaseWorldMediaStorage {
             setRequestProperty("Accept", "application/json")
             if (body != null) {
                 setRequestProperty("Content-Type", contentType)
-                setRequestProperty("x-upsert", "false")
+                if (method == "POST") setRequestProperty("x-upsert", "false")
             }
         }
         return try {
