@@ -24,6 +24,12 @@ data class WorldJoinRequestStatus(
     val expiresAt: String
 )
 
+data class ActiveWorldMember(
+    val userId: String,
+    val displayName: String,
+    val joinedAt: String
+)
+
 /** Authenticated client for device-code discovery and owner-controlled admission. */
 class SupabasePairingRepository {
     private val config = SupabaseRuntimeConfig.fromBuildConfig()
@@ -108,6 +114,46 @@ class SupabasePairingRepository {
             status = row.getString("status"),
             expiresAt = row.optString("expires_at")
         )
+    }
+
+    suspend fun activeMembers(
+        session: AuthenticatedSupabaseUser,
+        worldId: String
+    ): List<ActiveWorldMember> = withContext(Dispatchers.IO) {
+        val id = UUID.fromString(worldId).toString()
+        val rows = JSONArray(
+            request(
+                path = "/rest/v1/rpc/list_world_active_members",
+                method = "POST",
+                session = session,
+                body = JSONObject().put("p_world_id", id)
+            )
+        )
+        (0 until rows.length()).map { index ->
+            val row = rows.getJSONObject(index)
+            ActiveWorldMember(
+                userId = UUID.fromString(row.getString("member_user_id")).toString(),
+                displayName = row.optString("member_display_name", "مشارك").take(24),
+                joinedAt = row.optString("member_joined_at")
+            )
+        }
+    }
+
+    suspend fun revokeMember(
+        session: AuthenticatedSupabaseUser,
+        worldId: String,
+        memberUserId: String
+    ): Boolean = withContext(Dispatchers.IO) {
+        val world = UUID.fromString(worldId).toString()
+        val member = UUID.fromString(memberUserId).toString()
+        request(
+            path = "/rest/v1/rpc/revoke_world_member",
+            method = "POST",
+            session = session,
+            body = JSONObject()
+                .put("p_world_id", world)
+                .put("p_member_id", member)
+        ).trim().equals("true", ignoreCase = true)
     }
 
     private fun request(
