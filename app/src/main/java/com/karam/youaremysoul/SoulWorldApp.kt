@@ -509,10 +509,13 @@ fun SoulWorldApp() {
                                             try {
                                                 val session = authClient.ensureAuthenticatedSession()
                                                 pendingJoinRequests = pairingRepository.pendingRequests(session, current.cloudWorldId)
+                                                activeWorldMembers = pairingRepository.activeMembers(session, current.cloudWorldId)
                                                 pendingRequestsLoadFailed = false
+                                                activeMembersLoadFailed = false
                                             } catch (_: Exception) {
                                                 pendingRequestsLoadFailed = true
-                                                requestStatus = "تعذر تحديث طلبات الانضمام حالياً."
+                                                activeMembersLoadFailed = true
+                                                requestStatus = "تعذر تحديث قائمة الطلبات والأعضاء حالياً."
                                             }
                                         }
                                     }
