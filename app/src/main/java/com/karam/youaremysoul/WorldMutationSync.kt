@@ -78,6 +78,18 @@ internal class WorldMutationSync(
             }
         }
 
+        val previousMediaIds = previous.media.mapTo(mutableSetOf()) { it.id }
+        next.media.filter { it.id !in previousMediaIds }.forEach { media ->
+            changes += SyncEventType.MEDIA_ADD to JSONObject()
+                .put("id", media.id)
+                .put("displayName", media.displayName)
+                .put("mimeType", media.mimeType)
+                .put("sizeBytes", media.sizeBytes)
+                .put("createdAtEpochMs", media.createdAtEpochMs)
+                .put("objectPath", media.objectPath)
+                .put("keyVersion", media.keyVersion)
+        }
+
         val previousMessageIds = previous.messages.mapTo(mutableSetOf()) { it.id }
         next.messages.filter { it.id !in previousMessageIds }.forEach { message ->
             changes += SyncEventType.MESSAGE_CREATE to JSONObject()
