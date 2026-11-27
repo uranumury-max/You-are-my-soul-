@@ -1,6 +1,12 @@
 package com.karam.youaremysoul
 
 data class WorldMember(val localCode: String, val displayName: String, val isHost: Boolean = false)
+data class WorldMessage(
+    val id: String,
+    val senderName: String,
+    val text: String,
+    val createdAtEpochMs: Long
+)
 data class WorldSnapshot(
     val worldName: String = "عالمنا الخاص",
     val hostCode: String = "",
@@ -15,5 +21,6 @@ data class WorldSnapshot(
     /** Stable cloud world UUID; blank until assigned for legacy local worlds. */
     val cloudWorldId: String = "",
     /** True only when this installation owns the local world. */
-    val localIsOwner: Boolean = true
+    val localIsOwner: Boolean = true,
+    val messages: List<WorldMessage> = emptyList()
 )
