@@ -1185,14 +1185,6 @@ private fun MemoriesSection(
             } else {
                 item { Text("لم تُحفظ ذكريات مكتوبة بعد.", color = Color.LightGray, fontSize = 11.sp) }
             }
-            item {
-                Text(
-                    "برمجة وتطوير: \"كرم أكرم محمد الشيخ\"",
-                    color = Gold.copy(alpha = .65f),
-                    fontSize = 9.sp,
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp)
-                )
-            }
         }
     }
     mediaToDelete?.let { selected ->
