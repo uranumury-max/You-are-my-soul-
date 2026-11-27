@@ -344,6 +344,7 @@ fun SoulWorldApp() {
             try {
                 syncMutex.withLock {
                     val session = authClient.ensureAuthenticatedSession()
+                    worldKeyExchangeRepository.synchronizeOwnActiveKey(session, cloudId, worldKeyVault, deviceKeyVault)
                     val baseline = withContext(Dispatchers.IO) {
                         store.loadSyncBaseline(roomSyncStore)
                     } ?: lastPersistedWorld
@@ -484,7 +485,8 @@ fun SoulWorldApp() {
                                                                     envelope.envelope,
                                                                     deviceKeyVault
                                                                 )
-                                                            }
+                                                                 worldKeyVault.setActiveKeyVersion(cloudId, envelope.keyVersion)
+                                                             }
                                                         }
                                                         val restored = snapshotBootstrapper.restoreMemberSnapshot(
                                                             session = session,
@@ -540,18 +542,19 @@ fun SoulWorldApp() {
                                                     pendingRequestsLoadFailed = false
                                                     activeMembersLoadFailed = false
                                                     if (approve) {
-                                                        check(worldKeyReady && worldKeyVault.hasWorldKey(
-                                                            java.util.UUID.fromString(current.cloudWorldId), 1
-                                                        )) { "World key is not ready for secure member delivery" }
-                                                        snapshotBootstrapper.publishOwnerSnapshot(
-                                                            session = session,
-                                                            world = current,
-                                                            worldKeyVault = worldKeyVault
-                                                        )
-                                                        val deliveredDevices = worldKeyExchangeRepository.distributeOwnerWorldKey(
-                                                            session = session,
-                                                            worldId = current.cloudWorldId,
-                                                            keyVersion = 1,
+                                                         val activeVersion = worldKeyExchangeRepository.currentWorldKeyVersion(session, current.cloudWorldId)
+                                                         val cloudWorldId = java.util.UUID.fromString(current.cloudWorldId)
+                                                         check(worldKeyReady && worldKeyVault.hasWorldKey(cloudWorldId, activeVersion)) { "World key is not ready for secure member delivery" }
+                                                         worldKeyVault.setActiveKeyVersion(cloudWorldId, activeVersion)
+                                                         snapshotBootstrapper.publishOwnerSnapshot(
+                                                             session = session,
+                                                             world = current,
+                                                             worldKeyVault = worldKeyVault
+                                                         )
+                                                         val deliveredDevices = worldKeyExchangeRepository.distributeOwnerWorldKey(
+                                                             session = session,
+                                                             worldId = current.cloudWorldId,
+                                                             keyVersion = activeVersion,
                                                             worldKeyVault = worldKeyVault,
                                                             deviceKeyVault = deviceKeyVault
                                                         )
