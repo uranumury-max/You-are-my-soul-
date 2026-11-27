@@ -184,7 +184,7 @@ class SupabasePairingRepository {
             }
             val status = connection.responseCode
             val stream = if (status in 200..299) connection.inputStream else connection.errorStream
-            val response = stream?.bufferedReader(StandardCharsets.UTF_8)?.use { it.readText() }.orEmpty()
+            val response = stream?.use { readBounded(it, 256 * 1024) }.orEmpty()
             if (status !in 200..299) {
                 throw SupabaseAuthException(
                     when {
@@ -204,4 +204,19 @@ class SupabasePairingRepository {
             connection.disconnect()
         }
     }
+    private fun readBounded(stream: java.io.InputStream, maximumBytes: Int): String {
+        val output = java.io.ByteArrayOutputStream()
+        val buffer = ByteArray(4096)
+        var total = 0
+        while (true) {
+            val count = stream.read(buffer)
+            if (count < 0) break
+            total += count
+            if (total > maximumBytes) throw IOException("Response exceeded safety limit")
+            output.write(buffer, 0, count)
+        }
+        return output.toString(StandardCharsets.UTF_8.name())
+    }
+
+
 }
