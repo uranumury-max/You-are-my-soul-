@@ -17,8 +17,9 @@ import javax.crypto.spec.GCMParameterSpec
  *
  * The world key is wrapped by a non-exportable Android Keystore key before
  * persistence. It is exposed only briefly in memory during encrypt/decrypt.
- * This vault does not yet distribute keys to other members; a separately
- * authenticated public-key envelope exchange is required before sync is enabled.
+ * Cross-device distribution is handled separately by the authenticated
+ * Supabase public-key envelope exchange. This class only protects local key
+ * storage and performs recipient-specific wrapping/import operations.
  */
 class WorldKeyVault(context: Context) {
     private val prefs = context.getSharedPreferences("world_key_vault", Context.MODE_PRIVATE)
