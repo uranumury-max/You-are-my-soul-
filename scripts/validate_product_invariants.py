@@ -15,8 +15,8 @@ def fail(message: str) -> None:
 def main() -> int:
     migrations = sorted((ROOT / "supabase" / "migrations").glob("*.sql"))
     numbers = [int(re.match(r"^\d{8}(\d{4})_", path.name).group(1)) for path in migrations]
-    if numbers != list(range(1, 13)):
-        fail(f"expected ordered migrations 001–012, found {numbers}")
+    if numbers != list(range(1, 14)):
+        fail(f"expected ordered migrations 001–013, found {numbers}")
 
     gallery = (ROOT / "app/src/main/java/com/karam/youaremysoul/AnimationGallerySection.kt").read_text(encoding="utf-8")
     scene_metadata = len(re.findall(r'SoulScene\("', gallery))
@@ -42,7 +42,7 @@ def main() -> int:
         if required not in couple.lower():
             fail(f"couple capacity migration missing invariant: {required}")
 
-    print("OK product invariants: 12 migrations, 21 scene renderers, aligned image MIME, two-member world")
+    print("OK product invariants: 13 migrations, 21 scene renderers, aligned image MIME, two-member world")
     return 0
 
 
