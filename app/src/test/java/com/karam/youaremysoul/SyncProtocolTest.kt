@@ -80,6 +80,21 @@ class SyncProtocolTest {
     }
 
     @Test
+    fun rejectsEmptyPageThatClaimsMore() {
+        val page = SyncPage(emptyList(), SyncCursor(12L), hasMore = true)
+        assertEquals(
+            "empty_page_claims_more",
+            SyncProtocolRules.validatePage(page, SyncCursor(12L))
+        )
+    }
+
+    @Test
+    fun acceptsEmptyTerminalPageWithoutAdvancingCursor() {
+        val page = SyncPage(emptyList(), SyncCursor(12L), hasMore = false)
+        assertNull(SyncProtocolRules.validatePage(page, SyncCursor(12L)))
+    }
+
+    @Test
     fun rejectsPendingEventAfterRetryLimit() {
         val pending = PendingSyncEvent(
             event = event(),
