@@ -141,6 +141,17 @@ class WorldEventValidationTest {
                 worldId, mediaId, "ذكرى.png", "image/png", 21L * 1024L * 1024L, 100L, path, 1
             )
         )
+        // Key rotation is server-authoritative and is not capped at five generations.
+        assertTrue(
+            WorldEventValidation.media(
+                worldId, mediaId, "ذكرى.png", "image/png", 2048L, 100L, path, 6
+            )
+        )
+        assertFalse(
+            WorldEventValidation.media(
+                worldId, mediaId, "ذكرى.png", "image/png", 2048L, 100L, path, 0
+            )
+        )
     }
 
     @Test
