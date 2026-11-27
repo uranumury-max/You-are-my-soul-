@@ -49,6 +49,7 @@ class WorldMediaImporter(
                 output.copyAndWipe()
             } finally {
                 buffer.fill(0)
+                output.wipe()
             }
         } ?: throw IllegalArgumentException("media_unreadable")
 
