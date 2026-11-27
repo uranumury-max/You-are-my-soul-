@@ -45,6 +45,29 @@ internal object WorldEventValidation {
         return true
     }
 
+    fun media(
+        worldId: String,
+        id: String,
+        displayName: String,
+        mimeType: String,
+        sizeBytes: Long,
+        createdAtEpochMs: Long,
+        objectPath: String,
+        keyVersion: Int
+    ): Boolean {
+        val canonicalWorld = runCatching { java.util.UUID.fromString(worldId).toString() }.getOrNull()
+            ?: return false
+        val canonicalMedia = runCatching { java.util.UUID.fromString(id).toString() }.getOrNull()
+            ?: return false
+        val allowedMime = mimeType in setOf("image/jpeg", "image/png", "image/webp", "image/heic")
+        return displayName.isNotBlank() && displayName.length <= 80 &&
+            allowedMime &&
+            sizeBytes in 1L..(20L * 1024L * 1024L) &&
+            createdAtEpochMs > 0L &&
+            objectPath == "$canonicalWorld/$canonicalMedia.wmd" &&
+            keyVersion in 1..5
+    }
+
     fun garden(delta: Int, lastWateredAt: Long): Boolean =
         delta in -10_000..10_000 && lastWateredAt >= 0L
 }
