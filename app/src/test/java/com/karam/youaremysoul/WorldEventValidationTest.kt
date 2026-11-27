@@ -38,6 +38,35 @@ class WorldEventValidationTest {
     }
 
     @Test
+    fun validatesDailyAnswersPerParticipant() {
+        assertTrue(
+            WorldEventValidation.dailyAnswerEntry(
+                "2026-11-27", "123456789", "إجابة مستقلة", 100L
+            )
+        )
+        assertFalse(
+            WorldEventValidation.dailyAnswerEntry(
+                "2026-11-27", "12345", "إجابة", 100L
+            )
+        )
+        assertFalse(
+            WorldEventValidation.dailyAnswerEntry(
+                "2026-11-27", "123456789", "", 100L
+            )
+        )
+        assertFalse(
+            WorldEventValidation.dailyAnswerEntry(
+                "not-a-date", "123456789", "إجابة", 100L
+            )
+        )
+        assertFalse(
+            WorldEventValidation.dailyAnswerEntry(
+                "2026-11-27", "123456789", "إجابة", 0L
+            )
+        )
+    }
+
+    @Test
     fun validatesSharedMediaMetadataAndStoragePath() {
         val worldId = "2b71d49b-bef3-4e8a-9f43-79ad53d3e73d"
         val mediaId = "8cbf47a0-92c2-40ef-9b8a-99ccf9427f5b"
