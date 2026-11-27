@@ -121,6 +121,21 @@ class LocalWorldStore(context: Context) {
                 )
             }
         })
+        put("drawings", JSONArray().apply {
+            world.drawings.takeLast(100).forEach { stroke ->
+                put(
+                    JSONObject()
+                        .put("id", stroke.id)
+                        .put("colorArgb", stroke.colorArgb)
+                        .put("widthFraction", stroke.widthFraction.toDouble())
+                        .put("points", JSONArray().apply {
+                            stroke.points.take(200).forEach { point ->
+                                put(JSONArray().put(point.x.toDouble()).put(point.y.toDouble()))
+                            }
+                        })
+                )
+            }
+        })
         put("memories", JSONArray().apply { world.memories.forEach(::put) })
         put("members", JSONArray().apply {
             world.members.forEach { member ->
@@ -140,6 +155,7 @@ class LocalWorldStore(context: Context) {
         val memoriesJson = json.optJSONArray("memories") ?: JSONArray()
         val messagesJson = json.optJSONArray("messages") ?: JSONArray()
         val capsulesJson = json.optJSONArray("capsules") ?: JSONArray()
+        val drawingsJson = json.optJSONArray("drawings") ?: JSONArray()
         return WorldSnapshot(
             worldName = json.optString("worldName", "عالمنا الخاص"),
             hostCode = json.optString("hostCode"),
@@ -183,6 +199,21 @@ class LocalWorldStore(context: Context) {
             }.filter {
                 it.id.isNotBlank() && it.message.isNotBlank() &&
                     it.createdAtEpochMs > 0L && it.unlockAtEpochMs > it.createdAtEpochMs
+            }.takeLast(100),
+            drawings = (0 until drawingsJson.length()).mapNotNull { index ->
+                val stroke = drawingsJson.optJSONObject(index) ?: return@mapNotNull null
+                val pointsJson = stroke.optJSONArray("points") ?: JSONArray()
+                val points = (0 until pointsJson.length()).mapNotNull { pointIndex ->
+                    val pair = pointsJson.optJSONArray(pointIndex) ?: return@mapNotNull null
+                    if (pair.length() != 2) return@mapNotNull null
+                    val x = pair.optDouble(0, -1.0).toFloat()
+                    val y = pair.optDouble(1, -1.0).toFloat()
+                    if (x !in 0f..1f || y !in 0f..1f) null else WorldPoint(x, y)
+                }.take(200)
+                val id = stroke.optString("id")
+                val width = stroke.optDouble("widthFraction", 0.006).toFloat()
+                if (id.isBlank() || points.isEmpty() || width !in 0.001f..0.03f) null
+                else DrawingStroke(id, stroke.optLong("colorArgb", -1L), width, points)
             }.takeLast(100)
         )
     }
