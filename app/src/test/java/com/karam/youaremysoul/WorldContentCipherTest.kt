@@ -69,6 +69,18 @@ class WorldContentCipherTest {
     }
 
     @Test
+    fun rejectsPaddedAlternativeEncoding() {
+        val envelope = WorldContentCipher.encrypt(
+            worldId, eventId, SyncEventType.MEMORY_CREATE, 1, key, byteArrayOf(1, 2, 3)
+        )
+        assertTrue(runCatching {
+            WorldContentCipher.decrypt(
+                worldId, eventId, SyncEventType.MEMORY_CREATE, 1, key, "$envelope="
+            )
+        }.isFailure)
+    }
+
+    @Test
     fun rejectsTamperedCiphertextAndInvalidKeyLength() {
         val envelope = WorldContentCipher.encrypt(
             worldId, eventId, SyncEventType.MEMORY_CREATE, 1, key, byteArrayOf(9, 8, 7)
