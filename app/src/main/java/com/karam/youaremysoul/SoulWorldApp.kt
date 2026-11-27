@@ -602,6 +602,18 @@ fun SoulWorldApp() {
                                     )
                                     persist(current.copy(dailyAnswerDate = java.time.LocalDate.now().toString(), dailyAnswer = value))
                                 },
+                                drawings = world?.drawings.orEmpty(),
+                                onAddStroke = { stroke ->
+                                    val current = world ?: WorldSnapshot(
+                                        "عالمنا الخاص", DeviceIdentity(context).code,
+                                        listOf(WorldMember(DeviceIdentity(context).code, "صاحب العالم", true)),
+                                        cloudWorldId = java.util.UUID.randomUUID().toString()
+                                    )
+                                    persist(current.copy(drawings = (current.drawings + stroke).takeLast(100)))
+                                },
+                                onClearDrawing = {
+                                    world?.let { current -> persist(current.copy(drawings = emptyList())) }
+                                },
                                 capsules = world?.capsules.orEmpty(),
                                 onCreateCapsule = { message, unlockAt ->
                                     val current = world ?: WorldSnapshot(
@@ -983,6 +995,9 @@ private fun MomentsHub(
     capsules: List<FutureCapsule>,
     onCreateCapsule: (String, Long) -> Unit,
     onOpenCapsule: (String) -> Unit,
+    drawings: List<DrawingStroke>,
+    onAddStroke: (DrawingStroke) -> Unit,
+    onClearDrawing: () -> Unit,
     stage: Int
 ) {
     var selected by remember { mutableStateOf("الحديقة") }
@@ -991,7 +1006,7 @@ private fun MomentsHub(
             Modifier.fillMaxWidth().horizontalScroll(androidx.compose.foundation.rememberScrollState()).padding(bottom = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            listOf("الحديقة", "سؤال اليوم", "الرحلة", "كبسولة المستقبل").forEach { item ->
+            listOf("الحديقة", "سؤال اليوم", "الرحلة", "كبسولة المستقبل", "لوحتنا").forEach { item ->
                 FilterChip(
                     selected = selected == item,
                     onClick = { selected = item },
@@ -1004,6 +1019,7 @@ private fun MomentsHub(
                 "الحديقة" -> GardenSection(flowers, onPlant)
                 "سؤال اليوم" -> DailyQuestionSection(answer, onAnswer)
                 "كبسولة المستقبل" -> CapsuleSection(capsules, onCreateCapsule, onOpenCapsule)
+                "لوحتنا" -> DrawingSection(drawings, onAddStroke, onClearDrawing)
                 else -> JourneySection(stage)
             }
         }
@@ -1122,6 +1138,82 @@ private fun DailyQuestionSection(answer: String, onAnswer: (String) -> Unit) {
             "يتغير السؤال بحسب اليوم، وتُزامَن الإجابة المشفّرة مع بقية أجهزة العالم عند توفر الاتصال.",
             color = Color.LightGray, fontSize = 11.sp
         )
+    }
+}
+
+@Composable
+private fun DrawingSection(
+    strokes: List<DrawingStroke>,
+    onAddStroke: (DrawingStroke) -> Unit,
+    onClear: () -> Unit
+) {
+    var activeStroke by remember { mutableStateOf<DrawingStroke?>(null) }
+    val canvasModifier = Modifier
+        .fillMaxWidth()
+        .weight(1f)
+        .background(Color(0xFF170F23), RoundedCornerShape(20.dp))
+        .pointerInput(strokes, onAddStroke) {
+            fun normalizedPoint(position: Offset) = WorldPoint(
+                x = (position.x / size.width).coerceIn(0f, 1f),
+                y = (position.y / size.height).coerceIn(0f, 1f)
+            )
+            androidx.compose.foundation.gestures.detectDragGestures(
+                onDragStart = { position ->
+                    activeStroke = DrawingStroke(
+                        id = java.util.UUID.randomUUID().toString(),
+                        colorArgb = Color(0xFFFF9CCB).value.toLong(),
+                        widthFraction = 0.006f,
+                        points = listOf(normalizedPoint(position))
+                    )
+                },
+                onDrag = { change, _ ->
+                    change.consume()
+                    activeStroke?.let { stroke ->
+                        if (stroke.points.size < 200) {
+                            activeStroke = stroke.copy(points = stroke.points + normalizedPoint(change.position))
+                        }
+                    }
+                },
+                onDragEnd = {
+                    activeStroke?.let(onAddStroke)
+                    activeStroke = null
+                },
+                onDragCancel = { activeStroke = null }
+            )
+        }
+
+    Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text("لوحتنا المشتركة", color = Gold, fontSize = 23.sp, fontWeight = FontWeight.Bold)
+        Text("ارسموا معاً؛ تُحفَظ الخطوط وتصل إلى الجهاز الآخر مشفّرة.", color = Rose, fontSize = 12.sp)
+        Canvas(canvasModifier) {
+            (strokes + listOfNotNull(activeStroke)).forEach { stroke ->
+                val color = Color(stroke.colorArgb.toULong())
+                val points = stroke.points
+                if (points.size == 1) {
+                    drawCircle(
+                        color = color,
+                        radius = stroke.widthFraction * size.width / 2f,
+                        center = Offset(points[0].x * size.width, points[0].y * size.height)
+                    )
+                } else {
+                    points.zipWithNext().forEach { (from, to) ->
+                        drawLine(
+                            color = color,
+                            start = Offset(from.x * size.width, from.y * size.height),
+                            end = Offset(to.x * size.width, to.y * size.height),
+                            strokeWidth = stroke.widthFraction * size.width,
+                            cap = androidx.compose.ui.graphics.StrokeCap.Round
+                        )
+                    }
+                }
+            }
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Text("${strokes.size} خطاً محفوظاً", color = Color.LightGray, fontSize = 11.sp)
+            OutlinedButton(onClick = onClear, enabled = strokes.isNotEmpty()) {
+                Text("مسح اللوحة")
+            }
+        }
     }
 }
 
