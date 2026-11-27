@@ -1137,7 +1137,7 @@ private fun CapsuleSection(
     val parsedDate = remember(unlockDateText) {
         runCatching { java.time.LocalDate.parse(unlockDateText) }.getOrNull()
     }
-    val unlockAt = parsedDate?.atStartOfDay(java.time.ZoneId.systemDefault())
+    val unlockAt = parsedDate?.atStartOfDay(java.time.ZoneOffset.UTC)
         ?.toInstant()?.toEpochMilli()
     val canCreate = draft.isNotBlank() && unlockAt != null &&
         unlockAt > System.currentTimeMillis()
@@ -1161,7 +1161,7 @@ private fun CapsuleSection(
             onValueChange = { unlockDateText = it.take(10); feedback = "" },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
-            label = { Text("موعد الفتح YYYY-MM-DD") }
+            label = { Text("موعد الفتح YYYY-MM-DD بتوقيت UTC") }
         )
         Button(
             onClick = {
@@ -1197,8 +1197,8 @@ private fun CapsuleSection(
                             fontWeight = FontWeight.Bold
                         )
                         Text(
-                            java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.ROOT)
-                                .format(java.util.Date(capsule.unlockAtEpochMs)),
+                            java.time.Instant.ofEpochMilli(capsule.unlockAtEpochMs)
+                                .atZone(java.time.ZoneOffset.UTC).toLocalDate().toString(),
                             color = Rose,
                             fontSize = 11.sp
                         )
