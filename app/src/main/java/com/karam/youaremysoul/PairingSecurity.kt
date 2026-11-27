@@ -111,8 +111,14 @@ object PairingSecurity {
             .toByteArray(Charsets.UTF_8)
 
     private fun decodeSecret(secret: String): ByteArray {
+        // Secrets are emitted as canonical, unpadded URL-safe Base64.
+        // Reject alternate encodings so a secret has exactly one wire representation.
+        require(secret.length == 43 && secret.all {
+            it in 'A'..'Z' || it in 'a'..'z' || it in '0'..'9' || it == '-' || it == '_'
+        }) { "Invalid pairing secret encoding" }
         val decoded = Base64.getUrlDecoder().decode(secret)
         require(decoded.size == SECRET_BYTES) { "Invalid pairing secret" }
+        require(decoded.toUrlSafeBase64() == secret) { "Non-canonical pairing secret" }
         return decoded
     }
 
