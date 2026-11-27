@@ -790,6 +790,13 @@ fun SoulWorldApp() {
                                 onClearDrawing = {
                                     world?.let { current -> persist(current.copy(drawings = emptyList())) }
                                 },
+                                onUndoDrawing = {
+                                    world?.let { current ->
+                                        if (current.drawings.isNotEmpty()) {
+                                            persist(current.copy(drawings = current.drawings.dropLast(1)))
+                                        }
+                                    }
+                                },
                                 capsules = world?.capsules.orEmpty(),
                                 onCreateCapsule = { message, unlockAt ->
                                     val current = world ?: WorldSnapshot(
@@ -1299,6 +1306,7 @@ private fun MomentsHub(
     drawings: List<DrawingStroke>,
     onAddStroke: (DrawingStroke) -> Unit,
     onClearDrawing: () -> Unit,
+    onUndoDrawing: () -> Unit,
     stage: Int,
     relationshipStartDate: String
 ) {
@@ -1324,16 +1332,7 @@ private fun MomentsHub(
                 )
                 "مفاجأة اليوم" -> DailySurpriseSection()
                 "كبسولة المستقبل" -> CapsuleSection(capsules, onCreateCapsule, onOpenCapsule)
-                "لوحتنا" -> DrawingSection(
-                                drawings, onAddStroke, onClearDrawing,
-                                onUndo = {
-                                    world?.let { current ->
-                                        if (current.drawings.isNotEmpty()) {
-                                            persist(current.copy(drawings = current.drawings.dropLast(1)))
-                                        }
-                                    }
-                                }
-                            )
+                "لوحتنا" -> DrawingSection(drawings, onAddStroke, onClearDrawing, onUndoDrawing)
                 "مساحة التفاهم" -> ReconciliationSection()
                 else -> JourneySection(stage, relationshipStartDate)
             }
