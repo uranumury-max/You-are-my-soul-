@@ -7,6 +7,13 @@ data class WorldMessage(
     val text: String,
     val createdAtEpochMs: Long
 )
+data class FutureCapsule(
+    val id: String,
+    val message: String,
+    val createdAtEpochMs: Long,
+    val unlockAtEpochMs: Long,
+    val openedAtEpochMs: Long? = null
+)
 data class WorldSnapshot(
     val worldName: String = "عالمنا الخاص",
     val hostCode: String = "",
@@ -22,5 +29,6 @@ data class WorldSnapshot(
     val cloudWorldId: String = "",
     /** True only when this installation owns the local world. */
     val localIsOwner: Boolean = true,
-    val messages: List<WorldMessage> = emptyList()
+    val messages: List<WorldMessage> = emptyList(),
+    val capsules: List<FutureCapsule> = emptyList()
 )
