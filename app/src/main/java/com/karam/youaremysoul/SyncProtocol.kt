@@ -96,7 +96,13 @@ object SyncProtocolRules {
             }
         ) return "invalid_ciphertext_encoding"
         val decoded = try {
-            Base64.getDecoder().decode(encodedPayload)
+            Base64.getDecoder().decode(encodedPayload).also { bytes ->
+                // Require the exact unpadded Base64 form emitted by WorldContentCipher.
+                // This rejects alternate encodings of the same bytes at the protocol boundary.
+                if (Base64.getEncoder().withoutPadding().encodeToString(bytes) != encodedPayload) {
+                    return "invalid_ciphertext_encoding"
+                }
+            }
         } catch (_: IllegalArgumentException) {
             return "invalid_ciphertext_encoding"
         }
