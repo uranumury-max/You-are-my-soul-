@@ -1590,9 +1590,12 @@ private fun DrawingSection(
     strokes: List<DrawingStroke>,
     onAddStroke: (DrawingStroke) -> Unit,
     onClear: () -> Unit
-) {
+ ) {
     var activeStroke by remember { mutableStateOf<DrawingStroke?>(null) }
-    Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    var showScene by remember { mutableStateOf(false) }
+    if (showScene) {
+        DrawingSceneSection(strokes, onBack = { showScene = false })
+    } else Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         val canvasModifier = Modifier
             .fillMaxWidth()
             .weight(1f)
@@ -1656,6 +1659,84 @@ private fun DrawingSection(
                 Text("مسح اللوحة")
             }
         }
+        Button(
+            onClick = { showScene = true },
+            enabled = strokes.isNotEmpty(),
+            modifier = Modifier.fillMaxWidth()
+        ) { Text("تحويل اللوحة إلى مشهد متحرك") }
+    }
+}
+
+@Composable
+private fun DrawingSceneSection(strokes: List<DrawingStroke>, onBack: () -> Unit) {
+    val transition = rememberInfiniteTransition(label = "drawing_scene_motion")
+    val phase by transition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(5200), repeatMode = RepeatMode.Reverse),
+        label = "drawing_scene_phase"
+    )
+    val glow by transition.animateFloat(
+        initialValue = 0.72f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(1700), repeatMode = RepeatMode.Reverse),
+        label = "drawing_scene_glow"
+    )
+    Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Text("مشهد من رسمكما", color = Gold, fontSize = 23.sp, fontWeight = FontWeight.Bold)
+        Text("تتحرك الخطوط والنجوم معاً لتمنح رسمكما حياة جديدة.", color = Rose, fontSize = 12.sp)
+        Box(
+            Modifier.weight(1f).fillMaxWidth()
+                .background(
+                    Brush.verticalGradient(listOf(Color(0xFF211431), Color(0xFF100B1B), Color(0xFF25152E))),
+                    RoundedCornerShape(22.dp)
+                )
+        ) {
+            Canvas(Modifier.fillMaxSize()) {
+                for (index in 0 until 28) {
+                    val x = ((index * 37) % 100) / 100f * size.width
+                    val y = (((index * 61f) + phase * 24f) % 100f) / 100f * size.height
+                    val radius = 1.2f + (index % 4) * 0.7f
+                    drawCircle(
+                        color = Gold.copy(alpha = (0.25f + glow * 0.35f).coerceIn(0f, 0.8f)),
+                        radius = radius,
+                        center = Offset(x, y)
+                    )
+                }
+                strokes.forEach { stroke ->
+                    val points = stroke.points
+                    val color = Color(stroke.colorArgb.toULong())
+                    if (points.size == 1) {
+                        drawCircle(
+                            color = color.copy(alpha = glow),
+                            radius = stroke.widthFraction * size.width * 1.8f,
+                            center = Offset(points[0].x * size.width, points[0].y * size.height)
+                        )
+                    } else {
+                        points.zipWithNext().forEach { (from, to) ->
+                            val start = Offset(from.x * size.width, from.y * size.height)
+                            val end = Offset(to.x * size.width, to.y * size.height)
+                            val width = stroke.widthFraction * size.width
+                            drawLine(
+                                color = color.copy(alpha = 0.16f * glow),
+                                start = start,
+                                end = end,
+                                strokeWidth = width * 3.2f,
+                                cap = androidx.compose.ui.graphics.StrokeCap.Round
+                            )
+                            drawLine(
+                                color = color.copy(alpha = 0.88f),
+                                start = start,
+                                end = end,
+                                strokeWidth = width * (0.94f + phase * 0.08f),
+                                cap = androidx.compose.ui.graphics.StrokeCap.Round
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        Button(onClick = onBack, modifier = Modifier.fillMaxWidth()) { Text("العودة إلى اللوحة") }
     }
 }
 
