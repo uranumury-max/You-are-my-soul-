@@ -156,7 +156,7 @@ class LocalWorldStore(context: Context) {
                     createdAtEpochMs = message.optLong("createdAtEpochMs")
                 )
             }.filter { it.id.isNotBlank() && it.text.isNotBlank() }
-                .takeLast(500)
+                .takeLast(200)
         )
     }
 
