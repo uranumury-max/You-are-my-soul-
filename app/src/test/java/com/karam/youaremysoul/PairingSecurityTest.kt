@@ -72,6 +72,22 @@ class PairingSecurityTest {
     }
 
     @Test
+    fun alteredChallengeAndTamperedProofAreRejected() {
+        val verifier = PairingChallengeVerifier { 80_000L }
+        val secret = PairingSecurity.newPairingSecret()
+        val challenge = verifier.issue("request-id-tamper-check", "123456789", "987654321")
+        val validProof = PairingSecurity.createProof(challenge, secret)
+
+        val altered = challenge.copy(hostDeviceCode = "111111111")
+        assertFalse(verifier.verify(altered, validProof, secret))
+
+        val verifier2 = PairingChallengeVerifier { 80_000L }
+        val challenge2 = verifier2.issue("request-id-proof-tamper", "123456789", "987654321")
+        val proof2 = PairingSecurity.createProof(challenge2, secret).copy(signature = "AAAA")
+        assertFalse(verifier2.verify(challenge2, proof2, secret))
+    }
+
+    @Test
     fun wrongSecretIsRejectedAndChallengeConsumed() {
         val verifier = PairingChallengeVerifier { 50_000L }
         val challenge = verifier.issue("request-id-wrong-secret", "123456789", "987654321")
