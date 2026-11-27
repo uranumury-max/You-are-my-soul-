@@ -279,8 +279,7 @@ internal class WorldEventReducer(
                                         !WorldEventValidation.drawingVersion(version) ||
                                         state.drawingVersions.any { it.id == versionId }
                                     ) state else state.copy(
-                                        drawingVersions = (state.drawingVersions + version)
-                                            .takeLast(WorldLimits.MAX_DRAWING_VERSIONS)
+                                        drawingVersions = DrawingVersionHistory.append(state.drawingVersions, version)
                                     )
                                 }
                             }
