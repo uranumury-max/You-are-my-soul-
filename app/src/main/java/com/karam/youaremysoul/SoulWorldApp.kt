@@ -1049,17 +1049,21 @@ private fun ConnectionSection(
     canCreate: Boolean,
     pendingRequests: List<PendingWorldJoinRequest>,
     requestsLoadFailed: Boolean,
+    activeMembers: List<ActiveWorldMember>,
+    membersLoadFailed: Boolean,
     hasOwnRequest: Boolean,
     onRefreshOwnRequest: () -> Unit,
     isOwner: Boolean,
     canManageRequests: Boolean,
     onRefreshRequests: () -> Unit,
     onDecideRequest: (String, Boolean) -> Unit,
+    onRevokeMember: (String) -> Unit,
     onRequest: () -> Unit,
     onCreate: () -> Unit
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val code = DeviceIdentity(context).code
+    var memberToRevoke by remember { mutableStateOf<ActiveWorldMember?>(null) }
     Column(Modifier.fillMaxWidth().verticalScroll(androidx.compose.foundation.rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text("هوية هذا الجهاز", color = Gold, fontSize = 20.sp, fontWeight = FontWeight.Bold)
         Card(colors = CardDefaults.cardColors(containerColor = CardTone)) {
