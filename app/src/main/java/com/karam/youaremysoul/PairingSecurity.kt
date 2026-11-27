@@ -75,10 +75,11 @@ object PairingSecurity {
         nowEpochMs: Long,
         lifetimeMs: Long = 120_000L
     ): PairingChallenge {
-        require(requestId.length in 16..80)
+        require(requestId.length in 16..80 && requestId.all { it.isLetterOrDigit() || it in "-_" })
         require(isValidDeviceCode(fromDeviceCode) && isValidDeviceCode(hostDeviceCode))
         require(fromDeviceCode != hostDeviceCode)
         require(lifetimeMs in 10_000L..300_000L)
+        require(nowEpochMs >= 0L && nowEpochMs <= Long.MAX_VALUE - lifetimeMs)
         return PairingChallenge(
             requestId = requestId,
             fromDeviceCode = fromDeviceCode,
@@ -144,14 +145,14 @@ class PairingChallengeVerifier(private val clock: () -> Long = System::currentTi
 
     fun verify(challenge: PairingChallenge, proof: PairingProof, pairingSecret: String): Boolean {
         val stored = pending.remove(challenge.requestId) ?: return false
-        if (stored != challenge || clock() > stored.expiresAtEpochMs) return false
+        if (stored != challenge || clock() >= stored.expiresAtEpochMs) return false
         return runCatching { PairingSecurity.proofMatches(stored, proof, pairingSecret) }.getOrDefault(false)
     }
 
     @Synchronized
     fun purgeExpired() {
         val now = clock()
-        pending.entries.removeIf { now > it.value.expiresAtEpochMs }
+        pending.entries.removeIf { now >= it.value.expiresAtEpochMs }
     }
 
     private companion object {
