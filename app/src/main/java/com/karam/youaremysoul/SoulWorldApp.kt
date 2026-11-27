@@ -67,7 +67,8 @@ fun SoulWorldApp() {
     val deviceRegistrar = remember { SupabaseDeviceRegistrar(context) }
     val worldRepository = remember { SupabaseWorldRepository() }
     val mediaStorage = remember { SupabaseWorldMediaStorage() }
-    val pairingRepository = remember { SupabasePairingRepository() }\n    val ownerMasterRepository = remember { OwnerMasterAccessRepository() }
+    val pairingRepository = remember { SupabasePairingRepository() }
+    val ownerMasterRepository = remember { OwnerMasterAccessRepository() }
     val worldKeyExchangeRepository = remember { SupabaseWorldKeyExchangeRepository(context) }
     val snapshotBootstrapper = remember { WorldSnapshotBootstrapper(context) }
     val deviceKeyVault = remember { DeviceKeyVault() }
@@ -83,7 +84,15 @@ fun SoulWorldApp() {
     var pendingJoinRequests by remember { mutableStateOf(emptyList<PendingWorldJoinRequest>()) }
     var pendingRequestsLoadFailed by remember { mutableStateOf(false) }
     var activeWorldMembers by remember { mutableStateOf(emptyList<ActiveWorldMember>()) }
-    var activeMembersLoadFailed by remember { mutableStateOf(false) }\n    var ownerMasterDialogVisible by remember { mutableStateOf(false) }\n    var ownerMasterCodeInput by remember { mutableStateOf(\"\") }\n    var ownerMasterStatus by remember { mutableStateOf(\"\") }\n    var ownerMasterBusy by remember { mutableStateOf(false) }\n    var ownerMasterState by remember { mutableStateOf(OwnerMasterState()) }\n    var sceneGrantNumberText by remember { mutableStateOf(\"1\") }\n    var sceneGrantTargetId by remember { mutableStateOf(\"\") }\n    var sceneGrantMenuExpanded by remember { mutableStateOf(false) }
+    var activeMembersLoadFailed by remember { mutableStateOf(false) }
+    var ownerMasterDialogVisible by remember { mutableStateOf(false) }
+    var ownerMasterCodeInput by remember { mutableStateOf(\"\") }
+    var ownerMasterStatus by remember { mutableStateOf(\"\") }
+    var ownerMasterBusy by remember { mutableStateOf(false) }
+    var ownerMasterState by remember { mutableStateOf(OwnerMasterState()) }
+    var sceneGrantNumberText by remember { mutableStateOf(\"1\") }
+    var sceneGrantTargetId by remember { mutableStateOf(\"\") }
+    var sceneGrantMenuExpanded by remember { mutableStateOf(false) }
     var keyRotationBusy by remember { mutableStateOf(false) }
     var keyRotationStatus by remember { mutableStateOf("") }
     var cloudStatus by remember { mutableStateOf("") }
@@ -969,7 +978,25 @@ fun SoulWorldApp() {
                         }
                         }
                     }
-                    DeveloperCredit(onSecretTap = {\n                        ownerMasterDialogVisible = true\n                        ownerMasterCodeInput = \"\"\n                        ownerMasterStatus = \"\"\n                        val current = world\n                        if (current != null && cloudAuthenticated && current.cloudWorldId.isNotBlank()) {\n                            scope.launch {\n                                try {\n                                    val session = authClient.ensureAuthenticatedSession()\n                                    if (current.localIsOwner) activeWorldMembers = pairingRepository.activeMembers(session, current.cloudWorldId)\n                                    ownerMasterState = ownerMasterRepository.loadState(session, java.util.UUID.fromString(current.cloudWorldId))\n                                } catch (_: Exception) {\n                                    ownerMasterStatus = \"تعذر تحميل صلاحية المالك؛ تحقق من إعداد الخدمة والاقتران.\"\n                                }\n                            }\n                        } else {\n                            ownerMasterStatus = \"تحتاج هذه الميزة إلى عالم مقترن واتصال سحابي مُعد.\"\n                        }\n                    })
+                    DeveloperCredit(onSecretTap = {
+                        ownerMasterDialogVisible = true
+                        ownerMasterCodeInput = \"\"
+                        ownerMasterStatus = \"\"
+                        val current = world
+                        if (current != null && cloudAuthenticated && current.cloudWorldId.isNotBlank()) {
+                            scope.launch {
+                                try {
+                                    val session = authClient.ensureAuthenticatedSession()
+                                    if (current.localIsOwner) activeWorldMembers = pairingRepository.activeMembers(session, current.cloudWorldId)
+                                    ownerMasterState = ownerMasterRepository.loadState(session, java.util.UUID.fromString(current.cloudWorldId))
+                                } catch (_: Exception) {
+                                    ownerMasterStatus = \"تعذر تحميل صلاحية المالك؛ تحقق من إعداد الخدمة والاقتران.\"
+                                }
+                            }
+                        } else {
+                            ownerMasterStatus = \"تحتاج هذه الميزة إلى عالم مقترن واتصال سحابي مُعد.\"
+                        }
+                    })
                     Spacer(Modifier.height(5.dp))
                 }
             }
@@ -1159,7 +1186,9 @@ private fun WorldHome(world: WorldSnapshot?, canCreate: Boolean, onCreate: () ->
         Card(colors = CardDefaults.cardColors(containerColor = CardTone), shape = RoundedCornerShape(20.dp)) {
             Column(Modifier.padding(16.dp)) {
                 Text(if (world == null) "بداية عالمكم" else "مركز عالمكم", color = Gold, fontWeight = FontWeight.Bold)
-                Text(if (world == null) "يُحفَظ العالم محلياً بتشفير آمن، وتنتقل التغييرات إلى الأجهزة المعتمدة بعد إعداد الخدمة وتوفر الاتصال." else "رمز المنشئ: ${world.hostCode}\nالذكريات المحفوظة: ${world.memories.size}\nمرحلة الرحلة: ${calculateJourneyStage(world.relationshipStartDate) + 1}",
+                Text(if (world == null) "يُحفَظ العالم محلياً بتشفير آمن، وتنتقل التغييرات إلى الأجهزة المعتمدة بعد إعداد الخدمة وتوفر الاتصال." else "رمز المنشئ: ${world.hostCode}
+الذكريات المحفوظة: ${world.memories.size}
+مرحلة الرحلة: ${calculateJourneyStage(world.relationshipStartDate) + 1}",
                     color = Color.White, modifier = Modifier.padding(top = 6.dp))
                 if (world == null) Button(onClick = onCreate, enabled = canCreate, modifier = Modifier.padding(top = 8.dp)) {
                     Text(if (canCreate) "إنشاء عالمي" else "حُميت البيانات من الاستبدال")
