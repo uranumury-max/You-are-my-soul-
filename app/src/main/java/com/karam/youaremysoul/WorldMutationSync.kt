@@ -89,6 +89,10 @@ internal class WorldMutationSync(
                 .put("objectPath", media.objectPath)
                 .put("keyVersion", media.keyVersion)
         }
+        val nextMediaIds = next.media.mapTo(mutableSetOf()) { it.id }
+        previous.media.filter { it.id !in nextMediaIds }.forEach { media ->
+            changes += SyncEventType.MEDIA_DELETE to JSONObject().put("id", media.id)
+        }
 
         val previousMessageIds = previous.messages.mapTo(mutableSetOf()) { it.id }
         next.messages.filter { it.id !in previousMessageIds }.forEach { message ->
@@ -289,6 +293,12 @@ internal class WorldEventReducer(
                                 media.sizeBytes, media.createdAtEpochMs, media.objectPath, media.keyVersion
                             ) || state.media.any { it.id == media.id }
                         ) state else state.copy(media = (state.media + media).takeLast(100))
+                    }
+                    SyncEventType.MEDIA_DELETE -> {
+                        val mediaId = payload.optString("id")
+                        if (runCatching { java.util.UUID.fromString(mediaId) }.isFailure ||
+                            state.media.none { it.id == mediaId }
+                        ) state else state.copy(media = state.media.filterNot { it.id == mediaId })
                     }
                     SyncEventType.GARDEN_UPDATE -> {
                         val delta = payload.optInt("delta")
