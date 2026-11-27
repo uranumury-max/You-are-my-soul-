@@ -173,7 +173,7 @@ internal class WorldMutationSync(
             val eventId = UUID.randomUUID()
             val plaintext = payload.toString().toByteArray(Charsets.UTF_8)
             val encrypted = try {
-                keyVault.encrypt(worldId, eventId, type, plaintext, keyVersion = 1)
+                keyVault.encrypt(worldId, eventId, type, plaintext, keyVersion = keyVault.activeKeyVersion(worldId))
             } finally {
                 plaintext.fill(0)
             }
