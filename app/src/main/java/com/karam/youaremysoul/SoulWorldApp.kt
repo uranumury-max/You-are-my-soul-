@@ -194,14 +194,20 @@ fun SoulWorldApp() {
             try {
                 val session = authClient.ensureAuthenticatedSession()
                 pendingJoinRequests = pairingRepository.pendingRequests(session, current.cloudWorldId)
+                activeWorldMembers = pairingRepository.activeMembers(session, current.cloudWorldId)
                 pendingRequestsLoadFailed = false
+                activeMembersLoadFailed = false
             } catch (_: Exception) {
                 pendingJoinRequests = emptyList()
+                activeWorldMembers = emptyList()
                 pendingRequestsLoadFailed = true
+                activeMembersLoadFailed = true
             }
         } else {
             pendingJoinRequests = emptyList()
+            activeWorldMembers = emptyList()
             pendingRequestsLoadFailed = false
+            activeMembersLoadFailed = false
         }
     }
 
