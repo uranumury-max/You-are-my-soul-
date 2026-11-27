@@ -29,6 +29,24 @@ internal class WorldMutationSync(
         added.forEach { changes += SyncEventType.MEMORY_CREATE to JSONObject().put("value", it) }
         removed.forEach { changes += SyncEventType.MEMORY_DELETE to JSONObject().put("value", it) }
 
+        val previousCapsules = previous.capsules.associateBy { it.id }
+        next.capsules.forEach { capsule ->
+            val old = previousCapsules[capsule.id]
+            if (old == null) {
+                changes += SyncEventType.CAPSULE_UPDATE to JSONObject()
+                    .put("action", "create")
+                    .put("id", capsule.id)
+                    .put("message", capsule.message)
+                    .put("createdAtEpochMs", capsule.createdAtEpochMs)
+                    .put("unlockAtEpochMs", capsule.unlockAtEpochMs)
+            } else if (old.openedAtEpochMs == null && capsule.openedAtEpochMs != null) {
+                changes += SyncEventType.CAPSULE_UPDATE to JSONObject()
+                    .put("action", "open")
+                    .put("id", capsule.id)
+                    .put("openedAtEpochMs", capsule.openedAtEpochMs)
+            }
+        }
+
         val previousMessageIds = previous.messages.mapTo(mutableSetOf()) { it.id }
         next.messages.filter { it.id !in previousMessageIds }.forEach { message ->
             changes += SyncEventType.MESSAGE_CREATE to JSONObject()
@@ -130,6 +148,36 @@ internal class WorldEventReducer(
                         val index = memories.indexOf(payload.getString("value"))
                         if (index >= 0) memories.removeAt(index)
                         state.copy(memories = memories)
+                    }
+                    SyncEventType.CAPSULE_UPDATE -> {
+                        val capsuleId = payload.optString("id")
+                        when (payload.optString("action")) {
+                            "create" -> {
+                                val unlockAt = payload.optLong("unlockAtEpochMs")
+                                val createdAt = payload.optLong("createdAtEpochMs")
+                                val message = payload.optString("message")
+                                if (capsuleId.isBlank() || message.isBlank() ||
+                                    unlockAt <= createdAt || state.capsules.any { it.id == capsuleId }
+                                ) state else state.copy(
+                                    capsules = (state.capsules + FutureCapsule(
+                                        id = capsuleId,
+                                        message = message,
+                                        createdAtEpochMs = createdAt,
+                                        unlockAtEpochMs = unlockAt
+                                    )).takeLast(100)
+                                )
+                            }
+                            "open" -> {
+                                val openedAt = payload.optLong("openedAtEpochMs")
+                                state.copy(capsules = state.capsules.map { capsule ->
+                                    if (capsule.id == capsuleId && capsule.openedAtEpochMs == null &&
+                                        System.currentTimeMillis() >= capsule.unlockAtEpochMs
+                                    ) capsule.copy(openedAtEpochMs = openedAt)
+                                    else capsule
+                                })
+                            }
+                            else -> state
+                        }
                     }
                     SyncEventType.MESSAGE_CREATE -> {
                         val messageId = payload.optString("id")
