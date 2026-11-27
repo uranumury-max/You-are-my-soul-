@@ -984,7 +984,7 @@ private fun WorldHome(world: WorldSnapshot?, canCreate: Boolean, onCreate: () ->
         Card(colors = CardDefaults.cardColors(containerColor = CardTone), shape = RoundedCornerShape(20.dp)) {
             Column(Modifier.padding(16.dp)) {
                 Text(if (world == null) "بداية عالمكم" else "مركز عالمكم", color = Gold, fontWeight = FontWeight.Bold)
-                Text(if (world == null) "إنشاء العالم يحفظ نسخة محلية مشفّرة. المزامنة السحابية لم تُفعّل بعد." else "رمز المنشئ: ${world.hostCode}\nالذكريات المحفوظة: ${world.memories.size}\nمرحلة الرحلة: ${calculateJourneyStage(world.relationshipStartDate) + 1}",
+                Text(if (world == null) "يُحفَظ العالم محلياً بتشفير آمن، وتنتقل التغييرات إلى الأجهزة المعتمدة بعد إعداد الخدمة وتوفر الاتصال." else "رمز المنشئ: ${world.hostCode}\nالذكريات المحفوظة: ${world.memories.size}\nمرحلة الرحلة: ${calculateJourneyStage(world.relationshipStartDate) + 1}",
                     color = Color.White, modifier = Modifier.padding(top = 6.dp))
                 if (world == null) Button(onClick = onCreate, enabled = canCreate, modifier = Modifier.padding(top = 8.dp)) {
                     Text(if (canCreate) "إنشاء عالمي" else "حُميت البيانات من الاستبدال")
@@ -992,7 +992,7 @@ private fun WorldHome(world: WorldSnapshot?, canCreate: Boolean, onCreate: () ->
             }
         }
         Spacer(Modifier.height(10.dp))
-        Text("المزامنة بين الأجهزة لم تُفعّل بعد؛ لن أصف البيانات المحلية بأنها مشتركة.", color = Color.LightGray, fontSize = 12.sp)
+        Text("تتطلب المزامنة بين الأجهزة إعداد الخدمة السحابية واعتماد الجهاز الآخر؛ وتظل بيانات هذا الجهاز محفوظة محلياً بأمان إلى حين ذلك.", color = Color.LightGray, fontSize = 12.sp)
     }
 }
 
@@ -1546,7 +1546,7 @@ private fun DailyQuestionSection(
         "ما الفكرة البسيطة التي يمكن أن نحوّلها إلى ذكرى؟",
         "ما الشيء الذي يجعلك تشعر بأن صوتك مسموع؟"
     )
-    val today = java.time.LocalDate.now()
+    val today = java.time.LocalDate.now(java.time.ZoneOffset.UTC)
     val todayText = today.toString()
     val question = questions[(today.toEpochDay() % questions.size).toInt()]
     val responses = dailyAnswers.filter { it.date == todayText }.sortedBy { it.createdAtEpochMs }
@@ -1950,7 +1950,7 @@ private fun SettingsSection(
                 when {
                     world == null -> dateMessage = "أنشئوا العالم أولاً."
                     parsed == null -> dateMessage = "صيغة التاريخ غير صحيحة. استخدم YYYY-MM-DD."
-                    parsed.isAfter(java.time.LocalDate.now()) -> dateMessage = "لا يمكن اختيار تاريخ في المستقبل."
+                    parsed.isAfter(java.time.LocalDate.now(java.time.ZoneOffset.UTC)) -> dateMessage = "لا يمكن اختيار تاريخ في المستقبل."
                     else -> {
                         onRelationshipDate(parsed.toString())
                         dateMessage = "تم حفظ تاريخ البداية."
@@ -1984,7 +1984,7 @@ private fun decodeMediaPreview(bytes: ByteArray): Bitmap? {
 
 private fun calculateJourneyStage(startDate: String): Int {
     val start = runCatching { java.time.LocalDate.parse(startDate) }.getOrNull() ?: return -1
-    val elapsedDays = java.time.temporal.ChronoUnit.DAYS.between(start, java.time.LocalDate.now())
+    val elapsedDays = java.time.temporal.ChronoUnit.DAYS.between(start, java.time.LocalDate.now(java.time.ZoneOffset.UTC))
     if (elapsedDays < 0) return -1
     return WorldLimits.journeyMilestones.count { elapsedDays >= it } - 1
 }
@@ -1992,6 +1992,6 @@ private fun calculateJourneyStage(startDate: String): Int {
 
 private fun daysSinceRelationshipStart(startDate: String): Long? {
     val start = runCatching { java.time.LocalDate.parse(startDate) }.getOrNull() ?: return null
-    val days = java.time.temporal.ChronoUnit.DAYS.between(start, java.time.LocalDate.now())
+    val days = java.time.temporal.ChronoUnit.DAYS.between(start, java.time.LocalDate.now(java.time.ZoneOffset.UTC))
     return days.takeIf { it >= 0 }
 }
