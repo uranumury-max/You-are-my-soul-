@@ -1595,7 +1595,7 @@ private fun DailySurpriseSection() {
         "سؤال غير متوقع" to "اسألا بعضكما: ما الشيء الذي تتمنى أن أفهمه عنك بصورة أفضل؟"
     )
     val today = java.time.LocalDate.now(java.time.ZoneOffset.UTC)
-    val surprise = surprises[(today.toEpochDay() % surprises.size).toInt()]
+    val surprise = surprises[DailySurpriseSelector.indexForEpochDay(today.toEpochDay(), surprises.size)]
     val transition = rememberInfiniteTransition(label = "daily_surprise_glow")
     val glow by transition.animateFloat(
         initialValue = 0.62f,
