@@ -13,6 +13,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.scaleIn
 import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.infiniteRepeatable
@@ -1678,21 +1681,31 @@ private fun DailyQuestionSection(
                 ) { Text(if (answer.isBlank()) "حفظ إجابتي" else "تحديث إجابتي") }
             }
         }
+        val distinctAuthors = responses.map { it.authorCode }.distinct().size
+        val revealTogether = distinctAuthors >= 2
+        val ownAnswerSaved = responses.any { it.authorCode == currentAuthorCode } || answer.isNotBlank()
         Text("إجاباتكما", color = Gold, fontWeight = FontWeight.Bold, fontSize = 16.sp)
         if (responses.isEmpty()) {
             Text("لم تُحفظ إجابة لهذا اليوم بعد. يمكن لكل طرف إضافة إجابته الخاصة.", color = Color.LightGray, fontSize = 12.sp)
-        } else {
-            responses.forEach { entry ->
-                val author = memberNames[entry.authorCode]
-                    ?: if (entry.authorCode == currentAuthorCode) "إجابتك" else "إجابة الطرف الآخر"
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = CardTone),
-                    shape = RoundedCornerShape(16.dp)
-                ) {
-                    Column(Modifier.fillMaxWidth().padding(13.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                        Text(author, color = Rose, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
-                        Text(entry.answer, color = Color.White, fontSize = 14.sp)
+        } else if (!revealTogether) {
+            Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = CardTone), shape = RoundedCornerShape(18.dp)) {
+                Column(Modifier.fillMaxWidth().padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("✦", color = Gold, fontSize = 30.sp)
+                    Text(if (ownAnswerSaved) "إجابتك محفوظة بأمان" else "وصلت إجابة واحدة", color = Rose, fontWeight = FontWeight.SemiBold)
+                    Text("ستُكشف الإجابتان معاً عندما يجيب الطرف الآخر. لن تظهر إجابة أي طرف قبل اكتمال الإجابتين.", color = Color.LightGray, fontSize = 12.sp)
+                }
+            }
+        }
+        AnimatedVisibility(visible = revealTogether, enter = fadeIn(animationSpec = tween(700)) + scaleIn(animationSpec = tween(700), initialScale = 0.94f)) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("انكشفت الإجابتان معاً ✧", color = Rose, fontWeight = FontWeight.SemiBold)
+                responses.forEach { entry ->
+                    val author = memberNames[entry.authorCode] ?: if (entry.authorCode == currentAuthorCode) "إجابتك" else "إجابة الطرف الآخر"
+                    Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = CardTone), shape = RoundedCornerShape(16.dp)) {
+                        Column(Modifier.fillMaxWidth().padding(13.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                            Text(author, color = Rose, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+                            Text(entry.answer, color = Color.White, fontSize = 14.sp)
+                        }
                     }
                 }
             }
