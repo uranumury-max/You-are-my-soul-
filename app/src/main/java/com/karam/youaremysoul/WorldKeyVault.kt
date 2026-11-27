@@ -92,6 +92,22 @@ class WorldKeyVault(context: Context) {
     fun hasWorldKey(worldId: UUID, keyVersion: Int = 1): Boolean =
         prefs.contains(storageKey(worldId, keyVersion))
 
+    /** Locally cached server-authoritative version used for new content. */
+    fun activeKeyVersion(worldId: UUID): Int =
+        prefs.getInt(activeVersionStorageKey(worldId), 1).coerceAtLeast(1)
+
+    fun setActiveKeyVersion(worldId: UUID, keyVersion: Int) {
+        require(keyVersion > 0 && hasWorldKey(worldId, keyVersion)) {
+            "Cannot activate a world key that is not stored on this device"
+        }
+        check(prefs.edit().putInt(activeVersionStorageKey(worldId), keyVersion).commit()) {
+            "Unable to persist active world key version"
+        }
+    }
+
+    private fun activeVersionStorageKey(worldId: UUID): String =
+        "world_" + worldId + "_active_key_version"
+
     fun encryptMedia(
         worldId: UUID,
         mediaId: UUID,
