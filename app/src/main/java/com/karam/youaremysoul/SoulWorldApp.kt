@@ -22,6 +22,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -1148,41 +1149,40 @@ private fun DrawingSection(
     onClear: () -> Unit
 ) {
     var activeStroke by remember { mutableStateOf<DrawingStroke?>(null) }
-    val canvasModifier = Modifier
-        .fillMaxWidth()
-        .weight(1f)
-        .background(Color(0xFF170F23), RoundedCornerShape(20.dp))
-        .pointerInput(strokes, onAddStroke) {
-            fun normalizedPoint(position: Offset) = WorldPoint(
-                x = (position.x / size.width).coerceIn(0f, 1f),
-                y = (position.y / size.height).coerceIn(0f, 1f)
-            )
-            androidx.compose.foundation.gestures.detectDragGestures(
-                onDragStart = { position ->
-                    activeStroke = DrawingStroke(
-                        id = java.util.UUID.randomUUID().toString(),
-                        colorArgb = Color(0xFFFF9CCB).value.toLong(),
-                        widthFraction = 0.006f,
-                        points = listOf(normalizedPoint(position))
-                    )
-                },
-                onDrag = { change, _ ->
-                    change.consume()
-                    activeStroke?.let { stroke ->
-                        if (stroke.points.size < 200) {
-                            activeStroke = stroke.copy(points = stroke.points + normalizedPoint(change.position))
-                        }
-                    }
-                },
-                onDragEnd = {
-                    activeStroke?.let(onAddStroke)
-                    activeStroke = null
-                },
-                onDragCancel = { activeStroke = null }
-            )
-        }
-
     Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        val canvasModifier = Modifier
+            .fillMaxWidth()
+            .weight(1f)
+            .background(Color(0xFF170F23), RoundedCornerShape(20.dp))
+            .pointerInput(strokes, onAddStroke) {
+                fun normalizedPoint(position: Offset) = WorldPoint(
+                    x = (position.x / size.width).coerceIn(0f, 1f),
+                    y = (position.y / size.height).coerceIn(0f, 1f)
+                )
+                androidx.compose.foundation.gestures.detectDragGestures(
+                    onDragStart = { position ->
+                        activeStroke = DrawingStroke(
+                            id = java.util.UUID.randomUUID().toString(),
+                            colorArgb = Color(0xFFFF9CCB).value.toLong(),
+                            widthFraction = 0.006f,
+                            points = listOf(normalizedPoint(position))
+                        )
+                    },
+                    onDrag = { change, _ ->
+                        change.consume()
+                        activeStroke?.let { stroke ->
+                            if (stroke.points.size < 200) {
+                                activeStroke = stroke.copy(points = stroke.points + normalizedPoint(change.position))
+                            }
+                        }
+                    },
+                    onDragEnd = {
+                        activeStroke?.let(onAddStroke)
+                        activeStroke = null
+                    },
+                    onDragCancel = { activeStroke = null }
+                )
+            }
         Text("لوحتنا المشتركة", color = Gold, fontSize = 23.sp, fontWeight = FontWeight.Bold)
         Text("ارسموا معاً؛ تُحفَظ الخطوط وتصل إلى الجهاز الآخر مشفّرة.", color = Rose, fontSize = 12.sp)
         Canvas(canvasModifier) {
