@@ -838,6 +838,31 @@ fun SoulWorldApp() {
                                         }
                                     }
                                 },
+                                drawingVersions = world?.drawingVersions.orEmpty(),
+                                onSaveDrawingVersion = { title ->
+                                    world?.let { current ->
+                                        if (current.drawings.isNotEmpty()) {
+                                            val version = DrawingVersion(
+                                                id = java.util.UUID.randomUUID().toString(),
+                                                title = title.trim().take(40),
+                                                createdAtEpochMs = System.currentTimeMillis(),
+                                                strokes = current.drawings.toList()
+                                            )
+                                            if (WorldEventValidation.drawingVersion(version)) {
+                                                persist(current.copy(
+                                                    drawingVersions = (current.drawingVersions + version)
+                                                        .takeLast(WorldLimits.MAX_DRAWING_VERSIONS)
+                                                ))
+                                            }
+                                        }
+                                    }
+                                },
+                                onRestoreDrawingVersion = { versionId ->
+                                    world?.let { current ->
+                                        val version = current.drawingVersions.firstOrNull { it.id == versionId }
+                                        if (version != null) persist(current.copy(drawings = version.strokes))
+                                    }
+                                },
                                 capsules = world?.capsules.orEmpty(),
                                 onCreateCapsule = { message, unlockAt ->
                                     val current = world ?: WorldSnapshot(
@@ -1400,9 +1425,12 @@ private fun MomentsHub(
     onCreateCapsule: (String, Long) -> Unit,
     onOpenCapsule: (String) -> Unit,
     drawings: List<DrawingStroke>,
+    drawingVersions: List<DrawingVersion>,
     onAddStroke: (DrawingStroke) -> Unit,
     onClearDrawing: () -> Unit,
     onUndoDrawing: () -> Unit,
+    onSaveDrawingVersion: (String) -> Unit,
+    onRestoreDrawingVersion: (String) -> Unit,
     stage: Int,
     relationshipStartDate: String
 ) {
@@ -1428,7 +1456,10 @@ private fun MomentsHub(
                 )
                 "مفاجأة اليوم" -> DailySurpriseSection()
                 "كبسولة المستقبل" -> CapsuleSection(capsules, onCreateCapsule, onOpenCapsule)
-                "لوحتنا" -> DrawingSection(drawings, onAddStroke, onClearDrawing, onUndoDrawing)
+                "لوحتنا" -> DrawingSection(
+                    drawings, drawingVersions, onAddStroke, onClearDrawing, onUndoDrawing,
+                    onSaveDrawingVersion, onRestoreDrawingVersion
+                )
                 "مساحة التفاهم" -> ReconciliationSection()
                 else -> JourneySection(stage, relationshipStartDate)
             }
