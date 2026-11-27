@@ -785,7 +785,7 @@ fun SoulWorldApp() {
                                         listOf(WorldMember(DeviceIdentity(context).code, "صاحب العالم", true)),
                                         cloudWorldId = java.util.UUID.randomUUID().toString()
                                     )
-                                    persist(current.copy(drawings = (current.drawings + stroke).takeLast(40)))
+                                    persist(current.copy(drawings = DrawingHistory.append(current.drawings, stroke)))
                                 },
                                 onClearDrawing = {
                                     world?.let { current -> persist(current.copy(drawings = emptyList())) }
@@ -793,7 +793,7 @@ fun SoulWorldApp() {
                                 onUndoDrawing = {
                                     world?.let { current ->
                                         if (current.drawings.isNotEmpty()) {
-                                            persist(current.copy(drawings = current.drawings.dropLast(1)))
+                                            persist(current.copy(drawings = DrawingHistory.undo(current.drawings)))
                                         }
                                     }
                                 },
