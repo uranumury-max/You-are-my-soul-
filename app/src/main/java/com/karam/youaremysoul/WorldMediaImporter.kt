@@ -46,7 +46,7 @@ class WorldMediaImporter(
                     require(total <= MAX_BYTES) { "media_too_large" }
                     output.write(buffer, 0, count)
                 }
-                output.toByteArray()
+                output.copyAndWipe()
             } finally {
                 buffer.fill(0)
             }
