@@ -4,10 +4,10 @@ This folder contains the first database migration for the hybrid cloud/offline a
 
 ## Current state
 
-- The SQL migration is committed to the repository.
+- The SQL migrations are committed to the repository.
 - It has **not** been applied to a live Supabase project.
 - No project URL, publishable key, service-role key, or user credential is stored here.
-- The Android app does not yet call these RPCs or synchronize events.
+- The Android app contains authenticated pairing, key-envelope exchange, and encrypted event synchronization clients; these paths remain unverified against a deployed project.
 - Do not mark the app as connected until authenticated server requests and acknowledgements work.
 
 ## Provisioning policy
@@ -86,3 +86,8 @@ Do not ship production networking until:
 - The local Room outbox survives process death and retries safely.
 - Two to five physical Android devices pass reconnect, offline, and conflict tests.
 - The APK contains no privileged backend secret.
+
+
+## Migration 010 — key-version activation
+
+Migration `202611270010_server_authoritative_key_version.sql` adds `worlds.current_key_version`, an authenticated member RPC to read it, and an owner-only RPC to advance exactly one version. Activation is rejected until every active member has a registered public-key device and every active registered device has an immutable envelope for the proposed version. This prevents the server from advertising a new version before key distribution is complete; it does not replace Android-side rotation orchestration or recovery.
