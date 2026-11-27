@@ -1,6 +1,8 @@
 package com.karam.youaremysoul
 
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.net.Uri
 import android.provider.OpenableColumns
 import java.io.ByteArrayOutputStream
@@ -52,6 +54,7 @@ class WorldMediaImporter(
 
         try {
             require(plaintext.isNotEmpty()) { "media_empty" }
+            validateImageBytes(plaintext)
             val mediaId = UUID.randomUUID()
             val keyVersion = keyVault.activeKeyVersion(worldId)
             val path = storage.upload(session, worldId, mediaId, plaintext, keyVault, keyVersion)
@@ -70,7 +73,7 @@ class WorldMediaImporter(
     }
 
     companion object {
-        const val MAX_BYTES = 20 * 1024 * 1024
+        const val MAX_BYTES = 20 * 1024 * 1024\n        private const val MAX_DIMENSION = 12_000\n        private const val MAX_PIXEL_COUNT = 64_000_000L\n        private const val PREVIEW_DECODE_DIMENSION = 1_600
         val ALLOWED_MIME_TYPES = setOf("image/jpeg", "image/png", "image/webp")
     }
 }
