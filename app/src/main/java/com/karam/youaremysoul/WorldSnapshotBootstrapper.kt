@@ -21,6 +21,8 @@ class WorldSnapshotBootstrapper(context: Context) {
         require(world.localIsOwner)
         val worldId = UUID.fromString(world.cloudWorldId)
         val eventId = UUID.randomUUID()
+        // Pin one authoritative key generation for this checkpoint and its replay.
+        val snapshotKeyVersion = worldKeyVault.activeKeyVersion(worldId)
         val payload = localStore.encodeForSync(world.copy(drawingVersions = emptyList()))
         val ciphertext = try {
             worldKeyVault.encrypt(
@@ -28,7 +30,7 @@ class WorldSnapshotBootstrapper(context: Context) {
                 eventId = eventId,
                 eventType = SyncEventType.WORLD_UPDATE,
                 plaintext = payload,
-                keyVersion = worldKeyVault.activeKeyVersion(worldId)
+                keyVersion = snapshotKeyVersion
             )
         } finally {
             payload.fill(0)
@@ -79,7 +81,7 @@ class WorldSnapshotBootstrapper(context: Context) {
                     eventId = versionEventId,
                     eventType = SyncEventType.DRAWING_UPDATE,
                     plaintext = plaintext,
-                    keyVersion = 1
+                    keyVersion = snapshotKeyVersion
                 )
             } finally {
                 plaintext.fill(0)
