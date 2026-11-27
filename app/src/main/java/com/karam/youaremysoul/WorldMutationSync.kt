@@ -153,9 +153,9 @@ internal class WorldEventReducer(
         )
         val ownerFlag = snapshotStore.load()?.localIsOwner ?: false
         var state = try {
-            snapshotStore.restoreFromSyncPayload(baseBytes, worldId.toString())
-                .copy(localIsOwner = ownerFlag)
-                .also(snapshotStore::save)
+            snapshotStore.restoreFromSyncPayload(
+                baseBytes, worldId.toString(), persist = false
+            ).copy(localIsOwner = ownerFlag)
         } finally {
             baseBytes.fill(0)
         }
@@ -294,7 +294,7 @@ internal class WorldEventReducer(
                 bytes.fill(0)
             }
         }
-        snapshotStore.save(state)
+        snapshotStore.saveWithBaseline(state, syncStore)
         return state
     }
 
