@@ -16,13 +16,17 @@ class LocalWorldStore(context: Context) {
     fun encodeForSync(world: WorldSnapshot): ByteArray =
         encode(world).toByteArray(Charsets.UTF_8)
 
-    fun restoreFromSyncPayload(payload: ByteArray, cloudWorldId: String): WorldSnapshot {
+    fun restoreFromSyncPayload(
+        payload: ByteArray,
+        cloudWorldId: String,
+        persist: Boolean = true
+    ): WorldSnapshot {
         require(payload.isNotEmpty() && payload.size <= 700_000)
         val restored = decode(payload.toString(Charsets.UTF_8)).copy(
             cloudWorldId = java.util.UUID.fromString(cloudWorldId).toString(),
             localIsOwner = false
         )
-        save(restored)
+        if (persist) save(restored)
         return restored
     }
 
@@ -47,6 +51,14 @@ class LocalWorldStore(context: Context) {
 
     suspend fun updateSyncBaseline(world: WorldSnapshot, outbox: RoomSyncStore) {
         outbox.updateBaseline(encryptedBaseline(world))
+    }
+
+    suspend fun saveWithBaseline(world: WorldSnapshot, outbox: RoomSyncStore) {
+        outbox.commitRemoteState(
+            snapshot = encryptedEntity(world),
+            baseline = encryptedBaseline(world)
+        )
+        removeLegacyPreferences()
     }
 
     suspend fun saveWithOutbox(
