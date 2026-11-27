@@ -13,7 +13,7 @@ The target design is cloud-first and offline-capable:
 
 ## Current implementation checkpoint
 
-- Native Android/Compose scaffold with Arabic RTL UI, five destinations, animated transitions, starfield, and developer credit.
+- Native Android/Compose scaffold with Arabic RTL UI, six destinations, animated transitions, starfield, and developer credit.
 - Local world snapshot persistence with versioned authenticated encryption and fail-closed migration.
 - Stable local nine-digit device code plus a random per-installation UUID; code collisions are detected by the server and retried without changing the installation identity.
 - Pairing challenge/HMAC primitives and JVM tests.
