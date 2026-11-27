@@ -1,5 +1,6 @@
 package com.karam.youaremysoul
 
+import org.json.JSONArray
 import org.json.JSONObject
 import java.util.UUID
 
@@ -28,6 +29,25 @@ internal class WorldMutationSync(
         }
         added.forEach { changes += SyncEventType.MEMORY_CREATE to JSONObject().put("value", it) }
         removed.forEach { changes += SyncEventType.MEMORY_DELETE to JSONObject().put("value", it) }
+
+        if (previous.drawings.isNotEmpty() && next.drawings.isEmpty()) {
+            changes += SyncEventType.DRAWING_UPDATE to JSONObject().put("action", "clear")
+        } else {
+            val previousStrokeIds = previous.drawings.mapTo(mutableSetOf()) { it.id }
+            next.drawings.filter { it.id !in previousStrokeIds }.forEach { stroke ->
+                val points = JSONArray().apply {
+                    stroke.points.take(200).forEach { point ->
+                        put(JSONArray().put(point.x.toDouble()).put(point.y.toDouble()))
+                    }
+                }
+                changes += SyncEventType.DRAWING_UPDATE to JSONObject()
+                    .put("action", "add")
+                    .put("id", stroke.id)
+                    .put("colorArgb", stroke.colorArgb)
+                    .put("widthFraction", stroke.widthFraction.toDouble())
+                    .put("points", points)
+            }
+        }
 
         val previousCapsules = previous.capsules.associateBy { it.id }
         next.capsules.forEach { capsule ->
@@ -148,6 +168,34 @@ internal class WorldEventReducer(
                         val index = memories.indexOf(payload.getString("value"))
                         if (index >= 0) memories.removeAt(index)
                         state.copy(memories = memories)
+                    }
+                    SyncEventType.DRAWING_UPDATE -> {
+                        when (payload.optString("action")) {
+                            "clear" -> state.copy(drawings = emptyList())
+                            "add" -> {
+                                val strokeId = payload.optString("id")
+                                val pointsJson = payload.optJSONArray("points") ?: JSONArray()
+                                val points = (0 until pointsJson.length()).mapNotNull { index ->
+                                    val pair = pointsJson.optJSONArray(index) ?: return@mapNotNull null
+                                    if (pair.length() != 2) return@mapNotNull null
+                                    val x = pair.optDouble(0, -1.0).toFloat()
+                                    val y = pair.optDouble(1, -1.0).toFloat()
+                                    if (x !in 0f..1f || y !in 0f..1f) null else WorldPoint(x, y)
+                                }.take(200)
+                                val width = payload.optDouble("widthFraction", 0.006).toFloat()
+                                if (strokeId.isBlank() || points.isEmpty() ||
+                                    width !in 0.001f..0.03f || state.drawings.any { it.id == strokeId }
+                                ) state else state.copy(
+                                    drawings = (state.drawings + DrawingStroke(
+                                        id = strokeId,
+                                        colorArgb = payload.optLong("colorArgb", -1L),
+                                        widthFraction = width,
+                                        points = points
+                                    )).takeLast(100)
+                                )
+                            }
+                            else -> state
+                        }
                     }
                     SyncEventType.CAPSULE_UPDATE -> {
                         val capsuleId = payload.optString("id")
