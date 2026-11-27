@@ -1181,6 +1181,118 @@ fun SoulWorldApp() {
 }
 
 @Composable
+private fun OwnerMasterDialog(
+    isOwner: Boolean,
+    unlocked: Boolean,
+    code: String,
+    onCodeChange: (String) -> Unit,
+    status: String,
+    busy: Boolean,
+    members: List<ActiveWorldMember>,
+    selectedTargetId: String,
+    onTargetSelected: (String) -> Unit,
+    targetMenuExpanded: Boolean,
+    onTargetMenuExpandedChange: (Boolean) -> Unit,
+    sceneNumber: String,
+    onSceneNumberChange: (String) -> Unit,
+    onConfigure: () -> Unit,
+    onVerify: () -> Unit,
+    onGrant: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("صلاحية المالك الخاصة", color = Rose) },
+        text = {
+            Column(
+                modifier = Modifier.heightIn(max = 520.dp).verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(9.dp)
+            ) {
+                Text(
+                    "أدخل الرمز الذي أُعدّ لصاحب العالم. لا يُحفظ الرمز على هذا الجهاز؛ يتحقق منه الخادم عبر اتصال مشفر.",
+                    color = Color.LightGray,
+                    fontSize = 12.sp
+                )
+                OutlinedTextField(
+                    value = code,
+                    onValueChange = onCodeChange,
+                    label = { Text("الرمز الرئيسي") },
+                    singleLine = true,
+                    enabled = !busy,
+                    visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
+                )
+                if (isOwner) {
+                    Button(onClick = onConfigure, enabled = !busy && code.length >= 12) {
+                        Text("إعداد الرمز لأول مرة")
+                    }
+                }
+                Button(onClick = onVerify, enabled = !busy && code.isNotEmpty()) {
+                    Text(if (unlocked) "تأكيد الصلاحية مجدداً" else "التحقق وفتح المشاهد")
+                }
+                if (isOwner && unlocked) {
+                    Divider(color = Rose.copy(alpha = .25f))
+                    Text("منح مشهد للشريك", color = Gold, fontWeight = FontWeight.SemiBold)
+                    Box {
+                        OutlinedButton(
+                            onClick = { onTargetMenuExpandedChange(true) },
+                            enabled = !busy && members.isNotEmpty()
+                        ) {
+                            Text(
+                                members.firstOrNull { it.userId == selectedTargetId }?.displayName
+                                    ?: "اختيار الشريك"
+                            )
+                        }
+                        DropdownMenu(
+                            expanded = targetMenuExpanded,
+                            onDismissRequest = { onTargetMenuExpandedChange(false) }
+                        ) {
+                            members.forEach { member ->
+                                DropdownMenuItem(
+                                    text = { Text(member.displayName) },
+                                    onClick = {
+                                        onTargetSelected(member.userId)
+                                        onTargetMenuExpandedChange(false)
+                                    }
+                                )
+                            }
+                        }
+                    }
+                    OutlinedTextField(
+                        value = sceneNumber,
+                        onValueChange = onSceneNumberChange,
+                        label = { Text("رقم المشهد من 1 إلى 21") },
+                        singleLine = true,
+                        enabled = !busy,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                    )
+                    Button(
+                        onClick = onGrant,
+                        enabled = !busy && selectedTargetId.isNotBlank() &&
+                            sceneNumber.toIntOrNull() in 1..21
+                    ) {
+                        Text("منح المشهد المحدد")
+                    }
+                    if (members.isEmpty()) {
+                        Text("لم يظهر شريك نشط بعد؛ أكمل الاقتران أولاً.", color = Color.LightGray, fontSize = 11.sp)
+                    }
+                }
+                if (status.isNotBlank()) {
+                    Text(status, color = Gold, fontSize = 12.sp)
+                }
+                if (busy) {
+                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text("إغلاق", color = Rose) }
+        },
+        containerColor = Color(0xFF21152D)
+    )
+}
+
+@Composable
 private fun DeveloperCredit(onSecretTap: () -> Unit) {
     var tapCount by remember { mutableIntStateOf(0) }
     Text(
