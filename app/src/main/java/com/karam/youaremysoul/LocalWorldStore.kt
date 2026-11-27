@@ -168,7 +168,7 @@ class LocalWorldStore(context: Context) {
                 )
             },
             journeyStage = json.optInt("journeyStage"),
-            memories = (0 until memoriesJson.length()).map { memoriesJson.optString(it) },
+            memories = (0 until memoriesJson.length()).map { memoriesJson.optString(it) }.takeLast(100),
             gardenFlowers = json.optInt("gardenFlowers", 0),
             gardenLastWateredAt = json.optLong("gardenLastWateredAt", 0L),
             dailyAnswerDate = json.optString("dailyAnswerDate", ""),
@@ -214,7 +214,7 @@ class LocalWorldStore(context: Context) {
                 val width = stroke.optDouble("widthFraction", 0.006).toFloat()
                 if (id.isBlank() || points.isEmpty() || width !in 0.001f..0.03f) null
                 else DrawingStroke(id, stroke.optLong("colorArgb", -1L), width, points)
-            }.takeLast(100)
+            }.takeLast(50)
         )
     }
 
