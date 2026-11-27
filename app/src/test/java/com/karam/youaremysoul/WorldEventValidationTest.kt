@@ -138,6 +138,16 @@ class WorldEventValidationTest {
         )
         assertFalse(
             WorldEventValidation.media(
+                worldId.uppercase(), mediaId, "ذكرى.png", "image/png", 2048L, 100L, path, 1
+            )
+        )
+        assertFalse(
+            WorldEventValidation.media(
+                worldId, mediaId.uppercase(), "ذكرى.png", "image/png", 2048L, 100L, path, 1
+            )
+        )
+        assertFalse(
+            WorldEventValidation.media(
                 worldId, mediaId, "ذكرى.png", "image/png", 21L * 1024L * 1024L, 100L, path, 1
             )
         )
