@@ -6,7 +6,7 @@
 
 - [ ] إنشاء مشروع Supabase فعلي، مع الاحتفاظ بكلمة مرور قاعدة البيانات خارج المستودع.
 - [ ] تفعيل تسجيل الدخول المجهول (Anonymous Auth).
-- [ ] تطبيق migrations من 001 إلى 008 بالترتيب الوارد في [دليل النشر](SUPABASE_DEPLOYMENT.md).
+- [ ] تطبيق migrations من 001 إلى 009 بالترتيب الوارد في [دليل النشر](SUPABASE_DEPLOYMENT.md).
 - [ ] التأكد من وجود الحاوية الخاصة `world-media` وسياسات RLS/RPC كما يشرح الدليل.
 - [ ] إعداد `SUPABASE_URL` و`SUPABASE_PUBLISHABLE_KEY` فقط في Gradle properties المحلية أو GitHub Actions secrets.
 - [ ] عدم إدخال `service_role` أو كلمة مرور قاعدة البيانات أو أي مفتاح إداري في التطبيق أو المستودع.
