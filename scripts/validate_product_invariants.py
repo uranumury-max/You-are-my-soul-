@@ -14,8 +14,8 @@ def fail(message: str) -> None:
 
 def main() -> int:
     migrations = sorted((ROOT / "supabase" / "migrations").glob("*.sql"))
-    numbers = [re.search(r"_(\d{3})_", path.name).group(1) for path in migrations]
-    if numbers != [f"{n:03d}" for n in range(1, 13)]:
+    numbers = [int(re.match(r"^\d{8}(\d{4})_", path.name).group(1)) for path in migrations]
+    if numbers != list(range(1, 13)):
         fail(f"expected ordered migrations 001–012, found {numbers}")
 
     gallery = (ROOT / "app/src/main/java/com/karam/youaremysoul/AnimationGallerySection.kt").read_text(encoding="utf-8")
