@@ -197,7 +197,7 @@ class LocalWorldStore(context: Context) {
             }
         })
         put("media", JSONArray().apply {
-            world.media.takeLast(100).forEach { item ->
+            world.media.takeLast(WorldLimits.MAX_MEDIA_ITEMS).forEach { item ->
                 put(
                     JSONObject()
                         .put("id", item.id)
