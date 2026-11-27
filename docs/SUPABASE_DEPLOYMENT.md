@@ -30,7 +30,7 @@ SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
 SUPABASE_PUBLISHABLE_KEY=sb_publishable_YOUR_PUBLIC_KEY
 ```
 
-The same names can be supplied as environment variables. For GitHub Actions, use repository or environment secrets named `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY`, then explicitly wire them into the build job when a configured cloud build is required.
+The same names can be supplied as environment variables. For GitHub Actions, add repository or environment secrets named `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY`. The checked-in Android workflow already passes these two secrets to the Gradle build step when they are configured.
 
 Never put a database password, `service_role` key, or any other administrative secret in Gradle properties committed to Git, an APK, or a client build.
 
