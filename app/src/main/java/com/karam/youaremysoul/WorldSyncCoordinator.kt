@@ -43,7 +43,7 @@ class WorldSyncCoordinator(context: Context) {
         worldId: UUID
     ): SyncPassResult {
         var uploaded = 0
-        val due = localStore.dueEvents().filter { it.event.worldId == worldId }
+        val due = localStore.dueEvents(worldId)
         for (pending in due) {
             try {
                 transport.append(session, pending.event)
