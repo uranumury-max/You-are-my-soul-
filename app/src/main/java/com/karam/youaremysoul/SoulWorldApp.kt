@@ -1023,7 +1023,7 @@ private fun MomentsHub(
                 "سؤال اليوم" -> DailyQuestionSection(answer, onAnswer)
                 "كبسولة المستقبل" -> CapsuleSection(capsules, onCreateCapsule, onOpenCapsule)
                 "لوحتنا" -> DrawingSection(drawings, onAddStroke, onClearDrawing)
-                else -> JourneySection(stage)
+                else -> JourneySection(stage, world?.relationshipStartDate.orEmpty())
             }
         }
     }
@@ -1310,16 +1310,60 @@ private fun CapsuleSection(
 }
 
 @Composable
-private fun JourneySection(stage: Int) {
+private fun JourneySection(stage: Int, relationshipStartDate: String) {
     val milestones = WorldLimits.journeyMilestones
     val titles = listOf("الشرارة الأولى", "مدارنا", "نجمة مشتركة", "مجرة الذكريات", "عالم لا ينتهي")
-    Column(Modifier.fillMaxSize().verticalScroll(androidx.compose.foundation.rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    val elapsedDays = daysSinceRelationshipStart(relationshipStartDate)
+    val pulse = rememberInfiniteTransition(label = "relationship_counter_pulse")
+    val glow by pulse.animateFloat(
+        initialValue = 0.72f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(1800), repeatMode = RepeatMode.Reverse),
+        label = "relationship_counter_glow"
+    )
+    Column(
+        Modifier.fillMaxSize().verticalScroll(androidx.compose.foundation.rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
         Text("رحلتنا معاً", color = Gold, fontSize = 23.sp, fontWeight = FontWeight.Bold)
         Text(
             if (stage < 0) "أدخلوا تاريخ بداية رحلتكم من الإعدادات لتُفتح المراحل تلقائياً."
             else "تُفتح المراحل تلقائياً عند اكتمال الأيام المحددة.",
             color = Rose, fontSize = 12.sp
         )
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = CardTone),
+            shape = RoundedCornerShape(22.dp)
+        ) {
+            Column(
+                Modifier.fillMaxWidth().padding(18.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Text("عداد رحلتكما", color = Rose, fontSize = 13.sp)
+                if (elapsedDays == null) {
+                    Text("ابدؤوا بتحديد تاريخ البداية", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                    Text("يمكن ضبطه من صفحة الإعدادات.", color = Color.LightGray, fontSize = 11.sp)
+                } else {
+                    Text(
+                        elapsedDays.toString(),
+                        color = Gold.copy(alpha = glow),
+                        fontSize = 48.sp,
+                        fontWeight = FontWeight.ExtraBold
+                    )
+                    Text(
+                        if (elapsedDays == 1L) "يوم واحد معاً"
+                        else if (elapsedDays == 2L) "يومان معاً"
+                        else "يوماً معاً في عالمكما",
+                        color = Color.White,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text("منذ $relationshipStartDate", color = Color.LightGray, fontSize = 11.sp)
+                }
+            }
+        }
         milestones.forEachIndexed { index, day ->
             val unlocked = index <= stage
             Card(colors = CardDefaults.cardColors(containerColor = CardTone), shape = RoundedCornerShape(16.dp)) {
