@@ -94,7 +94,7 @@ internal object WorldEventValidation {
             sizeBytes in 1L..(20L * 1024L * 1024L) &&
             createdAtEpochMs > 0L &&
             objectPath == "$canonicalWorld/$canonicalMedia.wmd" &&
-            keyVersion in 1..5
+            keyVersion > 0
     }
 
     fun garden(delta: Int, lastWateredAt: Long): Boolean =
