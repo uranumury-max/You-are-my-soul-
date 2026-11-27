@@ -130,6 +130,11 @@ private fun SoulSceneViewer(scene: SoulScene, number: Int, onBack: () -> Unit) {
         animationSpec = infiniteRepeatable(tween(5200), repeatMode = RepeatMode.Reverse),
         label = "scene_drift"
     )
+    val rainProgress by transition.animateFloat(
+        initialValue = 0f, targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(3200), repeatMode = RepeatMode.Restart),
+        label = "rain_progress"
+    )
     Column(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         TextButton(onClick = onBack) { Text("← العودة إلى المشاهد", color = Color(0xFFFF9CCB)) }
         Canvas(Modifier.fillMaxWidth().height(235.dp)) {
@@ -257,9 +262,11 @@ private fun SoulSceneViewer(scene: SoulScene, number: Int, onBack: () -> Unit) {
                     repeat(4) { i -> drawCircle(Color(0xFFFFD68A), base * 0.045f, Offset(center.x + (i - 1.5f) * base * 0.15f, center.y + kotlin.math.sin(i + pulse) * base * 0.08f)) }
                 }
                 8 -> {
-                    drawRoundRect(Color(0xAAFFF0D0), Offset(center.x - base * 0.22f, center.y - base * 0.15f), androidx.compose.ui.geometry.Size(base * 0.44f, base * 0.30f), cornerRadius = androidx.compose.ui.geometry.CornerRadius(base * 0.035f))
-                    drawLine(Color(0xFFFF9CCB), Offset(center.x - base * 0.22f, center.y - base * 0.15f), Offset(center.x, center.y + base * 0.02f), strokeWidth = 2.dp.toPx())
-                    drawLine(Color(0xFFFF9CCB), Offset(center.x + base * 0.22f, center.y - base * 0.15f), Offset(center.x, center.y + base * 0.02f), strokeWidth = 2.dp.toPx())
+                    val envelopeY = center.y - base * 0.15f + drift * base * 0.20f
+                    drawCircle(Color(0x33FF9CCB), base * 0.34f * pulse, Offset(center.x, envelopeY + base * 0.10f))
+                    drawRoundRect(Color(0xAAFFF0D0), Offset(center.x - base * 0.22f, envelopeY), androidx.compose.ui.geometry.Size(base * 0.44f, base * 0.30f), cornerRadius = androidx.compose.ui.geometry.CornerRadius(base * 0.035f))
+                    drawLine(Color(0xFFFF9CCB), Offset(center.x - base * 0.22f, envelopeY), Offset(center.x, envelopeY + base * 0.17f), strokeWidth = 2.dp.toPx())
+                    drawLine(Color(0xFFFF9CCB), Offset(center.x + base * 0.22f, envelopeY), Offset(center.x, envelopeY + base * 0.17f), strokeWidth = 2.dp.toPx())
                 }
                 14 -> {
                     // Lanterns: glowing hanging lights at different heights.
@@ -320,8 +327,9 @@ private fun SoulSceneViewer(scene: SoulScene, number: Int, onBack: () -> Unit) {
                 }
                 12 -> {
                     repeat(24) { i ->
-                        val x = ((i * 41) % 97) / 100f * size.width
-                        val y = ((i * 23) % 91) / 100f * size.height
+                        val x = ((i * 41) % 97) / 100f * size.width + drift * base * (i % 2)
+                        val phase = (rainProgress + i * 0.071f) % 1f
+                        val y = phase * size.height
                         drawLine(Color(0x887FD9FF), Offset(x, y), Offset(x - base * 0.015f, y + base * 0.08f), strokeWidth = 1.5.dp.toPx())
                     }
                 }
