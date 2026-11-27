@@ -21,6 +21,12 @@ data class DrawingStroke(
     val widthFraction: Float,
     val points: List<WorldPoint>
 )
+data class DrawingVersion(
+    val id: String,
+    val title: String,
+    val createdAtEpochMs: Long,
+    val strokes: List<DrawingStroke>
+)
 data class DailyAnswerEntry(
     val date: String,
     val authorCode: String,
@@ -55,5 +61,6 @@ data class WorldSnapshot(
     val messages: List<WorldMessage> = emptyList(),
     val capsules: List<FutureCapsule> = emptyList(),
     val drawings: List<DrawingStroke> = emptyList(),
+    val drawingVersions: List<DrawingVersion> = emptyList(),
     val media: List<WorldMediaItem> = emptyList()
 )
