@@ -291,6 +291,14 @@ fun SoulWorldApp() {
         }
     }
 
+    suspend fun refreshOwnerMasterState(current: WorldSnapshot) {
+        val session = authClient.ensureAuthenticatedSession()
+        ownerMasterState = ownerMasterRepository.loadState(
+            session,
+            java.util.UUID.fromString(current.cloudWorldId)
+        )
+    }
+
     fun persist(next: WorldSnapshot) {
         if (storageWarning.isNotBlank()) return
         world = next
@@ -1048,6 +1056,128 @@ fun SoulWorldApp() {
         }
         }
     }
+    if (ownerMasterDialogVisible) {
+        OwnerMasterDialog(
+            isOwner = world?.localIsOwner == true,
+            unlocked = ownerMasterState.unlocked,
+            code = ownerMasterCodeInput,
+            onCodeChange = { ownerMasterCodeInput = it.take(72) },
+            status = ownerMasterStatus,
+            busy = ownerMasterBusy,
+            members = activeWorldMembers,
+            selectedTargetId = sceneGrantTargetId,
+            onTargetSelected = { sceneGrantTargetId = it },
+            targetMenuExpanded = sceneGrantMenuExpanded,
+            onTargetMenuExpandedChange = { sceneGrantMenuExpanded = it },
+            sceneNumber = sceneGrantNumberText,
+            onSceneNumberChange = { sceneGrantNumberText = it.filter(Char::isDigit).take(2) },
+            onConfigure = {
+                val current = world
+                if (current == null || !current.localIsOwner || !cloudAuthenticated) {
+                    ownerMasterStatus = "إعداد الرمز متاح لصاحب العالم بعد تفعيل الاتصال السحابي."
+                } else {
+                    scope.launch {
+                        ownerMasterBusy = true
+                        try {
+                            val session = authClient.ensureAuthenticatedSession()
+                            val created = ownerMasterRepository.configure(
+                                session,
+                                java.util.UUID.fromString(current.cloudWorldId),
+                                ownerMasterCodeInput
+                            )
+                            if (created) {
+                                refreshOwnerMasterState(current)
+                                ownerMasterStatus = "تم إعداد الرمز الخاص وتفعيل صلاحية المالك على هذا الحساب."
+                            } else {
+                                ownerMasterStatus = "سبق إعداد الرمز لهذا العالم. استخدم التحقق بالرمز الحالي."
+                            }
+                        } catch (error: SupabaseAuthException) {
+                            ownerMasterStatus = when (error.safeCode) {
+                                "owner_master_authorization_failed" -> "لا يملك هذا الحساب صلاحية إعداد الرمز."
+                                "owner_master_rate_limited" -> "تجاوزت محاولات التحقق المسموحة؛ انتظر ثم أعد المحاولة."
+                                else -> "تعذر إعداد الرمز (${error.safeCode})."
+                            }
+                        } catch (_: Exception) {
+                            ownerMasterStatus = "تعذر إعداد الرمز؛ لم نحفظه على الجهاز."
+                        } finally {
+                            ownerMasterBusy = false
+                            ownerMasterCodeInput = ""
+                        }
+                    }
+                }
+            },
+            onVerify = {
+                val current = world
+                if (current == null || !cloudAuthenticated) {
+                    ownerMasterStatus = "يتطلب التحقق اتصالاً سحابياً وعالماً مقترناً."
+                } else {
+                    scope.launch {
+                        ownerMasterBusy = true
+                        try {
+                            val session = authClient.ensureAuthenticatedSession()
+                            val accepted = ownerMasterRepository.verify(
+                                session,
+                                java.util.UUID.fromString(current.cloudWorldId),
+                                ownerMasterCodeInput
+                            )
+                            if (accepted) {
+                                refreshOwnerMasterState(current)
+                                ownerMasterStatus = "تم التحقق؛ أصبحت المشاهد والميزات المخصصة للمالك متاحة."
+                            } else {
+                                ownerMasterStatus = "لم يُقبل الرمز. تحقق منه أو انتظر انتهاء حد المحاولات."
+                            }
+                        } catch (error: SupabaseAuthException) {
+                            ownerMasterStatus = when (error.safeCode) {
+                                "owner_master_rate_limited" -> "تجاوزت محاولات التحقق المسموحة؛ انتظر 15 دقيقة."
+                                "owner_master_authorization_failed" -> "هذا الحساب ليس عضواً نشطاً في العالم."
+                                else -> "تعذر التحقق (${error.safeCode})."
+                            }
+                        } catch (_: Exception) {
+                            ownerMasterStatus = "تعذر الاتصال بخدمة التحقق."
+                        } finally {
+                            ownerMasterBusy = false
+                            ownerMasterCodeInput = ""
+                        }
+                    }
+                }
+            },
+            onGrant = {
+                val current = world
+                val target = runCatching { java.util.UUID.fromString(sceneGrantTargetId) }.getOrNull()
+                val number = sceneGrantNumberText.toIntOrNull()
+                if (current == null || target == null || number !in 1..21 || !ownerMasterState.unlocked) {
+                    ownerMasterStatus = "اختر الشريك ورقم مشهد صحيحاً، ثم تحقق من الرمز الرئيسي."
+                } else {
+                    scope.launch {
+                        ownerMasterBusy = true
+                        try {
+                            val session = authClient.ensureAuthenticatedSession()
+                            ownerMasterRepository.grantScene(
+                                session,
+                                java.util.UUID.fromString(current.cloudWorldId),
+                                target,
+                                number
+                            )
+                            ownerMasterStatus = "تم منح المشهد $number للشريك؛ سيظهر لديه بعد تحديث الاتصال."
+                        } catch (error: SupabaseAuthException) {
+                            ownerMasterStatus = "تعذر منح المشهد (${error.safeCode})."
+                        } catch (_: Exception) {
+                            ownerMasterStatus = "تعذر منح المشهد؛ لم يتغير محتوى العالم."
+                        } finally {
+                            ownerMasterBusy = false
+                        }
+                    }
+                }
+            },
+            onDismiss = {
+                ownerMasterDialogVisible = false
+                ownerMasterCodeInput = ""
+                sceneGrantMenuExpanded = false
+            }
+        )
+    }
+
+
 }
 
 @Composable
