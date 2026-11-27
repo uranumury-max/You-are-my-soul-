@@ -103,6 +103,22 @@ class SupabaseAuthClient(context: Context) {
         return AuthenticatedSupabaseUser(userId, accessToken)
     }
 
+    private fun readBoundedResponse(stream: java.io.InputStream): String {
+        val output = java.io.ByteArrayOutputStream()
+        val buffer = ByteArray(4 * 1024)
+        var total = 0
+        while (true) {
+            val count = stream.read(buffer)
+            if (count < 0) break
+            total += count
+            if (total > MAX_RESPONSE_BYTES) {
+                throw IOException("Supabase Auth response exceeded the client safety limit")
+            }
+            output.write(buffer, 0, count)
+        }
+        return output.toString(StandardCharsets.UTF_8.name())
+    }
+
     private fun request(
         path: String,
         method: String,
@@ -127,7 +143,8 @@ class SupabaseAuthClient(context: Context) {
             }
             val status = connection.responseCode
             val stream = if (status in 200..299) connection.inputStream else connection.errorStream
-            val raw = stream?.bufferedReader(StandardCharsets.UTF_8)?.use { it.readText() }.orEmpty()
+            // Auth payloads are small; bound parsing to protect memory from malformed responses.
+            val raw = stream?.use { readBoundedResponse(it) }.orEmpty()
             if (status !in 200..299) {
                 val code = runCatching {
                     JSONObject(raw).optString("code").ifBlank {
@@ -159,6 +176,7 @@ class SupabaseAuthClient(context: Context) {
     }
 
     companion object {
+        private const val MAX_RESPONSE_BYTES = 1024 * 1024
         private const val CONNECT_TIMEOUT_MS = 10_000
         private const val READ_TIMEOUT_MS = 15_000
         private const val REFRESH_SKEW_SECONDS = 90L
