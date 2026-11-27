@@ -1224,6 +1224,13 @@ private fun OwnerMasterDialog(
                     visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
                 )
+                if (isOwner && !unlocked) {
+                    Text(
+                        "يتكون الرمز من 12 إلى 72 محرفاً، ويضم حرفاً ورقماً ورمزاً، من دون مسافات.",
+                        color = Color.LightGray,
+                        fontSize = 11.sp
+                    )
+                }
                 if (isOwner) {
                     Button(onClick = onConfigure, enabled = !busy && code.length >= 12) {
                         Text("إعداد الرمز لأول مرة")
