@@ -630,7 +630,7 @@ fun SoulWorldApp() {
                                         createdAtEpochMs = now,
                                         unlockAtEpochMs = unlockAt
                                     )
-                                    persist(current.copy(capsules = (current.capsules + capsule).takeLast(50)))
+                                    persist(current.copy(capsules = (current.capsules + capsule).takeLast(30)))
                                 },
                                 onOpenCapsule = { capsuleId ->
                                     scope.launch {
@@ -911,7 +911,7 @@ private fun MemoriesSection(memories: List<String>, text: String, onText: (Strin
     Column(Modifier.fillMaxSize()) {
         Text("ذكرياتنا", color = Gold, fontSize = 23.sp, fontWeight = FontWeight.Bold)
         Text("تبقى الذكريات محفوظة على هذا الجهاز حتى بعد إغلاق التطبيق.", color = Rose, fontSize = 12.sp)
-        OutlinedTextField(value = text, onValueChange = { onText(it.take(500)) }, label = { Text("اكتب ذكرى أو رسالة قصيرة") }, modifier = Modifier.fillMaxWidth(), minLines = 2)
+        OutlinedTextField(value = text, onValueChange = { onText(it.take(400)) }, label = { Text("اكتب ذكرى أو رسالة قصيرة") }, modifier = Modifier.fillMaxWidth(), minLines = 2)
         Button(onClick = onAdd, enabled = text.isNotBlank(), modifier = Modifier.align(Alignment.End)) { Text("حفظ الذكرى") }
         if (memories.isEmpty()) Text("لم تُحفظ ذكريات بعد.", color = Color.LightGray)
         LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -975,7 +975,7 @@ private fun MessagesSection(
         }
         OutlinedTextField(
             value = text,
-            onValueChange = { onText(it.take(2000)) },
+            onValueChange = { onText(it.take(1000)) },
             enabled = enabled,
             modifier = Modifier.fillMaxWidth(),
             minLines = 1,
