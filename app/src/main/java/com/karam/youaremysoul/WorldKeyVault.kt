@@ -27,17 +27,21 @@ class WorldKeyVault(context: Context) {
     @Synchronized
     fun createWorldKey(worldId: UUID, keyVersion: Int = 1) {
         require(keyVersion > 0)
-        val storageKey = storageKey(worldId, keyVersion)
-        check(prefs.getString(storageKey, null) == null) { "World key version already exists" }
-
-        val rawKey = ByteArray(WORLD_KEY_BYTES).also(SecureRandom()::nextBytes)
-        try {
-            val wrapped = wrapWorldKey(worldId, keyVersion, rawKey)
-            check(prefs.edit().putString(storageKey, wrapped).commit()) {
-                "Unable to persist wrapped world key"
+        synchronized(KEY_MATERIAL_LOCK) {
+            val storageKey = storageKey(worldId, keyVersion)
+            check(prefs.getString(storageKey, null) == null) {
+                "World key version already exists"
             }
-        } finally {
-            rawKey.fill(0)
+
+            val rawKey = ByteArray(WORLD_KEY_BYTES).also(SecureRandom()::nextBytes)
+            try {
+                val wrapped = wrapWorldKey(worldId, keyVersion, rawKey)
+                check(prefs.edit().putString(storageKey, wrapped).commit()) {
+                    "Unable to persist wrapped world key"
+                }
+            } finally {
+                rawKey.fill(0)
+            }
         }
     }
 
@@ -66,20 +70,22 @@ class WorldKeyVault(context: Context) {
         deviceKeyVault: DeviceKeyVault
     ) {
         require(keyVersion > 0)
-        val storageKey = storageKey(worldId, keyVersion)
-        // A key version is immutable. Re-importing over an existing local key
-        // could silently make old snapshots/events undecryptable on this device.
-        check(prefs.getString(storageKey, null) == null) {
-            "World key version already exists; refusing to replace local key material"
-        }
-        val rawKey = deviceKeyVault.unwrapWorldKey(envelope)
-        try {
-            val wrapped = wrapWorldKey(worldId, keyVersion, rawKey)
-            check(prefs.edit().putString(storageKey, wrapped).commit()) {
-                "Unable to persist imported world key"
+        synchronized(KEY_MATERIAL_LOCK) {
+            val storageKey = storageKey(worldId, keyVersion)
+            // A key version is immutable. Re-importing over an existing local key
+            // could silently make old snapshots/events undecryptable on this device.
+            check(prefs.getString(storageKey, null) == null) {
+                "World key version already exists; refusing to replace local key material"
             }
-        } finally {
-            rawKey.fill(0)
+            val rawKey = deviceKeyVault.unwrapWorldKey(envelope)
+            try {
+                val wrapped = wrapWorldKey(worldId, keyVersion, rawKey)
+                check(prefs.edit().putString(storageKey, wrapped).commit()) {
+                    "Unable to persist imported world key"
+                }
+            } finally {
+                rawKey.fill(0)
+            }
         }
     }
 
@@ -210,6 +216,8 @@ class WorldKeyVault(context: Context) {
 
     private companion object {
         val KEYSTORE_LOCK = Any()
+        // Shared preferences are used by multiple vault instances.
+        val KEY_MATERIAL_LOCK = Any()
         const val ANDROID_KEY_STORE = "AndroidKeyStore"
         const val WRAPPING_KEY_ALIAS = "you_are_my_soul_world_key_wrap_v1"
         const val TRANSFORMATION = "AES/GCM/NoPadding"
