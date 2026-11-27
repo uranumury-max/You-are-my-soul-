@@ -157,22 +157,23 @@ class LocalWorldStore(context: Context) {
         val capsulesJson = json.optJSONArray("capsules") ?: JSONArray()
         val drawingsJson = json.optJSONArray("drawings") ?: JSONArray()
         return WorldSnapshot(
-            worldName = json.optString("worldName", "عالمنا الخاص"),
+            worldName = json.optString("worldName", "عالمنا الخاص").take(40).ifBlank { "عالمنا الخاص" },
             hostCode = json.optString("hostCode"),
             members = (0 until membersJson.length()).map { index ->
                 val member = membersJson.getJSONObject(index)
                 WorldMember(
                     member.optString("code"),
-                    member.optString("name"),
+                    member.optString("name").take(40),
                     member.optBoolean("host")
                 )
-            },
+            }.take(WorldLimits.MAX_MEMBERS),
             journeyStage = json.optInt("journeyStage"),
-            memories = (0 until memoriesJson.length()).map { memoriesJson.optString(it) }.takeLast(100),
+            memories = (0 until memoriesJson.length()).map { memoriesJson.optString(it) }
+                .filter(WorldEventValidation::memory).takeLast(100),
             gardenFlowers = json.optInt("gardenFlowers", 0),
             gardenLastWateredAt = json.optLong("gardenLastWateredAt", 0L),
             dailyAnswerDate = json.optString("dailyAnswerDate", ""),
-            dailyAnswer = json.optString("dailyAnswer", ""),
+            dailyAnswer = json.optString("dailyAnswer", "").take(1000),
             relationshipStartDate = json.optString("relationshipStartDate", ""),
             cloudWorldId = json.optString("cloudWorldId", ""),
             localIsOwner = json.optBoolean("localIsOwner", true),
@@ -184,8 +185,9 @@ class LocalWorldStore(context: Context) {
                     text = message.optString("text"),
                     createdAtEpochMs = message.optLong("createdAtEpochMs")
                 )
-            }.filter { it.id.isNotBlank() && it.text.isNotBlank() }
-                .takeLast(100),
+            }.filter {
+                WorldEventValidation.message(it.id, it.senderName, it.text, it.createdAtEpochMs)
+            }.takeLast(100),
             capsules = (0 until capsulesJson.length()).map { index ->
                 val capsule = capsulesJson.getJSONObject(index)
                 FutureCapsule(
@@ -197,8 +199,9 @@ class LocalWorldStore(context: Context) {
                         else capsule.optLong("openedAtEpochMs")
                 )
             }.filter {
-                it.id.isNotBlank() && it.message.isNotBlank() &&
-                    it.createdAtEpochMs > 0L && it.unlockAtEpochMs > it.createdAtEpochMs
+                WorldEventValidation.capsule(
+                    it.id, it.message, it.createdAtEpochMs, it.unlockAtEpochMs
+                )
             }.takeLast(30),
             drawings = (0 until drawingsJson.length()).mapNotNull { index ->
                 val stroke = drawingsJson.optJSONObject(index) ?: return@mapNotNull null
@@ -212,7 +215,7 @@ class LocalWorldStore(context: Context) {
                 }.take(150)
                 val id = stroke.optString("id")
                 val width = stroke.optDouble("widthFraction", 0.006).toFloat()
-                if (id.isBlank() || points.isEmpty() || width !in 0.001f..0.03f) null
+                if (!WorldEventValidation.drawing(id, width, points)) null
                 else DrawingStroke(id, stroke.optLong("colorArgb", -1L), width, points)
             }.takeLast(40)
         )
