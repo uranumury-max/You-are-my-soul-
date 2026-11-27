@@ -529,7 +529,9 @@ fun SoulWorldApp() {
                                                 val current = world
                                                 if (current != null) {
                                                     pendingJoinRequests = pairingRepository.pendingRequests(session, current.cloudWorldId)
+                                                    activeWorldMembers = pairingRepository.activeMembers(session, current.cloudWorldId)
                                                     pendingRequestsLoadFailed = false
+                                                    activeMembersLoadFailed = false
                                                     if (approve) {
                                                         check(worldKeyReady && worldKeyVault.hasWorldKey(
                                                             java.util.UUID.fromString(current.cloudWorldId), 1
