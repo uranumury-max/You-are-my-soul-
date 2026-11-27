@@ -73,7 +73,8 @@ class WorldMediaImporter(
     }
 
     companion object {
-        const val MAX_BYTES = 20 * 1024 * 1024\n        private const val MAX_DIMENSION = 12_000\n        private const val MAX_PIXEL_COUNT = 64_000_000L\n        private const val PREVIEW_DECODE_DIMENSION = 1_600
+        const val MAX_BYTES = 20 * 1024 * 1024
+        private const val MAX_DIMENSION = 12_000\n        private const val MAX_PIXEL_COUNT = 64_000_000L\n        private const val PREVIEW_DECODE_DIMENSION = 1_600
         val ALLOWED_MIME_TYPES = setOf("image/jpeg", "image/png", "image/webp")
     }
 }
