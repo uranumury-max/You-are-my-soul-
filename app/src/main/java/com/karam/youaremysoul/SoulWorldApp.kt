@@ -1055,8 +1055,10 @@ private fun MemoriesSection(
     onUploadImage: (Uri) -> Unit,
     onOpenMedia: (WorldMediaItem) -> Unit,
     onClosePreview: () -> Unit,
+    onDeleteMedia: (WorldMediaItem) -> Unit,
     preview: Bitmap?
 ) {
+    var mediaToDelete by remember { mutableStateOf<WorldMediaItem?>(null) }
     val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         uri?.let(onUploadImage)
     }
@@ -1136,6 +1138,10 @@ private fun MemoriesSection(
                                 )
                             }
                             Text("عرض", color = Rose, fontSize = 12.sp)
+                            TextButton(
+                                onClick = { mediaToDelete = item },
+                                enabled = mediaEnabled
+                            ) { Text("حذف", color = Rose, fontSize = 11.sp) }
                         }
                     }
                 }
@@ -1167,6 +1173,22 @@ private fun MemoriesSection(
                 )
             }
         }
+    }
+    mediaToDelete?.let { selected ->
+        AlertDialog(
+            onDismissRequest = { mediaToDelete = null },
+            title = { Text("حذف الصورة؟") },
+            text = { Text("سيُحذف الملف المشفّر من التخزين المشترك، وستُزال بياناته من ألبوم الجهازين.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    onDeleteMedia(selected)
+                    mediaToDelete = null
+                }) { Text("حذف نهائياً", color = Rose) }
+            },
+            dismissButton = {
+                TextButton(onClick = { mediaToDelete = null }) { Text("إلغاء") }
+            }
+        )
     }
 }
 
