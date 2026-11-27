@@ -67,6 +67,11 @@ class WorldKeyVault(context: Context) {
     ) {
         require(keyVersion > 0)
         val storageKey = storageKey(worldId, keyVersion)
+        // A key version is immutable. Re-importing over an existing local key
+        // could silently make old snapshots/events undecryptable on this device.
+        check(prefs.getString(storageKey, null) == null) {
+            "World key version already exists; refusing to replace local key material"
+        }
         val rawKey = deviceKeyVault.unwrapWorldKey(envelope)
         try {
             val wrapped = wrapWorldKey(worldId, keyVersion, rawKey)
