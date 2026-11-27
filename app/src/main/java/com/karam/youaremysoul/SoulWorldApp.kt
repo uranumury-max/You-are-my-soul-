@@ -1076,6 +1076,7 @@ fun SoulWorldApp() {
                 if (current == null || !current.localIsOwner || !cloudAuthenticated) {
                     ownerMasterStatus = "إعداد الرمز متاح لصاحب العالم بعد تفعيل الاتصال السحابي."
                 } else {
+                    val code = ownerMasterCodeInput
                     scope.launch {
                         ownerMasterBusy = true
                         try {
@@ -1083,7 +1084,7 @@ fun SoulWorldApp() {
                             val created = ownerMasterRepository.configure(
                                 session,
                                 java.util.UUID.fromString(current.cloudWorldId),
-                                ownerMasterCodeInput
+                                code
                             )
                             if (created) {
                                 refreshOwnerMasterState(current)
@@ -1111,6 +1112,7 @@ fun SoulWorldApp() {
                 if (current == null || !cloudAuthenticated) {
                     ownerMasterStatus = "يتطلب التحقق اتصالاً سحابياً وعالماً مقترناً."
                 } else {
+                    val code = ownerMasterCodeInput
                     scope.launch {
                         ownerMasterBusy = true
                         try {
@@ -1118,7 +1120,7 @@ fun SoulWorldApp() {
                             val accepted = ownerMasterRepository.verify(
                                 session,
                                 java.util.UUID.fromString(current.cloudWorldId),
-                                ownerMasterCodeInput
+                                code
                             )
                             if (accepted) {
                                 refreshOwnerMasterState(current)
