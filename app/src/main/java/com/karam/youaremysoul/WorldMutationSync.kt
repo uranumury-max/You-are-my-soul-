@@ -17,6 +17,16 @@ internal class WorldMutationSync(
         next: WorldSnapshot,
         session: AuthenticatedSupabaseUser
     ): Int {
+        val events = buildEvents(previous, next, session)
+        outbox.enqueueAll(events)
+        return events.size
+    }
+
+    fun buildEvents(
+        previous: WorldSnapshot,
+        next: WorldSnapshot,
+        session: AuthenticatedSupabaseUser
+    ): List<WorldSyncEvent> {
         val worldId = UUID.fromString(next.cloudWorldId)
         require(previous.cloudWorldId == next.cloudWorldId)
         val changes = mutableListOf<Pair<SyncEventType, JSONObject>>()
@@ -121,8 +131,7 @@ internal class WorldMutationSync(
             )
             event
         }
-        outbox.enqueueAll(events)
-        return events.size
+        return events
     }
 }
 
