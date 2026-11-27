@@ -23,9 +23,17 @@ class DeviceKeyVault {
         require(worldKey.size == WORLD_KEY_BYTES)
         val publicKeyBytes = Base64.decode(publicKeyBase64, Base64.NO_WRAP)
         require(publicKeyBytes.size in MIN_PUBLIC_KEY_BYTES..MAX_PUBLIC_KEY_BYTES)
+        require(Base64.encodeToString(publicKeyBytes, Base64.NO_WRAP) == publicKeyBase64) {
+            "Non-canonical device public-key encoding"
+        }
         val publicKey = java.security.KeyFactory.getInstance("RSA")
             .generatePublic(java.security.spec.X509EncodedKeySpec(publicKeyBytes))
-        require(publicKey.algorithm.equals("RSA", ignoreCase = true))
+        require(publicKey is java.security.interfaces.RSAPublicKey)
+        // The v1 envelope has a fixed 256-byte RSA ciphertext. Refuse a
+        // different modulus size instead of creating an envelope this protocol cannot open.
+        require(publicKey.modulus.bitLength() == RSA_BYTES * 8) {
+            "Unsupported device RSA key size"
+        }
         val cipher = Cipher.getInstance(RSA_TRANSFORMATION)
         cipher.init(Cipher.ENCRYPT_MODE, publicKey, OAEP_PARAMETERS)
         return ENVELOPE_PREFIX + Base64.encodeToString(cipher.doFinal(worldKey), Base64.NO_WRAP)
@@ -34,7 +42,11 @@ class DeviceKeyVault {
     fun unwrapWorldKey(envelope: String): ByteArray {
         require(envelope.startsWith(ENVELOPE_PREFIX))
         require(envelope.length <= MAX_ENVELOPE_CHARS)
-        val encrypted = Base64.decode(envelope.removePrefix(ENVELOPE_PREFIX), Base64.NO_WRAP)
+        val encodedCiphertext = envelope.removePrefix(ENVELOPE_PREFIX)
+        val encrypted = Base64.decode(encodedCiphertext, Base64.NO_WRAP)
+        require(Base64.encodeToString(encrypted, Base64.NO_WRAP) == encodedCiphertext) {
+            "Non-canonical device-key envelope encoding"
+        }
         require(encrypted.size == RSA_BYTES)
         val privateKey = loadOrCreateKeyPair().private
         val cipher = Cipher.getInstance(RSA_TRANSFORMATION)
