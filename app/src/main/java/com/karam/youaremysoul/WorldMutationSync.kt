@@ -40,13 +40,16 @@ internal class WorldMutationSync(
         added.forEach { changes += SyncEventType.MEMORY_CREATE to JSONObject().put("value", it) }
         removed.forEach { changes += SyncEventType.MEMORY_DELETE to JSONObject().put("value", it) }
 
-        val previousStrokeIds = previous.drawings.mapTo(mutableSetOf()) { it.id }
-        val nextStrokeIds = next.drawings.mapTo(mutableSetOf()) { it.id }
-        val boardWasCleared = previous.drawings.any { it.id !in nextStrokeIds }
-        if (boardWasCleared) {
+        val drawingDelta = DrawingDiff.between(previous.drawings, next.drawings)
+        if (drawingDelta.clearBoard) {
             changes += SyncEventType.DRAWING_UPDATE to JSONObject().put("action", "clear")
         }
-        next.drawings.filter { boardWasCleared || it.id !in previousStrokeIds }.forEach { stroke ->
+        drawingDelta.removedStrokeId?.let { removedId ->
+            changes += SyncEventType.DRAWING_UPDATE to JSONObject()
+                .put("action", "remove")
+                .put("id", removedId)
+        }
+        drawingDelta.addedStrokes.forEach { stroke ->
             val points = JSONArray().apply {
                 stroke.points.take(150).forEach { point ->
                     put(JSONArray().put(point.x.toDouble()).put(point.y.toDouble()))
