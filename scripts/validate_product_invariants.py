@@ -46,7 +46,7 @@ def main() -> int:
     for required in ("extensions.crypt", "extensions.gen_salt", "attempts > 5", "configure_owner_master_code", "verify_owner_master_code", "grant_owner_scene"):
         if required not in master_code:
             fail(f"owner master-code migration missing security feature: {required}")
-    if re.search(r"\\bcode\\s+text\\s+not null", master_code):
+    if re.search(r"\bcode\s+text\s+not null", master_code):
         fail("owner master code must never be stored as plaintext")
 
     print("OK product invariants: 13 migrations, 21 scenes, image MIME parity, two-member world, hashed owner code")
