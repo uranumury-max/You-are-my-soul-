@@ -1121,6 +1121,57 @@ private fun ConnectionSection(
                 }
             }
         }
+        if (isOwner) {
+            Divider(color = Rose.copy(alpha = .25f))
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text("الأعضاء المرتبطون", color = Gold, fontSize = 17.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                TextButton(onClick = onRefreshRequests, enabled = canManageRequests) {
+                    Text("تحديث", color = if (canManageRequests) Rose else Color.Gray)
+                }
+            }
+            when {
+                !canManageRequests -> Text("تظهر العضويات بعد إعداد الاتصال السحابي.", color = Color.LightGray, fontSize = 11.sp)
+                membersLoadFailed -> Text("تعذر تحميل الأعضاء؛ اضغط تحديث للمحاولة مجدداً.", color = Rose, fontSize = 12.sp)
+                activeMembers.isEmpty() -> Text("لا يوجد عضو آخر مرتبط حالياً.", color = Color.LightGray, fontSize = 12.sp)
+                else -> activeMembers.forEach { member ->
+                    Card(colors = CardDefaults.cardColors(containerColor = CardTone)) {
+                        Row(
+                            Modifier.fillMaxWidth().padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                                Text(member.displayName, color = Color.White, fontWeight = FontWeight.SemiBold)
+                                Text("عضو معتمد في العالم", color = Rose, fontSize = 11.sp)
+                            }
+                            OutlinedButton(onClick = { memberToRevoke = member }) {
+                                Text("إلغاء العضوية")
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        memberToRevoke?.let { member ->
+            AlertDialog(
+                onDismissRequest = { memberToRevoke = null },
+                title = { Text("إلغاء عضوية ${member.displayName}؟") },
+                text = {
+                    Text("سيمنع الخادم هذا العضو من الوصول إلى بيانات العالم الجديدة. لا يمكن سحب المحتوى الذي سبق تنزيله على جهازه.")
+                },
+                confirmButton = {
+                    TextButton(onClick = {
+                        memberToRevoke = null
+                        onRevokeMember(member.userId)
+                    }) { Text("إلغاء العضوية") }
+                },
+                dismissButton = {
+                    TextButton(onClick = { memberToRevoke = null }) { Text("إبقاء العضوية") }
+                },
+                containerColor = CardTone,
+                titleContentColor = Gold,
+                textContentColor = Color.White
+            )
+        }
         Text("العالم يدعم حتى ${WorldLimits.MAX_MEMBERS} مشاركين. طلب الانضمام يحتاج موافقة صاحب العالم، ولا يضيف عضوية قبل تأكيد الخادم.", color = Color.LightGray, fontSize = 12.sp)
         Button(onClick = onCreate, enabled = canCreate) {
             Text(if (canCreate) "إنشاء عالم على هذا الهاتف" else "العالم موجود بالفعل")
