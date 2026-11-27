@@ -70,6 +70,6 @@ class WorldMediaImporter(
 
     companion object {
         const val MAX_BYTES = 20 * 1024 * 1024
-        val ALLOWED_MIME_TYPES = setOf("image/jpeg", "image/png", "image/webp", "image/heic")
+        val ALLOWED_MIME_TYPES = setOf("image/jpeg", "image/png", "image/webp")
     }
 }
