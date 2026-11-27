@@ -210,7 +210,7 @@ class LocalWorldStore(context: Context) {
                                 .put("widthFraction", stroke.widthFraction.toDouble())
                                 .put("points", JSONArray().apply {
                                     stroke.points.take(150).forEach { point ->
-                                        put(JSONArray().put((kotlin.math.round(point.x * 10_000f) / 10_000f).toDouble()).put((kotlin.math.round(point.y * 10_000f) / 10_000f).toDouble()))
+                                        put(JSONArray().put((kotlin.math.round(point.x * 10_000f).toInt() / 10_000.0)).put((kotlin.math.round(point.y * 10_000f).toInt() / 10_000.0)))
                                     }
                                 })
                             )
