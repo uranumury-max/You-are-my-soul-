@@ -57,7 +57,7 @@ import java.util.concurrent.atomic.AtomicLong
 private val Night = Color(0xFF100B1B)
 private val Rose = Color(0xFFFF9CCB)
 private val Gold = Color(0xFFFFD68A)
-private val CardTone = Color(0xCC28172F)
+private val CardTone = Color(0xAA28172F)
 
 @Composable
 fun SoulWorldApp() {
@@ -1145,7 +1145,7 @@ private fun WorldHome(world: WorldSnapshot?, canCreate: Boolean, onCreate: () ->
                 drawCircle(Rose.copy(alpha = .16f), radius = 12f * pulse, center = center)
                 drawCircle(Rose, radius = 7f * pulse, center = center)
             }
-            Text("✦", color = Gold, fontSize = 35.sp)
+            Text("♡", color = Rose, fontSize = 46.sp, fontWeight = FontWeight.Light)
         }
         Text(world?.worldName ?: "عالم يتكوّن منكم", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.SemiBold)
         Text(if (world == null) "ابدأ بإنشاء عالم محفوظ على هذا الهاتف" else "عالم محفوظ محلياً • ${world.members.size} مشارك",
