@@ -975,9 +975,9 @@ fun SoulWorldApp() {
             }
 
             NavigationBar(
-                containerColor = Color(0xFF160F22).copy(alpha = .97f),
+                containerColor = Color(0xDD160F22),
                 contentColor = Rose,
-                tonalElevation = 0.dp
+                tonalElevation = 8.dp
             ) {
                 tabs.forEachIndexed { index, item ->
                     NavigationBarItem(
@@ -986,7 +986,7 @@ fun SoulWorldApp() {
                         icon = {
                             Text(
                                 symbols[index],
-                                fontSize = if (tab == item) 21.sp else 19.sp,
+                                fontSize = if (tab == item) 23.sp else 18.sp,
                                 color = if (tab == item) Gold else Color.White.copy(alpha = .58f)
                             )
                         },
