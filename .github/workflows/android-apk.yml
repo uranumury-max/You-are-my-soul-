@@ -30,7 +30,8 @@ jobs:
       - name: Validate Supabase migration SQL
         run: |
           python -m pip install --disable-pip-version-check pglast
-          python scripts/validate_sql_migrations.py\n          python scripts/validate_product_invariants.py
+          python scripts/validate_sql_migrations.py
+          python scripts/validate_product_invariants.py
       - name: Build debug APK
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
