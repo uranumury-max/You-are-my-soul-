@@ -185,6 +185,20 @@ class LocalWorldStore(context: Context) {
                 )
             }
         })
+        put("media", JSONArray().apply {
+            world.media.takeLast(100).forEach { item ->
+                put(
+                    JSONObject()
+                        .put("id", item.id)
+                        .put("displayName", item.displayName)
+                        .put("mimeType", item.mimeType)
+                        .put("sizeBytes", item.sizeBytes)
+                        .put("createdAtEpochMs", item.createdAtEpochMs)
+                        .put("objectPath", item.objectPath)
+                        .put("keyVersion", item.keyVersion)
+                )
+            }
+        })
         put("memories", JSONArray().apply { world.memories.takeLast(100).forEach(::put) })
         put("members", JSONArray().apply {
             world.members.forEach { member ->
@@ -205,6 +219,8 @@ class LocalWorldStore(context: Context) {
         val messagesJson = json.optJSONArray("messages") ?: JSONArray()
         val capsulesJson = json.optJSONArray("capsules") ?: JSONArray()
         val drawingsJson = json.optJSONArray("drawings") ?: JSONArray()
+        val mediaJson = json.optJSONArray("media") ?: JSONArray()
+        val worldId = json.optString("cloudWorldId", "")
         return WorldSnapshot(
             worldName = json.optString("worldName", "عالمنا الخاص").take(40).ifBlank { "عالمنا الخاص" },
             hostCode = json.optString("hostCode"),
@@ -266,7 +282,24 @@ class LocalWorldStore(context: Context) {
                 val width = stroke.optDouble("widthFraction", 0.006).toFloat()
                 if (!WorldEventValidation.drawing(id, width, points)) null
                 else DrawingStroke(id, stroke.optLong("colorArgb", -1L), width, points)
-            }.takeLast(40)
+            }.takeLast(40),
+            media = (0 until mediaJson.length()).mapNotNull { index ->
+                val item = mediaJson.optJSONObject(index) ?: return@mapNotNull null
+                WorldMediaItem(
+                    id = item.optString("id"),
+                    displayName = item.optString("displayName"),
+                    mimeType = item.optString("mimeType"),
+                    sizeBytes = item.optLong("sizeBytes"),
+                    createdAtEpochMs = item.optLong("createdAtEpochMs"),
+                    objectPath = item.optString("objectPath"),
+                    keyVersion = item.optInt("keyVersion", 1)
+                ).takeIf {
+                    WorldEventValidation.media(
+                        worldId, it.id, it.displayName, it.mimeType, it.sizeBytes,
+                        it.createdAtEpochMs, it.objectPath, it.keyVersion
+                    )
+                }
+            }.takeLast(100)
         )
     }
 
