@@ -346,15 +346,7 @@ internal class WorldEventReducer(
                         }
                     }
                     SyncEventType.SETTINGS_UPDATE -> {
-                        val worldName = if (payload.has("worldName")) payload.optString("worldName") else null
-                        val relationshipDate = if (payload.has("relationshipStartDate")) {
-                            payload.optString("relationshipStartDate")
-                        } else null
-                        if (!WorldEventValidation.settings(worldName, relationshipDate)) state
-                        else state.copy(
-                            worldName = worldName ?: state.worldName,
-                            relationshipStartDate = relationshipDate ?: state.relationshipStartDate
-                        )
+                        WorldSettingsPatch.fromPayload(payload)?.applyTo(state) ?: state
                     }
                     else -> state
                 }
