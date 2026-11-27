@@ -25,7 +25,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.input.pointer.consume
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -1172,8 +1171,7 @@ private fun DrawingSection(
                         )
                     },
                     onDrag = { change, _ ->
-                        change.consume()
-                        activeStroke?.let { stroke ->
+                            activeStroke?.let { stroke ->
                             if (stroke.points.size < 150) {
                                 activeStroke = stroke.copy(points = stroke.points + normalizedPoint(change.position))
                             }
