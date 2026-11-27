@@ -171,7 +171,7 @@ internal class WorldEventReducer(
                                 val openedAt = payload.optLong("openedAtEpochMs")
                                 state.copy(capsules = state.capsules.map { capsule ->
                                     if (capsule.id == capsuleId && capsule.openedAtEpochMs == null &&
-                                        System.currentTimeMillis() >= capsule.unlockAtEpochMs
+                                        openedAt >= capsule.unlockAtEpochMs
                                     ) capsule.copy(openedAtEpochMs = openedAt)
                                     else capsule
                                 })
