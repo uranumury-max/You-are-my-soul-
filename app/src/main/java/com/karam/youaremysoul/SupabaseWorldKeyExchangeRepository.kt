@@ -25,6 +25,7 @@ data class DownloadedWorldKeyEnvelope(
 
 /** Authenticated transport for owner-published, recipient-encrypted world keys. */
 class SupabaseWorldKeyExchangeRepository(context: Context) {
+    private val prefs = context.applicationContext.getSharedPreferences("world_key_exchange_cache", Context.MODE_PRIVATE)
     private val config = SupabaseRuntimeConfig.fromBuildConfig()
     private val identity = DeviceIdentity(context.applicationContext)
 
@@ -79,6 +80,103 @@ class SupabaseWorldKeyExchangeRepository(context: Context) {
     }
 
 
+    suspend fun currentWorldKeyVersion(
+        session: AuthenticatedSupabaseUser,
+        worldId: String
+    ): Int = withContext(Dispatchers.IO) {
+        val response = request(
+            "/rest/v1/rpc/get_world_key_version",
+            "POST",
+            session,
+            JSONObject().put("p_world_id", UUID.fromString(worldId).toString())
+        ).trim()
+        val value = runCatching { JSONArray(response).optInt(0, -1) }.getOrDefault(-1)
+            .takeIf { it > 0 } ?: response.removeSurrounding("\"", "\"").toIntOrNull()
+        requireNotNull(value?.takeIf { it > 0 }) { "Invalid active world key version response" }
+    }
+
+    /** Fetches/imports the server's active key while retaining all older local keys. */
+    suspend fun synchronizeOwnActiveKey(
+        session: AuthenticatedSupabaseUser,
+        worldId: String,
+        worldKeyVault: WorldKeyVault,
+        deviceKeyVault: DeviceKeyVault
+    ): Int = withContext(Dispatchers.IO) {
+        val id = UUID.fromString(worldId)
+        val activeVersion = currentWorldKeyVersion(session, worldId)
+        if (!worldKeyVault.hasWorldKey(id, activeVersion)) {
+            val envelope = fetchOwnEnvelope(session, worldId, activeVersion)
+                ?: throw SupabaseAuthException("world_key_envelope_not_available")
+            worldKeyVault.importDeviceEnvelope(id, activeVersion, envelope.envelope, deviceKeyVault)
+        }
+        worldKeyVault.setActiveKeyVersion(id, activeVersion)
+        activeVersion
+    }
+
+    /** Owner-only rotation: create once, persist stable recipient envelopes, publish all, then activate server-side. */
+    suspend fun rotateOwnerWorldKey(
+        session: AuthenticatedSupabaseUser,
+        worldId: String,
+        worldKeyVault: WorldKeyVault,
+        deviceKeyVault: DeviceKeyVault
+    ): Int = withContext(Dispatchers.IO) {
+        val id = UUID.fromString(worldId)
+        val current = currentWorldKeyVersion(session, worldId)
+        val next = Math.addExact(current, 1)
+        if (!worldKeyVault.hasWorldKey(id, next)) worldKeyVault.createWorldKey(id, next)
+        val devices = activeMemberDevices(session, worldId)
+        require(devices.isNotEmpty()) { "No registered member devices are available" }
+        for (device in devices) {
+            val envelope = stableEnvelope(id, next, device, worldKeyVault, deviceKeyVault)
+            check(publishEnvelope(session, worldId, device, next, envelope)) {
+                "World key envelope publication was not confirmed"
+            }
+        }
+        check(activateKeyVersion(session, worldId, current, next)) {
+            "Server did not confirm key version activation"
+        }
+        worldKeyVault.setActiveKeyVersion(id, next)
+        next
+    }
+
+    private suspend fun activateKeyVersion(
+        session: AuthenticatedSupabaseUser,
+        worldId: String,
+        expectedVersion: Int,
+        newVersion: Int
+    ): Boolean = withContext(Dispatchers.IO) {
+        request(
+            "/rest/v1/rpc/activate_world_key_version",
+            "POST",
+            session,
+            JSONObject()
+                .put("p_world_id", UUID.fromString(worldId).toString())
+                .put("p_expected_version", expectedVersion)
+                .put("p_new_version", newVersion)
+        ).trim().equals("true", ignoreCase = true)
+    }
+
+    private fun stableEnvelope(
+        worldId: UUID,
+        keyVersion: Int,
+        device: WorldMemberDeviceKey,
+        worldKeyVault: WorldKeyVault,
+        deviceKeyVault: DeviceKeyVault
+    ): String {
+        val cacheKey = "envelope_${worldId}_v${keyVersion}_${device.userId}_${device.deviceId}"
+        prefs.getString(cacheKey, null)?.let { return it }
+        val generated = worldKeyVault.createDeviceEnvelope(
+            worldId, keyVersion, device.publicKeyBase64, deviceKeyVault
+        )
+        synchronized(ENVELOPE_CACHE_LOCK) {
+            prefs.getString(cacheKey, null)?.let { return it }
+            check(prefs.edit().putString(cacheKey, generated).commit()) {
+                "Unable to persist stable recipient envelope"
+            }
+            return generated
+        }
+    }
+
     /** Wraps the current world key separately for every active member device. */
     suspend fun distributeOwnerWorldKey(
         session: AuthenticatedSupabaseUser,
@@ -93,8 +191,8 @@ class SupabaseWorldKeyExchangeRepository(context: Context) {
         require(devices.isNotEmpty()) { "No registered member devices are available" }
         var published = 0
         for (device in devices) {
-            val envelope = worldKeyVault.createDeviceEnvelope(
-                id, keyVersion, device.publicKeyBase64, deviceKeyVault
+            val envelope = stableEnvelope(
+                id, keyVersion, device, worldKeyVault, deviceKeyVault
             )
             check(publishEnvelope(session, worldId, device, keyVersion, envelope)) {
                 "World key envelope publication was not confirmed"
@@ -129,6 +227,8 @@ class SupabaseWorldKeyExchangeRepository(context: Context) {
             require(it.envelope.length in 350..1024)
         }
     }
+
+    private companion object { val ENVELOPE_CACHE_LOCK = Any() }
 
     private fun request(
         path: String,
