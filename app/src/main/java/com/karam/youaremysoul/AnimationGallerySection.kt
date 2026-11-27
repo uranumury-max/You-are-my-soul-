@@ -163,12 +163,12 @@ private fun SoulSceneViewer(scene: SoulScene, number: Int, onBack: () -> Unit) {
                     }
                     drawCircle(Color(0x66FF9CCB), base * 0.28f, center, style = Stroke(width = 2.dp.toPx()))
                 }
-                4, 17 -> {
+                4 -> {
                     drawCircle(Color(0xFFE8D9FF), base * 0.22f * pulse, center)
                     drawCircle(Color(0xFF241235), base * 0.19f, Offset(center.x + base * 0.11f, center.y - base * 0.08f))
                     repeat(12) { i -> drawCircle(Color(0xFFFFD68A), base * 0.012f, Offset(center.x + kotlin.math.cos(i * 0.52f) * base * 0.38f, center.y + kotlin.math.sin(i * 0.52f) * base * 0.38f)) }
                 }
-                6, 17 -> {
+                6 -> {
                     repeat(8) { i ->
                         val angle = i * (Math.PI / 4.0)
                         val p = Offset(center.x + kotlin.math.cos(angle).toFloat() * base * 0.19f * pulse, center.y + kotlin.math.sin(angle).toFloat() * base * 0.19f * pulse)
@@ -176,7 +176,7 @@ private fun SoulSceneViewer(scene: SoulScene, number: Int, onBack: () -> Unit) {
                     }
                     drawCircle(Color.White, base * 0.035f, center)
                 }
-                7, 14 -> {
+                7 -> {
                     drawLine(Color(0xFFFF9CCB), Offset(center.x - base * 0.3f, center.y), Offset(center.x + base * 0.3f, center.y), strokeWidth = 3.dp.toPx())
                     drawLine(Color(0xFFFFD68A), Offset(center.x, center.y - base * 0.3f), Offset(center.x, center.y + base * 0.3f), strokeWidth = 3.dp.toPx())
                     repeat(4) { i -> drawCircle(Color(0xFFFFD68A), base * 0.045f, Offset(center.x + (i - 1.5f) * base * 0.15f, center.y + kotlin.math.sin(i + pulse) * base * 0.08f)) }
@@ -185,6 +185,39 @@ private fun SoulSceneViewer(scene: SoulScene, number: Int, onBack: () -> Unit) {
                     drawRoundRect(Color(0xAAFFF0D0), Offset(center.x - base * 0.22f, center.y - base * 0.15f), androidx.compose.ui.geometry.Size(base * 0.44f, base * 0.30f), cornerRadius = androidx.compose.ui.geometry.CornerRadius(base * 0.035f))
                     drawLine(Color(0xFFFF9CCB), Offset(center.x - base * 0.22f, center.y - base * 0.15f), Offset(center.x, center.y + base * 0.02f), strokeWidth = 2.dp.toPx())
                     drawLine(Color(0xFFFF9CCB), Offset(center.x + base * 0.22f, center.y - base * 0.15f), Offset(center.x, center.y + base * 0.02f), strokeWidth = 2.dp.toPx())
+                }
+                14 -> {
+                    // Lanterns: glowing hanging lights at different heights.
+                    repeat(5) { i ->
+                        val x = center.x + (i - 2) * base * 0.16f
+                        val y = center.y + kotlin.math.sin(i * 0.8f + drift * 8f) * base * 0.08f
+                        drawLine(Color(0x88FFD68A), Offset(x, y - base * 0.2f), Offset(x, y - base * 0.08f), strokeWidth = 1.5.dp.toPx())
+                        drawRoundRect(Color(0xFFFFB86B).copy(alpha = 0.75f), Offset(x - base * 0.045f, y - base * 0.08f), androidx.compose.ui.geometry.Size(base * 0.09f, base * 0.13f), cornerRadius = androidx.compose.ui.geometry.CornerRadius(base * 0.025f))
+                        drawCircle(Color(0xFFFFF0B0).copy(alpha = 0.65f), base * 0.09f * pulse, Offset(x, y - base * 0.015f))
+                    }
+                }
+                17 -> {
+                    // Moon garden: silver moon above a small ring of flowers.
+                    drawCircle(Color(0xFFE8D9FF), base * 0.16f * pulse, Offset(center.x, center.y - base * 0.19f))
+                    drawCircle(Color(0xFF241235), base * 0.14f, Offset(center.x + base * 0.08f, center.y - base * 0.24f))
+                    repeat(5) { i ->
+                        val angle = Math.PI + i * (Math.PI / 4.0)
+                        val flower = Offset(center.x + kotlin.math.cos(angle).toFloat() * base * 0.23f, center.y + kotlin.math.sin(angle).toFloat() * base * 0.18f)
+                        repeat(5) { petal ->
+                            val a = petal * (Math.PI * 2.0 / 5.0)
+                            drawCircle(Color(0xFFFF9CCB), base * 0.035f, Offset(flower.x + kotlin.math.cos(a).toFloat() * base * 0.045f, flower.y + kotlin.math.sin(a).toFloat() * base * 0.045f))
+                        }
+                        drawCircle(Color(0xFFFFD68A), base * 0.018f, flower)
+                    }
+                }
+                18 -> {
+                    // A luminous thread connecting two drifting stars.
+                    val left = Offset(center.x - base * 0.28f, center.y + base * drift)
+                    val right = Offset(center.x + base * 0.28f, center.y - base * drift)
+                    drawLine(Color(0xFFFF9CCB), left, right, strokeWidth = 2.4.dp.toPx())
+                    drawCircle(Color(0xFFFFD68A), base * 0.075f * pulse, left)
+                    drawCircle(Color(0xFFE8D9FF), base * 0.075f * pulse, right)
+                    drawCircle(Color(0x66FFFFD6), base * 0.16f, center, style = Stroke(width = 1.5.dp.toPx()))
                 }
                 10, 15 -> {
                     repeat(3) { i -> drawCircle(Color(0x66FFD68A), base * (0.16f + i * 0.11f), center, style = Stroke(width = (2 - i * 0.3f).dp.toPx())) }
