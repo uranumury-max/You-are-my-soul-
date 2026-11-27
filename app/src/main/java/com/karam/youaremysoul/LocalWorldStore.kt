@@ -109,6 +109,18 @@ class LocalWorldStore(context: Context) {
                 )
             }
         })
+        put("capsules", JSONArray().apply {
+            world.capsules.forEach { capsule ->
+                put(
+                    JSONObject()
+                        .put("id", capsule.id)
+                        .put("message", capsule.message)
+                        .put("createdAtEpochMs", capsule.createdAtEpochMs)
+                        .put("unlockAtEpochMs", capsule.unlockAtEpochMs)
+                        .put("openedAtEpochMs", capsule.openedAtEpochMs ?: JSONObject.NULL)
+                )
+            }
+        })
         put("memories", JSONArray().apply { world.memories.forEach(::put) })
         put("members", JSONArray().apply {
             world.members.forEach { member ->
@@ -127,6 +139,7 @@ class LocalWorldStore(context: Context) {
         val membersJson = json.optJSONArray("members") ?: JSONArray()
         val memoriesJson = json.optJSONArray("memories") ?: JSONArray()
         val messagesJson = json.optJSONArray("messages") ?: JSONArray()
+        val capsulesJson = json.optJSONArray("capsules") ?: JSONArray()
         return WorldSnapshot(
             worldName = json.optString("worldName", "عالمنا الخاص"),
             hostCode = json.optString("hostCode"),
@@ -156,7 +169,21 @@ class LocalWorldStore(context: Context) {
                     createdAtEpochMs = message.optLong("createdAtEpochMs")
                 )
             }.filter { it.id.isNotBlank() && it.text.isNotBlank() }
-                .takeLast(200)
+                .takeLast(200),
+            capsules = (0 until capsulesJson.length()).map { index ->
+                val capsule = capsulesJson.getJSONObject(index)
+                FutureCapsule(
+                    id = capsule.optString("id"),
+                    message = capsule.optString("message"),
+                    createdAtEpochMs = capsule.optLong("createdAtEpochMs"),
+                    unlockAtEpochMs = capsule.optLong("unlockAtEpochMs"),
+                    openedAtEpochMs = if (capsule.isNull("openedAtEpochMs")) null
+                        else capsule.optLong("openedAtEpochMs")
+                )
+            }.filter {
+                it.id.isNotBlank() && it.message.isNotBlank() &&
+                    it.createdAtEpochMs > 0L && it.unlockAtEpochMs > it.createdAtEpochMs
+            }.takeLast(100)
         )
     }
 
