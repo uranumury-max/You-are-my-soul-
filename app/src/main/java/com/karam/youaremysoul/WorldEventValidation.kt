@@ -19,7 +19,8 @@ internal object WorldEventValidation {
     fun drawingColor(colorArgb: Long): Boolean = colorArgb in allowedDrawingColors
 
     fun memory(value: String): Boolean =
-        value.isNotBlank() && value.length <= 400
+        value.isNotBlank() && value.length <= 400 &&
+            value.none { it.isISOControl() && it != '\\n' && it != '\\r' && it != '\\t' }
 
     fun message(id: String, senderName: String, text: String, createdAtEpochMs: Long): Boolean =
         id.length in 1..64 && id.none(Char::isISOControl) &&
@@ -35,8 +36,9 @@ internal object WorldEventValidation {
         createdAtEpochMs: Long,
         unlockAtEpochMs: Long
     ): Boolean =
-        id.length in 1..64 &&
+        id.length in 1..64 && id.none(Char::isISOControl) &&
             message.isNotBlank() && message.length <= 800 &&
+            message.none { it.isISOControl() && it != '\\n' && it != '\\r' && it != '\\t' } &&
             createdAtEpochMs > 0L &&
             unlockAtEpochMs > createdAtEpochMs
 
@@ -55,6 +57,7 @@ internal object WorldEventValidation {
 
     fun dailyAnswer(date: String, answer: String): Boolean =
         answer.length <= 1000 &&
+            answer.none { it.isISOControl() && it != '\\n' && it != '\\r' && it != '\\t' } &&
             runCatching { LocalDate.parse(date) }.isSuccess
 
     fun dailyAnswerEntry(
